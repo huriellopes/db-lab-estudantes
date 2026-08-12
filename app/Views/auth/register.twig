@@ -12,6 +12,7 @@
     {% endfor %}
 
     <form method="post" action="/register" class="space-y-4">
+        {{ csrf_field() }}
         <div>
             <label for="name" class="field-label">Nome completo</label>
             <input type="text" id="name" name="name" value="{{ old.name }}" required autofocus class="field-input">

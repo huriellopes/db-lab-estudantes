@@ -35,6 +35,7 @@
             <p class="mb-4 text-sm text-slate-500">Use apenas letras, números e "_".</p>
 
             <form method="post" action="/schemas" class="space-y-4">
+                {{ csrf_field() }}
                 <div>
                     <label for="label" class="field-label">Nome do schema</label>
                     <div class="flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
@@ -100,6 +101,7 @@
                                     @submit.prevent="submit"
                                     method="post" action="/schemas/delete"
                                 >
+                                    {{ csrf_field() }}
                                     <input type="hidden" name="db_name" value="{{ schema.dbName }}">
                                     <button :disabled="loading" type="submit" class="btn-danger !px-3 !py-1.5 text-xs">
                                         <span x-show="!loading">Excluir</span>
@@ -138,14 +140,22 @@
 
                 <div>
                     <textarea
-                        x-model="sql" rows="6" spellcheck="false"
+                        x-ref="sqlInput" x-model="sql" rows="6" spellcheck="false"
                         placeholder="SELECT * FROM minha_tabela;"
                         class="field-input font-mono text-sm"
                         @keydown.ctrl.enter="run" @keydown.meta.enter="run"
+                        @select="trackSelection" @mouseup="trackSelection" @keyup="trackSelection" @blur="trackSelection"
                     ></textarea>
                     <p class="mt-1.5 text-xs text-slate-500">
-                        Ctrl+Enter (ou ⌘+Enter) roda direto. Vários comandos? Separe com ";" — cada um roda em sequência,
-                        e a lista para no primeiro que der erro.
+                        <template x-if="hasSelection">
+                            <span>Vai rodar só o trecho selecionado. Clique fora da seleção pra rodar tudo de novo.</span>
+                        </template>
+                        <template x-if="!hasSelection">
+                            <span>
+                                Ctrl+Enter (ou ⌘+Enter) roda direto. Selecione um trecho pra rodar só ele — sem seleção,
+                                roda tudo. Vários comandos? Separe com ";", cada um roda em sequência e para no primeiro erro.
+                            </span>
+                        </template>
                     </p>
                 </div>
 
@@ -154,7 +164,7 @@
                         <svg x-show="!loading" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/>
                         </svg>
-                        <span x-show="!loading">Executar</span>
+                        <span x-show="!loading" x-text="hasSelection ? 'Executar seleção' : 'Executar tudo'"></span>
                         <span x-show="loading" x-cloak>Executando…</span>
                     </button>
                     <button @click="clear" type="button" class="btn-secondary" :disabled="loading">Limpar</button>

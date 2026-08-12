@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Support\Csrf;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
@@ -63,5 +64,12 @@ final class View
         $twig->addFunction(new TwigFunction('flash', [Flash::class, 'get']));
 
         $twig->addFunction(new TwigFunction('vite', [Vite::class, 'tags'], ['is_safe' => ['html']]));
+
+        $twig->addFunction(new TwigFunction('csrf_token', [Csrf::class, 'token']));
+        $twig->addFunction(new TwigFunction(
+            'csrf_field',
+            static fn (): string => '<input type="hidden" name="_csrf" value="' . htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') . '">',
+            ['is_safe' => ['html']],
+        ));
     }
 }

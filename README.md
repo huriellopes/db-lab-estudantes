@@ -273,11 +273,11 @@ Manager como proxy reverso já existente, banco só em `127.0.0.1` sem exposiç�
     nada mais. Guardada nos secrets do repo (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
 - **`.env` de produção** fica só no servidor (`/apps/db-lab-estudantes/.env`, nunca no git)
   — veja `.env.production.example` pro formato (inclui `PMA_URL` e `APP_KEY`).
-- **Passo manual pendente** (fora do escopo do que a automação cobre, feito uma vez pela UI
-  do NPM — acesse via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`, depois
-  `http://localhost:8181`): registrar o proxy host do phpMyAdmin (`pma.dblab.217.76.60.113.sslip.io`
-  → container `dblab-phpmyadmin:80`, com Let's Encrypt), e preencher `PMA_URL`/`APP_KEY` no
-  `.env` real do servidor antes do próximo deploy.
+- **phpMyAdmin público**: `https://pma.dblab.217.76.60.113.sslip.io` (proxy host próprio no
+  NPM, Let's Encrypt) — login com o mesmo usuário/senha MySQL de cada pessoa. A UI do NPM em
+  si (pra mexer nos proxy hosts) continua só via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`,
+  depois `http://localhost:8181` — não é algo que a automação de deploy cobre, é feito uma vez
+  na mão quando um novo proxy host precisa ser criado.
 
 ## Testes (Pest)
 

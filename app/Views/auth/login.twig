@@ -10,6 +10,7 @@
     {% endfor %}
 
     <form method="post" action="/login" class="space-y-4">
+        {{ csrf_field() }}
         <div>
             <label for="identifier" class="field-label">E-mail ou username</label>
             <input type="text" id="identifier" name="identifier" value="{{ old.identifier }}" required autofocus class="field-input">

@@ -16,6 +16,7 @@
                 x-data="ajaxForm()" @submit.prevent="submit"
                 method="post" action="/admin/usuarios/{{ user.id }}" class="space-y-4"
             >
+                {{ csrf_field() }}
                 <div>
                     <label for="name" class="field-label">Nome</label>
                     <input type="text" id="name" name="name" value="{{ user.name }}" required minlength="2" class="field-input">
@@ -45,6 +46,7 @@
                 @submit.prevent="submit"
                 method="post" action="/admin/usuarios/{{ user.id }}/senha" class="space-y-4"
             >
+                {{ csrf_field() }}
                 {{ forms.password_field('new_password', 'new_password', 'Nova senha', 6) }}
                 <button :disabled="loading" type="submit" class="btn-secondary w-full">
                     <span x-show="!loading">Resetar senha</span>

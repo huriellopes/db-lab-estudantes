@@ -13,6 +13,8 @@ use App\Controllers\SchemaController;
 use App\Controllers\SqlConsoleController;
 use App\Controllers\StudentController;
 use App\Core\Router;
+use App\Core\View;
+use App\Support\Csrf;
 use App\Support\RequestScheme;
 use Dotenv\Dotenv;
 
@@ -34,6 +36,29 @@ session_set_cookie_params([
     'samesite' => 'Lax',
 ]);
 session_start();
+
+// Toda requisição POST precisa do token CSRF da própria sessão — via campo _csrf (forms
+// clássicos, ver csrf_field() no Twig) ou header X-CSRF-Token (Axios, ver resources/js/app.js).
+// Verificado aqui, antes do roteamento, pra não precisar repetir em cada controller.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $submitted = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+
+    if (!Csrf::verify(is_string($submitted) ? $submitted : null)) {
+        http_response_code(419);
+
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Sessão expirada — recarregue a página e tente de novo.',
+            ]);
+        } else {
+            echo View::render('errors/419');
+        }
+
+        exit;
+    }
+}
 
 $router = new Router();
 

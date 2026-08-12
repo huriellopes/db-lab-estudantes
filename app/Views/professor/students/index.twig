@@ -43,6 +43,7 @@
                                         })"
                                         @submit.prevent="submit" method="post" action="/professor/alunos/{{ student.id }}/status"
                                     >
+                                        {{ csrf_field() }}
                                         <button :disabled="loading" type="submit" class="{{ student.active ? 'badge-indigo' : 'badge-slate' }}">
                                             {{ student.active ? 'Ativo' : 'Inativo' }}
                                         </button>
@@ -62,6 +63,7 @@
                                             @submit.prevent="submit"
                                             method="post" action="/professor/alunos/{{ student.id }}/excluir"
                                         >
+                                            {{ csrf_field() }}
                                             <button :disabled="loading" type="submit" class="btn-danger !px-3 !py-1.5 text-xs">
                                                 <span x-show="!loading">Excluir</span>
                                                 <span x-show="loading" x-cloak>Excluindo…</span>
