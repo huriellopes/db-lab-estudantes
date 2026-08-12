@@ -234,10 +234,12 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
+        $pmaUrl = Config::get('PMA_URL');
+
         $this->render('admin/schemas', [
             'pageTitle' => 'Todos os schemas',
             'schemas' => SchemaRecord::allWithOwners(),
-            'pmaUrl' => rtrim(Config::get('PMA_URL', 'http://localhost:8081'), '/'),
+            'pmaUrl' => $pmaUrl !== null ? rtrim($pmaUrl, '/') : null,
         ]);
     }
 
