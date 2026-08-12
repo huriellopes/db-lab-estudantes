@@ -15,6 +15,39 @@
   [x-cloak] {
     display: none !important;
   }
+
+  /* Barra de progresso no topo durante navegação boosted pelo htmx (ver app.js) —
+     escondida por padrão (scaleX 0), some suave quando a classe sai (ver htmx:afterRequest). */
+  html::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    height: 3px;
+    width: 100%;
+    background: var(--color-indigo-600, #4f46e5);
+    transform-origin: left;
+    transform: scaleX(0);
+    opacity: 0;
+    transition:
+      transform 8s cubic-bezier(0.1, 0.7, 0.1, 0.9),
+      opacity 0.2s ease;
+    pointer-events: none;
+  }
+  html.htmx-navigating::before {
+    transform: scaleX(0.85);
+    opacity: 1;
+    transition:
+      transform 8s cubic-bezier(0.1, 0.7, 0.1, 0.9),
+      opacity 0.1s ease;
+  }
+
+  /* Cross-fade suave entre navegações (View Transitions API — sem suporte, ignora). */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.15s;
+  }
 }
 
 @utility btn {

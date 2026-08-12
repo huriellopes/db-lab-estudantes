@@ -11,8 +11,9 @@
     </div>
 
     <div class="card">
-        {{ tc.search_form('/admin/usuarios/lixeira', query, 'Buscar por nome, e-mail ou username…') }}
+        {{ tc.search_form('/admin/usuarios/lixeira', query, 'Buscar por nome, e-mail ou username…', 'trash-results') }}
 
+        <div id="trash-results">
         {% if paginator.total == 0 and query.search == '' %}
             <div class="rounded-xl border border-dashed border-slate-200 py-10 text-center">
                 <p class="text-sm text-slate-500">A lixeira está vazia.</p>
@@ -44,7 +45,7 @@
                                 <td class="py-3">
                                     <div class="flex items-center justify-end">
                                         <form
-                                            x-data="ajaxForm({
+                                            hx-boost="false" x-data="ajaxForm({
                                                 confirmTitle: 'Restaurar conta',
                                                 confirmMessage: 'Restaurar a conta de {{ user.name|e('js') }}? O acesso volta a funcionar normalmente.',
                                                 confirmLabel: 'Restaurar',
@@ -70,5 +71,6 @@
 
             {{ tc.pagination('/admin/usuarios/lixeira', paginator, query) }}
         {% endif %}
+        </div>
     </div>
 {% endblock %}

@@ -14,8 +14,9 @@
     </div>
 
     <div class="card">
-        {{ tc.search_form('/admin/usuarios', query, 'Buscar por nome, e-mail ou username…') }}
+        {{ tc.search_form('/admin/usuarios', query, 'Buscar por nome, e-mail ou username…', 'users-results') }}
 
+        <div id="users-results">
         {% if paginator.total == 0 and query.search == '' %}
             <div class="rounded-xl border border-dashed border-slate-200 py-10 text-center">
                 <p class="text-sm text-slate-500">Nenhum usuário cadastrado ainda.</p>
@@ -45,7 +46,7 @@
                                 </td>
                                 <td class="py-3 pr-4">
                                     <form
-                                        x-data="ajaxForm({
+                                        hx-boost="false" x-data="ajaxForm({
                                             confirmTitle: 'Trocar papel',
                                             confirmMessage: (e) => 'Alterar o papel de {{ user.name|e('js') }} para ' + e.target.selectedOptions[0].text + '?',
                                             confirmLabel: 'Trocar papel',
@@ -62,7 +63,7 @@
                                 </td>
                                 <td class="py-3 pr-4">
                                     <form
-                                        x-data="ajaxForm({
+                                        hx-boost="false" x-data="ajaxForm({
                                             confirmTitle: '{{ user.active ? 'Desativar conta' : 'Reativar conta' }}',
                                             confirmMessage: '{{ user.active ? 'Desativar' : 'Reativar' }} a conta de {{ user.name|e('js') }}?{{ user.active ? ' A pessoa não vai conseguir mais logar nem acessar o phpMyAdmin até reativar.' : '' }}',
                                             confirmLabel: '{{ user.active ? 'Desativar' : 'Reativar' }}',
@@ -81,7 +82,7 @@
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="/admin/usuarios/{{ user.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>
                                         <form
-                                            x-data="ajaxForm({
+                                            hx-boost="false" x-data="ajaxForm({
                                                 confirmTitle: 'Excluir usuário',
                                                 confirmMessage: 'Excluir a conta de {{ user.name|e('js') }}? Fica na lixeira, dá pra restaurar depois.',
                                                 confirmLabel: 'Excluir',
@@ -106,5 +107,6 @@
 
             {{ tc.pagination('/admin/usuarios', paginator, query) }}
         {% endif %}
+        </div>
     </div>
 {% endblock %}

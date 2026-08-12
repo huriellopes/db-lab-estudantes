@@ -57,6 +57,14 @@ Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão aci
   comando, e isso é intencional: qualquer comando que o login MySQL da pessoa tenha
   permissão de rodar é permitido, do mesmo jeito que seria via phpMyAdmin ou um cliente
   MySQL comum.
+- **Sem schema selecionado, dá pra criar um** (`CREATE DATABASE <login>__algo;`, sem `USE`
+  antes): cada conta pessoal ganha, na criação, um `GRANT ... ON `<login>\_\_%`.* ...`
+  (mesmo prefixo que `SchemaNameBuilder` já exige nos schemas criados pelo formulário —
+  ver "Isolamento do banco da app" acima). Depois de cada execução,
+  `SqlConsoleController::reconcileSchemas()` roda `SHOW DATABASES LIKE` (na conexão pessoal
+  — só devolve o que a própria conta enxerga) e sincroniza `schemas_criados` com o que
+  existe de fato, então um `CREATE`/`DROP DATABASE` feito assim aparece/some de "Meus
+  schemas" sem precisar recarregar nada à parte.
 
 ## Outras camadas relevantes (fora do escopo estrito de SQL, mas parte da mesma auditoria)
 
@@ -163,6 +171,58 @@ no próprio schema. Então mesmo com a porta pública, ninguém lê schema alhei
 
 **Recomendação pra quem usa a conta**: senha forte de verdade agora importa mais do que
 antes — vale reforçar isso pros alunos/professores.
+
+## Isolamento do banco da app (`schoolapp`) com o MySQL público — avaliado
+
+Pedido explícito: com a porta pública, garantir que só os schemas de aluno/usuário ficam
+alcançáveis por conexão direta, nunca o database interno da aplicação.
+
+**Já garantido pelo modelo de GRANT, testado ativamente** (ver tabela em "Modelo de dados
+e acessos ao banco" acima) — nenhuma conta pessoal (`'login'@'%'`) jamais recebeu privilégio
+nenhum sobre `schoolapp`; só o `appuser` acessa. Isso nunca dependeu da rede, e continua
+valendo com a porta pública: `USE schoolapp` ou `SELECT` direto de uma conta pessoal
+continuam voltando `Access denied` do próprio servidor.
+
+**Mudança desta sessão — GRANT com wildcard pro console SQL criar schema**: cada conta
+pessoal agora recebe, na criação (`SchemaProvisioner::createMysqlAccount`), um
+`GRANT ALL PRIVILEGES ON `<login>\_\_%`.* TO '<login>'@'%'` — escopo idêntico ao prefixo que
+`SchemaNameBuilder` já exige pros schemas criados pelo formulário, só que concedido de
+antemão em vez de schema por schema. Motivo: permite `CREATE DATABASE <login>__algo;` **via
+o próprio console SQL** (ver seção abaixo), sem abrir acesso a mais nada — o pattern nunca
+bate com `schoolapp` (nome fixo, não tem esse prefixo) nem com o prefixo de outro usuário
+(todo `_` literal do login é escapado como `\_` na hora de montar o pattern, senão o `_`
+seria wildcard de 1 caractere e poderia colidir com o prefixo de um login "vizinho" — ex.:
+sem o escape, `ana_costa` bateria também com `anaXcosta__`).
+
+**Avaliado e não aplicado: restringir o host do `appuser`.** A mitigação "de manual" pra
+esse cenário seria trocar `'appuser'@'%'` por `'appuser'@'<subnet interna>'`, deixando essa
+conta (a única com alcance total) impossível de autenticar vindo de fora do Docker.
+Não apliquei porque, nesse ambiente especificamente, é mais arriscado do que parece:
+
+- As redes do Compose (`dblab`/`dblab-net`) não têm subnet fixa — o Docker aloca uma faixa
+  livre a cada `up`, então um IP/netmask fixo no `mysql/init/01-grants.sql` quebraria (ou
+  passaria a não restringir nada) na primeira vez que a faixa mudasse.
+- Mesmo fixando a subnet (`ipam.config.subnet` no compose), se o host tiver o
+  `userland-proxy` do Docker ativo (padrão em várias instalações), conexões chegando pela
+  porta publicada — de dentro **ou de fora** do host — aparecem pro MySQL com o IP do
+  gateway da bridge, não o IP real do cliente. Ou seja, a restrição por subnet interna
+  correria o risco de **não bloquear ninguém de fora** (falso senso de segurança) em vez de
+  só bloquear.
+- Errar isso pra pior (restringir demais) derruba a conexão da própria app com o banco —
+  o `appuser` é usado por tudo, incluindo o login.
+
+Dado o risco de regressão sem conseguir validar o comportamento real do host de produção
+primeiro, isso fica como recomendação futura (não como item pendente urgente): confirmar
+se `userland-proxy` está desligado no host, fixar a subnet do `dblab-net`, e só então trocar
+`'appuser'@'%'` por `'appuser'@'<subnet>/<netmask>'` via `RENAME USER` (preserva o hash de
+senha, não precisa saber a senha em texto puro pra fazer a troca).
+
+**Mitigação que já existe hoje** pro cenário "credencial do appuser vazou": ela não aparece
+em nenhuma tela nem resposta de API — só vive no `.env` do servidor —, e o
+`appuser` já teve o privilégio reduzido de "equivalente a root" pro conjunto mínimo (ver
+"Modelo de dados e acessos ao banco"). Continua sendo o ponto de maior impacto em caso de
+vazamento, é só o host-restriction específico que não foi possível aplicar com segurança
+agora.
 
 ## Outros pontos de configuração do MySQL
 

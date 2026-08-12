@@ -13,7 +13,7 @@
             <h2 class="mb-4 text-base font-semibold text-slate-900">Dados da conta</h2>
 
             <form
-                x-data="ajaxForm()" @submit.prevent="submit"
+                hx-boost="false" x-data="ajaxForm()" @submit.prevent="submit"
                 method="post" action="/admin/usuarios/{{ user.id }}" class="space-y-4"
             >
                 {{ csrf_field() }}
@@ -37,7 +37,7 @@
             <p class="mb-4 text-sm text-slate-500">Define uma nova senha para a conta (app + MySQL/phpMyAdmin).</p>
 
             <form
-                x-data="ajaxForm({
+                hx-boost="false" x-data="ajaxForm({
                     confirmTitle: 'Resetar senha',
                     confirmMessage: 'Resetar a senha de {{ user.name|e('js') }}? A senha atual dela para de funcionar imediatamente (app e MySQL/phpMyAdmin).',
                     confirmLabel: 'Resetar senha',
