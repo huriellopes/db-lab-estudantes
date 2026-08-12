@@ -38,4 +38,28 @@ final class Database
 
         return self::$connection;
     }
+
+    /**
+     * Conexão nova (não é singleton, não é cacheada) autenticada como um usuário MySQL
+     * específico — usada pelo console SQL do dashboard pra rodar comandos com as
+     * credenciais reais da pessoa. Assim os GRANTs que o MySQL já aplica por schema (ver
+     * SchemaProvisioner::createDatabase) barram sozinhos qualquer acesso fora do que ela é
+     * dona, sem precisar reimplementar esse controle na aplicação.
+     */
+    public static function connectAs(string $username, string $password): PDO
+    {
+        $host = Config::get('DB_HOST', 'mysql');
+        $port = Config::get('DB_PORT', '3306');
+
+        return new PDO(
+            "mysql:host={$host};port={$port};charset=utf8mb4",
+            $username,
+            $password,
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ],
+        );
+    }
 }

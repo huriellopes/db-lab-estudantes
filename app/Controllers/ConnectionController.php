@@ -16,11 +16,14 @@ final class ConnectionController extends Controller
     {
         Auth::requireLogin();
 
+        $pmaUrl = Config::get('PMA_URL');
+
         $this->render('connection/show', [
             'pageTitle' => 'Conectar via SGBD',
             'schemas' => SchemaRecord::allForUser(Auth::id()),
             'publicHost' => Config::get('DB_PUBLIC_HOST', 'localhost'),
             'externalPort' => Config::get('MYSQL_EXTERNAL_PORT', '3306'),
+            'pmaUrl' => $pmaUrl !== null ? rtrim($pmaUrl, '/') : null,
         ]);
     }
 }

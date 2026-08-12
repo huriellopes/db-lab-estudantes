@@ -19,11 +19,12 @@ final class DashboardController extends Controller
         Auth::requireLogin();
 
         $pmaUrl = Config::get('PMA_URL');
+        $allSchemas = SchemaRecord::allForUser(Auth::id());
 
         // Sem sort explícito, mantém a ordem que já vem do banco (created_at DESC — mais recente primeiro).
         $query = TableQuery::fromParams($_GET, ['schema', 'created']);
         $paginator = TableFilter::paginate(
-            SchemaRecord::allForUser(Auth::id()),
+            $allSchemas,
             $query,
             searchText: static fn (Schema $s): string => $s->dbName,
             sortAccessors: [
@@ -37,6 +38,9 @@ final class DashboardController extends Controller
             'pageTitle' => 'Meu painel',
             'paginator' => $paginator,
             'query' => $query,
+            // Lista completa (sem paginação) só dos nomes, pra alimentar o seletor de
+            // schema do console SQL — não faz sentido paginar um <select>.
+            'schemaNames' => array_map(static fn (Schema $s): string => $s->dbName, $allSchemas),
             // Nulo quando o phpMyAdmin não está exposto publicamente (ex.: produção,
             // onde ele só é acessível via túnel SSH) — a view esconde o link nesse caso.
             'pmaUrl' => $pmaUrl !== null ? rtrim($pmaUrl, '/') : null,
