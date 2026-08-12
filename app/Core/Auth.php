@@ -1,42 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
+use App\Models\Entities\User;
+use App\Support\AuthenticatedUser;
 use App\Support\Policy;
 
-class Auth
+final class Auth
 {
     public static function check(): bool
     {
-        return isset($_SESSION['user']);
+        return self::user() !== null;
     }
 
     public static function id(): ?int
     {
-        return self::check() ? (int) $_SESSION['user']['id'] : null;
+        return self::user()?->id;
     }
 
-    /** @return array{id:int,name:string,email:string,role:string,mysql_login:string}|null */
-    public static function user(): ?array
+    public static function user(): ?AuthenticatedUser
     {
-        return $_SESSION['user'] ?? null;
+        $user = $_SESSION['user'] ?? null;
+
+        return $user instanceof AuthenticatedUser ? $user : null;
     }
 
-    public static function login(array $user): void
+    public static function login(User $user): void
     {
         session_regenerate_id(true);
 
-        $_SESSION['user'] = [
-            'id' => (int) $user['id'],
-            'name' => $user['name'],
-            'email' => $user['email'],
-            'role' => $user['role'],
-            'mysql_login' => $user['mysql_login'],
-        ];
+        $_SESSION['user'] = AuthenticatedUser::fromEntity($user);
     }
 
     /** Atualiza os dados da sessão sem exigir novo login (usado após editar o próprio perfil). */
-    public static function refresh(array $user): void
+    public static function refresh(User $user): void
     {
         if (self::check()) {
             self::login($user);

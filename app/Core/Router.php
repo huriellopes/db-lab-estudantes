@@ -1,22 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
-class Router
+final class Router
 {
-    /** @var array<string, list<array{pattern:string, params:list<string>, action:array{0:class-string,1:string}}>> */
+    /** @var array<string, list<array{pattern:string, params:list<string>, action:array{0:class-string<Controller>,1:string}}>> */
     private array $routes = [];
 
+    /** @param array{0:class-string<Controller>,1:string} $action */
     public function get(string $path, array $action): void
     {
         $this->add('GET', $path, $action);
     }
 
+    /** @param array{0:class-string<Controller>,1:string} $action */
     public function post(string $path, array $action): void
     {
         $this->add('POST', $path, $action);
     }
 
+    /** @param array{0:class-string<Controller>,1:string} $action */
     private function add(string $method, string $path, array $action): void
     {
         preg_match_all('#\{([a-zA-Z_][a-zA-Z0-9_]*)\}#', $path, $matches);
@@ -40,6 +45,7 @@ class Router
             }
 
             array_shift($matches);
+            /** @var array<string,string> $params */
             $params = array_combine($route['params'], $matches);
 
             [$controllerClass, $methodName] = $route['action'];

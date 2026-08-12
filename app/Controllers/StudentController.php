@@ -1,26 +1,33 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Controller;
+use App\Models\Entities\StudentSummary;
+use App\Models\Entities\User;
 use App\Models\SchemaRecord;
-use App\Models\User;
+use App\Models\User as UserModel;
 use App\Services\UserManager;
-use App\Support\Policy;
+use App\Support\Role;
 use Throwable;
 
 /** Gestão de contas de alunos, disponível para professores e para o admin. */
-class StudentController extends Controller
+final class StudentController extends Controller
 {
     public function index(array $params = []): void
     {
         Auth::requireProfessorOrAdmin();
 
-        $students = array_map(static function (array $student): array {
-            $student['schemas_count'] = count(SchemaRecord::allForUser((int) $student['id']));
-            return $student;
-        }, User::all(Policy::ROLE_ALUNO));
+        $students = array_map(
+            static fn (User $student): StudentSummary => StudentSummary::fromUser(
+                $student,
+                count(SchemaRecord::allForUser($student->id)),
+            ),
+            UserModel::all(Role::Aluno),
+        );
 
         $this->render('professor/students/index', [
             'pageTitle' => 'Gerenciar alunos',
@@ -32,12 +39,9 @@ class StudentController extends Controller
     {
         Auth::requireProfessorOrAdmin();
 
-        $student = $this->findStudentOrFail((int) $params['id']);
-
         $this->render('professor/students/edit', [
             'pageTitle' => 'Editar aluno',
-            'student' => $student,
-            'errors' => [],
+            'student' => $this->findStudentOrFail((int) $params['id']),
         ]);
     }
 
@@ -47,19 +51,19 @@ class StudentController extends Controller
 
         $student = $this->findStudentOrFail((int) $params['id']);
 
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
 
         if ($name === '' || mb_strlen($name) < 2 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->respond(false, 'Informe um nome e e-mail válidos.', '/professor/alunos');
         }
 
-        $existing = User::findByEmail($email);
-        if ($existing && (int) $existing['id'] !== $student['id']) {
+        $existing = UserModel::findByEmail($email);
+        if ($existing !== null && $existing->id !== $student->id) {
             $this->respond(false, 'Já existe uma conta com este e-mail.', '/professor/alunos');
         }
 
-        User::updateAccount($student['id'], $name, $email);
+        UserModel::updateAccount($student->id, $name, $email);
 
         $this->respond(true, 'Dados do aluno atualizados.', '/professor/alunos');
     }
@@ -77,7 +81,7 @@ class StudentController extends Controller
 
         try {
             UserManager::resetPassword($student, $newPassword);
-            $this->respond(true, "Senha de {$student['name']} atualizada.", '/professor/alunos');
+            $this->respond(true, "Senha de {$student->name} atualizada.", '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, 'Não foi possível trocar a senha: ' . $e->getMessage(), '/professor/alunos');
         }
@@ -91,18 +95,18 @@ class StudentController extends Controller
 
         try {
             UserManager::deleteCompletely($student);
-            $this->respond(true, "Conta de {$student['name']} removida.", '/professor/alunos');
+            $this->respond(true, "Conta de {$student->name} removida.", '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, 'Não foi possível excluir a conta: ' . $e->getMessage(), '/professor/alunos');
         }
     }
 
-    private function findStudentOrFail(int $id): array
+    private function findStudentOrFail(int $id): User
     {
-        $student = User::find($id);
+        $student = UserModel::find($id);
 
         // Professor só pode agir sobre contas de aluno, mesmo se souber o id de outra pessoa.
-        if (!$student || $student['role'] !== Policy::ROLE_ALUNO) {
+        if ($student === null || $student->role !== Role::Aluno) {
             $this->respond(false, 'Aluno não encontrado.', '/professor/alunos');
         }
 

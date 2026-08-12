@@ -1,11 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
-class RegistrationValidator
+final class RegistrationValidator
 {
-    public const ROLES = ['aluno', 'professor'];
-
     /**
      * Validação pura do formulário de cadastro. $emailExists é calculado fora (pelo
      * chamador, via consulta ao banco) para manter esta classe sem dependência de I/O.
@@ -18,7 +18,7 @@ class RegistrationValidator
         string $password,
         string $passwordConfirm,
         string $role,
-        bool $emailExists
+        bool $emailExists,
     ): array {
         $errors = [];
 
@@ -28,7 +28,8 @@ class RegistrationValidator
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Informe um e-mail válido.';
         }
-        if (!in_array($role, self::ROLES, true)) {
+        $roleEnum = Role::tryFrom($role);
+        if ($roleEnum === null || !in_array($roleEnum, Role::registrable(), true)) {
             $errors[] = 'Selecione um perfil válido.';
         }
         if (strlen($password) < 6) {

@@ -1,17 +1,21 @@
 <?php
 
-use App\Support\Policy;
+declare(strict_types=1);
 
-function userWithRole(?string $role): ?array
+use App\Support\AuthenticatedUser;
+use App\Support\Policy;
+use App\Support\Role;
+
+function userWithRole(?Role $role): ?AuthenticatedUser
 {
-    return $role === null ? null : ['id' => 1, 'name' => 'Teste', 'role' => $role, 'mysql_login' => 'u1_teste'];
+    return $role === null ? null : new AuthenticatedUser(1, 'Teste', 'teste@example.com', $role, 'u1_teste');
 }
 
 it('identifies each role correctly', function () {
-    expect(Policy::isAluno(userWithRole('aluno')))->toBeTrue()
-        ->and(Policy::isProfessor(userWithRole('professor')))->toBeTrue()
-        ->and(Policy::isAdmin(userWithRole('admin')))->toBeTrue()
-        ->and(Policy::isAdmin(userWithRole('aluno')))->toBeFalse();
+    expect(Policy::isAluno(userWithRole(Role::Aluno)))->toBeTrue()
+        ->and(Policy::isProfessor(userWithRole(Role::Professor)))->toBeTrue()
+        ->and(Policy::isAdmin(userWithRole(Role::Admin)))->toBeTrue()
+        ->and(Policy::isAdmin(userWithRole(Role::Aluno)))->toBeFalse();
 });
 
 it('handles a null (guest) user without error', function () {
@@ -21,21 +25,14 @@ it('handles a null (guest) user without error', function () {
 });
 
 it('lets professors and admins manage students, but not alunos', function () {
-    expect(Policy::canManageStudents(userWithRole('professor')))->toBeTrue()
-        ->and(Policy::canManageStudents(userWithRole('admin')))->toBeTrue()
-        ->and(Policy::canManageStudents(userWithRole('aluno')))->toBeFalse();
+    expect(Policy::canManageStudents(userWithRole(Role::Professor)))->toBeTrue()
+        ->and(Policy::canManageStudents(userWithRole(Role::Admin)))->toBeTrue()
+        ->and(Policy::canManageStudents(userWithRole(Role::Aluno)))->toBeFalse();
 });
 
 it('restricts full user/schema management to admins only', function () {
-    expect(Policy::canManageAllUsers(userWithRole('admin')))->toBeTrue()
-        ->and(Policy::canManageAllUsers(userWithRole('professor')))->toBeFalse()
-        ->and(Policy::canManageAllSchemas(userWithRole('admin')))->toBeTrue()
-        ->and(Policy::canManageAllSchemas(userWithRole('aluno')))->toBeFalse();
-});
-
-it('validates known roles only', function () {
-    expect(Policy::isValidRole('aluno'))->toBeTrue()
-        ->and(Policy::isValidRole('professor'))->toBeTrue()
-        ->and(Policy::isValidRole('admin'))->toBeTrue()
-        ->and(Policy::isValidRole('super-hacker'))->toBeFalse();
+    expect(Policy::canManageAllUsers(userWithRole(Role::Admin)))->toBeTrue()
+        ->and(Policy::canManageAllUsers(userWithRole(Role::Professor)))->toBeFalse()
+        ->and(Policy::canManageAllSchemas(userWithRole(Role::Admin)))->toBeTrue()
+        ->and(Policy::canManageAllSchemas(userWithRole(Role::Aluno)))->toBeFalse();
 });

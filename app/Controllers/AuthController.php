@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Auth;
@@ -7,11 +9,13 @@ use App\Core\Controller;
 use App\Core\Flash;
 use App\Models\User;
 use App\Services\SchemaProvisioner;
+use App\Support\FlashType;
 use App\Support\MysqlIdentifier;
 use App\Support\RegistrationValidator;
+use App\Support\Role;
 use Throwable;
 
-class AuthController extends Controller
+final class AuthController extends Controller
 {
     public function redirectHome(array $params = []): void
     {
@@ -37,13 +41,13 @@ class AuthController extends Controller
             $this->redirect('/dashboard');
         }
 
-        $email = trim($_POST['email'] ?? '');
+        $email = trim((string) ($_POST['email'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
         $errors = [];
 
         $user = User::findByEmail($email);
 
-        if (!$user || !password_verify($password, $user['password_hash'])) {
+        if ($user === null || !password_verify($password, $user->passwordHash)) {
             $errors[] = 'E-mail ou senha inválidos.';
         } else {
             Auth::login($user);
@@ -65,7 +69,7 @@ class AuthController extends Controller
 
         $this->render('auth/register', [
             'pageTitle' => 'Cadastro',
-            'old' => ['name' => '', 'email' => '', 'role' => 'aluno'],
+            'old' => ['name' => '', 'email' => '', 'role' => Role::Aluno->value],
             'errors' => [],
         ]);
     }
@@ -76,20 +80,20 @@ class AuthController extends Controller
             $this->redirect('/dashboard');
         }
 
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
         $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
-        $role = $_POST['role'] ?? '';
-        $old = compact('name', 'email', 'role');
+        $roleInput = (string) ($_POST['role'] ?? '');
+        $old = compact('name', 'email') + ['role' => $roleInput];
 
         $errors = RegistrationValidator::validate(
             $name,
             $email,
             $password,
             $passwordConfirm,
-            $role,
-            User::emailExists($email)
+            $roleInput,
+            User::emailExists($email),
         );
 
         if (!$errors) {
@@ -99,6 +103,7 @@ class AuthController extends Controller
             $mysqlLogin = null;
 
             try {
+                $role = Role::from($roleInput);
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
                 $userId = User::create($name, $email, $passwordHash, $role);
 
@@ -109,7 +114,7 @@ class AuthController extends Controller
                 // na plataforma — ele usa esse login para acessar o phpMyAdmin depois.
                 SchemaProvisioner::createMysqlAccount($mysqlLogin, $password);
 
-                Flash::set('success', 'Cadastro realizado com sucesso! Faça login para continuar.');
+                Flash::set(FlashType::Success, 'Cadastro realizado com sucesso! Faça login para continuar.');
                 $this->redirect('/login');
             } catch (Throwable $e) {
                 if ($userId !== null) {

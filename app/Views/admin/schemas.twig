@@ -28,23 +28,23 @@
                     <tbody class="divide-y divide-slate-100">
                         {% for schema in schemas %}
                             <tr data-row>
-                                <td class="py-3 pr-4 font-mono text-slate-800">{{ schema.db_name }}</td>
-                                <td class="py-3 pr-4 text-slate-500">{{ schema.owner_name }} <span class="text-slate-400">({{ schema.owner_email }})</span></td>
-                                <td class="py-3 pr-4 text-slate-500">{{ schema.created_at|date('d/m/Y') }}</td>
+                                <td class="py-3 pr-4 font-mono text-slate-800">{{ schema.dbName }}</td>
+                                <td class="py-3 pr-4 text-slate-500">{{ schema.ownerName }} <span class="text-slate-400">({{ schema.ownerEmail }})</span></td>
+                                <td class="py-3 pr-4 text-slate-500">{{ schema.createdAt|date('d/m/Y') }}</td>
                                 <td class="py-3">
                                     <div class="flex items-center justify-end gap-2">
                                         <a
-                                            href="{{ pmaUrl|default('') }}/index.php?route=/database/structure&db={{ schema.db_name|url_encode }}"
+                                            href="{{ pmaUrl|default('') }}/index.php?route=/database/structure&db={{ schema.dbName|url_encode }}"
                                             target="_blank" rel="noopener" class="btn-secondary !px-3 !py-1.5 text-xs"
                                         >
                                             Abrir
                                         </a>
                                         <form
-                                            x-data="ajaxForm({ confirmMessage: 'Excluir o schema \'{{ schema.db_name }}\'? Essa ação não pode ser desfeita.', removeRow: true })"
+                                            x-data="ajaxForm({ confirmMessage: 'Excluir o schema \'{{ schema.dbName }}\'? Essa ação não pode ser desfeita.', removeRow: true })"
                                             @submit.prevent="submit"
                                             method="post" action="/admin/schemas/excluir"
                                         >
-                                            <input type="hidden" name="db_name" value="{{ schema.db_name }}">
+                                            <input type="hidden" name="db_name" value="{{ schema.dbName }}">
                                             <button :disabled="loading" type="submit" class="btn-danger !px-3 !py-1.5 text-xs">
                                                 <span x-show="!loading">Excluir</span>
                                                 <span x-show="loading" x-cloak>Excluindo…</span>

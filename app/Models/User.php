@@ -1,27 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Core\Database;
+use App\Models\Entities\User as UserEntity;
+use App\Support\Role;
 
-class User
+final class User
 {
-    public static function find(int $id): ?array
+    public static function find(int $id): ?UserEntity
     {
         $stmt = Database::connection()->prepare('SELECT * FROM users WHERE id = ?');
         $stmt->execute([$id]);
-        $user = $stmt->fetch();
+        $row = $stmt->fetch();
 
-        return $user ?: null;
+        return $row === false ? null : UserEntity::fromRow($row);
     }
 
-    public static function findByEmail(string $email): ?array
+    public static function findByEmail(string $email): ?UserEntity
     {
         $stmt = Database::connection()->prepare('SELECT * FROM users WHERE email = ?');
         $stmt->execute([$email]);
-        $user = $stmt->fetch();
+        $row = $stmt->fetch();
 
-        return $user ?: null;
+        return $row === false ? null : UserEntity::fromRow($row);
     }
 
     public static function emailExists(string $email): bool
@@ -29,39 +33,49 @@ class User
         return self::findByEmail($email) !== null;
     }
 
-    /** @return array[] Todos os usuários, opcionalmente filtrados por papel. */
-    public static function all(?string $role = null): array
+    public static function mysqlLoginExists(string $mysqlLogin): bool
+    {
+        $stmt = Database::connection()->prepare('SELECT id FROM users WHERE mysql_login = ?');
+        $stmt->execute([$mysqlLogin]);
+
+        return $stmt->fetch() !== false;
+    }
+
+    /** @return list<UserEntity> Todos os usuários, opcionalmente filtrados por papel. */
+    public static function all(?Role $role = null): array
     {
         if ($role !== null) {
             $stmt = Database::connection()->prepare(
-                'SELECT * FROM users WHERE role = ? ORDER BY created_at DESC'
+                'SELECT * FROM users WHERE role = ? ORDER BY created_at DESC',
             );
-            $stmt->execute([$role]);
+            $stmt->execute([$role->value]);
 
-            return $stmt->fetchAll();
+            return array_map(UserEntity::fromRow(...), $stmt->fetchAll());
         }
 
-        return Database::connection()
+        $rows = Database::connection()
             ->query('SELECT * FROM users ORDER BY created_at DESC')
             ->fetchAll();
+
+        return array_map(UserEntity::fromRow(...), $rows);
     }
 
-    public static function countByRole(string $role): int
+    public static function countByRole(Role $role): int
     {
         $stmt = Database::connection()->prepare('SELECT COUNT(*) FROM users WHERE role = ?');
-        $stmt->execute([$role]);
+        $stmt->execute([$role->value]);
 
         return (int) $stmt->fetchColumn();
     }
 
-    public static function create(string $name, string $email, string $passwordHash, string $role): int
+    public static function create(string $name, string $email, string $passwordHash, Role $role): int
     {
         $pdo = Database::connection();
         $stmt = $pdo->prepare(
-            'INSERT INTO users (name, email, password_hash, role, mysql_login) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO users (name, email, password_hash, role, mysql_login) VALUES (?, ?, ?, ?, ?)',
         );
         // mysql_login definitivo é preenchido depois, pois depende do id gerado aqui.
-        $stmt->execute([$name, $email, $passwordHash, $role, 'pending']);
+        $stmt->execute([$name, $email, $passwordHash, $role->value, 'pending']);
 
         return (int) $pdo->lastInsertId();
     }
@@ -91,10 +105,10 @@ class User
         $stmt->execute([$passwordHash, $id]);
     }
 
-    public static function updateRole(int $id, string $role): void
+    public static function updateRole(int $id, Role $role): void
     {
         $stmt = Database::connection()->prepare('UPDATE users SET role = ? WHERE id = ?');
-        $stmt->execute([$role, $id]);
+        $stmt->execute([$role->value, $id]);
     }
 
     public static function delete(int $id): void

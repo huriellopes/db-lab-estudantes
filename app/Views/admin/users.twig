@@ -30,18 +30,18 @@
                             <td class="py-3 pr-4 text-slate-500">{{ user.email }}</td>
                             <td class="py-3 pr-4">
                                 {% if user.id == me.id %}
-                                    <span class="badge-amber capitalize">{{ user.role }} (você)</span>
+                                    <span class="badge-amber">{{ user.role.label() }} (você)</span>
                                 {% else %}
                                     <form x-data="ajaxForm()" @change="submit" method="post" action="/admin/usuarios/{{ user.id }}/papel">
-                                        <select name="role" :disabled="loading" class="field-input !w-auto !py-1.5 text-xs capitalize">
+                                        <select name="role" :disabled="loading" class="field-input !w-auto !py-1.5 text-xs">
                                             {% for role in roles %}
-                                                <option value="{{ role }}" {{ role == user.role ? 'selected' : '' }}>{{ role }}</option>
+                                                <option value="{{ role.value }}" {{ role == user.role ? 'selected' : '' }}>{{ role.label() }}</option>
                                             {% endfor %}
                                         </select>
                                     </form>
                                 {% endif %}
                             </td>
-                            <td class="py-3 pr-4 text-slate-500">{{ user.created_at|date('d/m/Y') }}</td>
+                            <td class="py-3 pr-4 text-slate-500">{{ user.createdAt|date('d/m/Y') }}</td>
                             <td class="py-3">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="/admin/usuarios/{{ user.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>

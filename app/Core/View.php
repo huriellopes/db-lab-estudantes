@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
-use App\Support\Policy;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
@@ -12,7 +13,7 @@ use Twig\TwigFunction;
  * misturado — os controllers só passam dados, o template só exibe. Twig também cuida de
  * herança de layout (`{% extends %}`) e escapa tudo por padrão (proteção contra XSS).
  */
-class View
+final class View
 {
     private static ?Environment $twig = null;
 
@@ -29,12 +30,15 @@ class View
 
         $loader = new FilesystemLoader(dirname(__DIR__) . '/Views');
         $cacheDir = dirname(__DIR__, 2) . '/storage/twig-cache';
-        $isProduction = Config::get('APP_ENV', 'production') === 'production';
 
         $twig = new Environment($loader, [
-            'cache' => $isProduction && is_writable(dirname($cacheDir)) ? $cacheDir : false,
+            'cache' => is_writable(dirname($cacheDir)) ? $cacheDir : false,
             'autoescape' => 'html',
             'strict_variables' => false,
+            // Sem isso, o cache do Twig por padrão só invalida em modo debug — um
+            // template editado podia continuar servindo a versão antiga compilada.
+            // O custo é um stat() por template a cada request, irrelevante aqui.
+            'auto_reload' => true,
         ]);
 
         self::registerGlobals($twig);

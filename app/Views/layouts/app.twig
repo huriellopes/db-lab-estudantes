@@ -31,7 +31,7 @@
             <div class="flex items-center gap-3">
                 <div class="hidden text-right sm:block">
                     <p class="text-sm font-medium text-slate-900">{{ auth_user().name }}</p>
-                    <p class="text-xs capitalize text-slate-500">{{ auth_user().role }}</p>
+                    <p class="text-xs text-slate-500">{{ auth_user().role.label() }}</p>
                 </div>
                 <form method="post" action="/logout">
                     <button type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">Sair</button>

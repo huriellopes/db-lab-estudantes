@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Auth;
@@ -7,7 +9,7 @@ use App\Core\Config;
 use App\Core\Controller;
 use App\Models\SchemaRecord;
 
-class DashboardController extends Controller
+final class DashboardController extends Controller
 {
     public function index(array $params = []): void
     {

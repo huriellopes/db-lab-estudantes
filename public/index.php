@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\Controllers\AdminController;
@@ -35,6 +37,7 @@ $router->post('/schemas/delete', [SchemaController::class, 'destroy']);
 $router->get('/profile', [ProfileController::class, 'edit']);
 $router->post('/profile', [ProfileController::class, 'update']);
 $router->post('/profile/password', [ProfileController::class, 'updatePassword']);
+$router->post('/profile/mysql-login', [ProfileController::class, 'updateMysqlLogin']);
 
 // Professor (e admin): gestão de contas de aluno.
 $router->get('/professor/alunos', [StudentController::class, 'index']);
@@ -54,4 +57,8 @@ $router->post('/admin/usuarios/{id}/excluir', [AdminController::class, 'destroy'
 $router->get('/admin/schemas', [AdminController::class, 'schemas']);
 $router->post('/admin/schemas/excluir', [AdminController::class, 'destroySchema']);
 
-$router->dispatch($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+// parse_url() pode devolver null/false para uma REQUEST_URI malformada; com
+// strict_types, isso não pode ser passado direto para o parâmetro string do dispatch().
+$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+$router->dispatch($_SERVER['REQUEST_METHOD'], is_string($path) ? $path : '/');

@@ -18,53 +18,53 @@ window.axios = axios;
  *  - onSuccess(response): callback extra em caso de sucesso.
  */
 document.addEventListener('alpine:init', () => {
-    Alpine.data('ajaxForm', (options = {}) => ({
-        loading: false,
-        errorMessage: null,
+  Alpine.data('ajaxForm', (options = {}) => ({
+    loading: false,
+    errorMessage: null,
 
-        submit(event) {
-            const { confirmMessage = null, removeRow = false, onSuccess = null } = options;
+    submit(event) {
+      const { confirmMessage = null, removeRow = false, onSuccess = null } = options;
 
-            if (confirmMessage && !window.confirm(confirmMessage)) {
-                return;
-            }
+      if (confirmMessage && !window.confirm(confirmMessage)) {
+        return;
+      }
 
-            const form = event.target.tagName === 'FORM' ? event.target : event.target.closest('form');
-            if (!form) {
-                return;
-            }
+      const form = event.target.tagName === 'FORM' ? event.target : event.target.closest('form');
+      if (!form) {
+        return;
+      }
 
-            this.loading = true;
-            this.errorMessage = null;
+      this.loading = true;
+      this.errorMessage = null;
 
-            axios
-                .post(form.action, new FormData(form))
-                .then((response) => {
-                    if (removeRow) {
-                        this.$root.closest('[data-row]')?.remove();
-                    }
-                    if (typeof onSuccess === 'function') {
-                        onSuccess(response);
-                    }
-                })
-                .catch((error) => {
-                    this.errorMessage = error.response?.data?.message ?? 'Não foi possível concluir a ação.';
-                    window.alert(this.errorMessage);
-                })
-                .finally(() => {
-                    this.loading = false;
-                });
-        },
-    }));
+      axios
+        .post(form.action, new FormData(form))
+        .then((response) => {
+          if (removeRow) {
+            this.$root.closest('[data-row]')?.remove();
+          }
+          if (typeof onSuccess === 'function') {
+            onSuccess(response);
+          }
+        })
+        .catch((error) => {
+          this.errorMessage = error.response?.data?.message ?? 'Não foi possível concluir a ação.';
+          window.alert(this.errorMessage);
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    },
+  }));
 
-    Alpine.data('flashMessage', () => ({
-        visible: true,
-        init() {
-            setTimeout(() => {
-                this.visible = false;
-            }, 5000);
-        },
-    }));
+  Alpine.data('flashMessage', () => ({
+    visible: true,
+    init() {
+      setTimeout(() => {
+        this.visible = false;
+      }, 5000);
+    },
+  }));
 });
 
 window.Alpine = Alpine;

@@ -15,7 +15,7 @@ COPY app/Views ./app/Views
 RUN npm run build
 
 # ---- Stage 3: imagem final da aplicação ----
-FROM php:8.2-apache
+FROM php:8.5-apache
 RUN docker-php-ext-install pdo pdo_mysql mysqli \
     && a2enmod rewrite
 

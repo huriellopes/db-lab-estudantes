@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 use Twig\Markup;
@@ -12,8 +14,9 @@ use Twig\Markup;
  * - Em produção (padrão, dentro do container): lê public/build/manifest.json (gerado por
  *   `npm run build`) para descobrir os nomes com hash dos arquivos finais.
  */
-class Vite
+final class Vite
 {
+    /** @var list<string> */
     private const ENTRIES = ['resources/css/app.css', 'resources/js/app.js'];
 
     public static function tags(): Markup
@@ -42,11 +45,14 @@ class Vite
         // Vite 5+ escreve o manifest dentro de um subdiretório ".vite" por padrão.
         $manifestPath = dirname(__DIR__, 2) . '/public/build/.vite/manifest.json';
 
-        if (!is_file($manifestPath)) {
+        $contents = is_file($manifestPath) ? file_get_contents($manifestPath) : false;
+
+        if ($contents === false) {
             return '<!-- build de assets não encontrado: rode "npm run build" -->';
         }
 
-        $manifest = json_decode(file_get_contents($manifestPath), true) ?? [];
+        /** @var array<string, array{file: string, css?: list<string>}> $manifest */
+        $manifest = json_decode($contents, true) ?? [];
         $tags = [];
 
         foreach (self::ENTRIES as $entry) {

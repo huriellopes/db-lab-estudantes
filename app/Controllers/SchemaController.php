@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Auth;
@@ -9,19 +11,19 @@ use App\Services\SchemaProvisioner;
 use App\Support\SchemaNameBuilder;
 use Throwable;
 
-class SchemaController extends Controller
+final class SchemaController extends Controller
 {
     public function store(array $params = []): void
     {
         Auth::requireLogin();
 
-        $label = trim($_POST['label'] ?? '');
+        $label = trim((string) ($_POST['label'] ?? ''));
 
         if (!SchemaNameBuilder::isValidLabel($label)) {
             $this->respond(false, 'Nome de schema inválido. Use apenas letras, números e "_".', '/dashboard');
         }
 
-        $mysqlLogin = Auth::user()['mysql_login'];
+        $mysqlLogin = Auth::user()->mysqlLogin;
         $dbName = SchemaNameBuilder::build($mysqlLogin, $label);
 
         if (!SchemaNameBuilder::isWithinLengthLimit($dbName)) {
@@ -58,18 +60,22 @@ class SchemaController extends Controller
     {
         Auth::requireLogin();
 
-        $dbName = trim($_POST['db_name'] ?? '');
-        $record = SchemaNameBuilder::isValidDbName($dbName) && SchemaNameBuilder::isOwnedBy($dbName, Auth::user()['mysql_login'])
+        $dbName = trim((string) ($_POST['db_name'] ?? ''));
+
+        // A posse é decidida pela tabela schemas_criados (por user_id), não pelo prefixo
+        // do mysql_login atual: a pessoa pode ter renomeado o login MySQL depois de criar
+        // o schema, e o nome do database em si não muda quando isso acontece.
+        $schema = SchemaNameBuilder::isValidDbName($dbName)
             ? SchemaRecord::findOwned($dbName, Auth::id())
             : null;
 
-        if (!$record) {
+        if ($schema === null) {
             $this->respond(false, 'Schema não encontrado ou não pertence a você.', '/dashboard');
         }
 
         try {
             SchemaProvisioner::dropDatabase($dbName);
-            SchemaRecord::delete($record['id']);
+            SchemaRecord::delete($schema->id);
             $this->respond(true, "Schema \"{$dbName}\" removido.", '/dashboard');
         } catch (Throwable $e) {
             $this->respond(false, 'Não foi possível remover o schema: ' . $e->getMessage(), '/dashboard');

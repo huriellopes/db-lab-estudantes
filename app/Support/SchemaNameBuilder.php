@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
-class SchemaNameBuilder
+final class SchemaNameBuilder
 {
     private const LABEL_PATTERN = '/^[A-Za-z0-9_]{1,40}$/';
     private const DB_NAME_PATTERN = '/^[a-z0-9_]{1,64}$/';

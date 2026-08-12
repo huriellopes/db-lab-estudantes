@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Support\SchemaNameBuilder;
 
 it('accepts labels with letters, numbers and underscore', function () {

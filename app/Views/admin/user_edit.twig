@@ -4,7 +4,7 @@
     <div class="mb-8">
         <a href="/admin/usuarios" class="text-sm text-slate-500 hover:text-slate-700">← Voltar para usuários</a>
         <h1 class="mt-2 text-2xl font-semibold text-slate-900">Editar {{ user.name }}</h1>
-        <span class="badge-indigo mt-2 capitalize">{{ user.role }}</span>
+        <span class="badge-indigo mt-2">{{ user.role.label() }}</span>
     </div>
 
     <div class="grid gap-6 sm:grid-cols-2">

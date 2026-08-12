@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
+
+use App\Support\FlashType;
 
 abstract class Controller
 {
@@ -36,7 +40,7 @@ abstract class Controller
             exit;
         }
 
-        Flash::set($success ? 'success' : 'error', $message);
+        Flash::set($success ? FlashType::Success : FlashType::Error, $message);
         $this->redirect($redirectTo);
     }
 }

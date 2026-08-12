@@ -14,7 +14,7 @@
         </svg>
         <div>
             Seu login MySQL (usado também no phpMyAdmin) é
-            <code class="rounded bg-white px-1.5 py-0.5 font-mono text-indigo-700">{{ user.mysql_login }}</code>,
+            <code class="rounded bg-white px-1.5 py-0.5 font-mono text-indigo-700">{{ user.mysqlLogin }}</code>,
             com a mesma senha da sua conta aqui na plataforma.
             <a href="{{ pmaUrl }}" target="_blank" rel="noopener" class="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900">
                 Abrir phpMyAdmin →
@@ -32,7 +32,7 @@
                     <label for="label" class="field-label">Nome do schema</label>
                     <div class="flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
                         <span class="flex items-center whitespace-nowrap border-r border-slate-200 bg-slate-50 pl-3 pr-1 text-sm text-slate-400">
-                            {{ user.mysql_login }}__
+                            {{ user.mysqlLogin }}__
                         </span>
                         <input
                             type="text" id="label" name="label" pattern="[A-Za-z0-9_]{1,40}" maxlength="40" required
@@ -66,22 +66,22 @@
                     {% for schema in schemas %}
                         <li data-row class="flex items-center justify-between gap-3 py-3">
                             <div class="min-w-0">
-                                <p class="truncate font-mono text-sm text-slate-800">{{ schema.db_name }}</p>
-                                <p class="text-xs text-slate-400">Criado em {{ schema.created_at|date('d/m/Y') }} às {{ schema.created_at|date('H:i') }}</p>
+                                <p class="truncate font-mono text-sm text-slate-800">{{ schema.dbName }}</p>
+                                <p class="text-xs text-slate-400">Criado em {{ schema.createdAt|date('d/m/Y') }} às {{ schema.createdAt|date('H:i') }}</p>
                             </div>
                             <div class="flex shrink-0 items-center gap-2">
                                 <a
-                                    href="{{ pmaUrl }}/index.php?route=/database/structure&db={{ schema.db_name|url_encode }}"
+                                    href="{{ pmaUrl }}/index.php?route=/database/structure&db={{ schema.dbName|url_encode }}"
                                     target="_blank" rel="noopener" class="btn-secondary !px-3 !py-1.5 text-xs"
                                 >
                                     Abrir
                                 </a>
                                 <form
-                                    x-data="ajaxForm({ confirmMessage: 'Excluir o schema \'{{ schema.db_name }}\'? Essa ação não pode ser desfeita.', removeRow: true })"
+                                    x-data="ajaxForm({ confirmMessage: 'Excluir o schema \'{{ schema.dbName }}\'? Essa ação não pode ser desfeita.', removeRow: true })"
                                     @submit.prevent="submit"
                                     method="post" action="/schemas/delete"
                                 >
-                                    <input type="hidden" name="db_name" value="{{ schema.db_name }}">
+                                    <input type="hidden" name="db_name" value="{{ schema.dbName }}">
                                     <button :disabled="loading" type="submit" class="btn-danger !px-3 !py-1.5 text-xs">
                                         <span x-show="!loading">Excluir</span>
                                         <span x-show="loading" x-cloak>Excluindo…</span>

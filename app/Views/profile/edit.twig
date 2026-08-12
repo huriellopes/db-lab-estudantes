@@ -24,10 +24,6 @@
                     <span class="field-label">E-mail</span>
                     <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">{{ user.email }}</p>
                 </div>
-                <div>
-                    <span class="field-label">Login MySQL</span>
-                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-500">{{ user.mysql_login }}</p>
-                </div>
                 <button :disabled="loading" type="submit" class="btn-primary w-full">
                     <span x-show="!loading">Salvar nome</span>
                     <span x-show="loading" x-cloak>Salvando…</span>
@@ -58,6 +54,31 @@
                 <button :disabled="loading" type="submit" class="btn-primary w-full">
                     <span x-show="!loading">Atualizar senha</span>
                     <span x-show="loading" x-cloak>Atualizando…</span>
+                </button>
+            </form>
+        </div>
+
+        <div class="card h-fit sm:col-span-2">
+            <h2 class="mb-1 text-base font-semibold text-slate-900">Login do phpMyAdmin</h2>
+            <p class="mb-4 text-sm text-slate-500">
+                É a mesma conta usada para entrar no MySQL/phpMyAdmin. Renomear <strong>não</strong> muda
+                o nome dos schemas que você já criou — só o login em si (os acessos continuam funcionando).
+            </p>
+
+            <form
+                x-data="ajaxForm({ onSuccess: () => location.reload() })" @submit.prevent="submit"
+                method="post" action="/profile/mysql-login" class="flex flex-col gap-3 sm:flex-row sm:items-end"
+            >
+                <div class="flex-1">
+                    <label for="mysql_login" class="field-label">Novo login</label>
+                    <input
+                        type="text" id="mysql_login" name="mysql_login" value="{{ user.mysqlLogin }}"
+                        pattern="[a-z][a-z0-9_]{2,31}" maxlength="32" required class="field-input font-mono"
+                    >
+                </div>
+                <button :disabled="loading" type="submit" class="btn-secondary">
+                    <span x-show="!loading">Renomear</span>
+                    <span x-show="loading" x-cloak>Renomeando…</span>
                 </button>
             </form>
         </div>
