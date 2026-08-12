@@ -1,0 +1,10 @@
+<a href="/dashboard" class="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 md:py-1.5">Meu painel</a>
+<a href="/conectar" class="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 md:py-1.5">Conectar via SGBD</a>
+{% if can_manage_students() %}
+    <a href="/professor/alunos" class="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 md:py-1.5">Alunos</a>
+{% endif %}
+{% if is_admin() %}
+    <a href="/admin" class="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 md:py-1.5">Administração</a>
+    <a href="/admin/usuarios" class="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 md:py-1.5">Usuários</a>
+    <a href="/admin/schemas" class="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 md:py-1.5">Schemas</a>
+{% endif %}

@@ -3,12 +3,12 @@
 {% block content %}
     {% set me = auth_user() %}
 
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Usuários</h1>
             <p class="mt-1 text-sm text-slate-500">Todos os alunos, professores e admins do lab.</p>
         </div>
-        <span class="badge-indigo">{{ users|length }} conta{{ users|length == 1 ? '' : 's' }}</span>
+        <span class="badge-indigo self-start">{{ users|length }} conta{{ users|length == 1 ? '' : 's' }}</span>
     </div>
 
     <div class="card">
@@ -32,7 +32,14 @@
                                 {% if user.id == me.id %}
                                     <span class="badge-amber">{{ user.role.label() }} (você)</span>
                                 {% else %}
-                                    <form x-data="ajaxForm()" @change="submit" method="post" action="/admin/usuarios/{{ user.id }}/papel">
+                                    <form
+                                        x-data="ajaxForm({
+                                            confirmTitle: 'Trocar papel',
+                                            confirmMessage: (e) => 'Alterar o papel de {{ user.name|e('js') }} para ' + e.target.selectedOptions[0].text + '?',
+                                            confirmLabel: 'Trocar papel',
+                                        })"
+                                        @change="submit" method="post" action="/admin/usuarios/{{ user.id }}/papel"
+                                    >
                                         <select name="role" :disabled="loading" class="field-input !w-auto !py-1.5 text-xs">
                                             {% for role in roles %}
                                                 <option value="{{ role.value }}" {{ role == user.role ? 'selected' : '' }}>{{ role.label() }}</option>
@@ -47,7 +54,12 @@
                                     <a href="/admin/usuarios/{{ user.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>
                                     {% if user.id != me.id %}
                                         <form
-                                            x-data="ajaxForm({ confirmMessage: 'Excluir a conta de {{ user.name }}? Isso apaga também todos os schemas dela.', removeRow: true })"
+                                            x-data="ajaxForm({
+                                                confirmTitle: 'Excluir usuário',
+                                                confirmMessage: 'Excluir a conta de {{ user.name|e('js') }}? Isso apaga também todos os schemas dela.',
+                                                confirmLabel: 'Excluir',
+                                                removeRow: true,
+                                            })"
                                             @submit.prevent="submit"
                                             method="post" action="/admin/usuarios/{{ user.id }}/excluir"
                                         >

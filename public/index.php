@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
+use App\Controllers\ConnectionController;
 use App\Controllers\DashboardController;
 use App\Controllers\ProfileController;
 use App\Controllers\SchemaController;
@@ -38,6 +39,8 @@ $router->get('/profile', [ProfileController::class, 'edit']);
 $router->post('/profile', [ProfileController::class, 'update']);
 $router->post('/profile/password', [ProfileController::class, 'updatePassword']);
 $router->post('/profile/mysql-login', [ProfileController::class, 'updateMysqlLogin']);
+
+$router->get('/conectar', [ConnectionController::class, 'show']);
 
 // Professor (e admin): gestão de contas de aluno.
 $router->get('/professor/alunos', [StudentController::class, 'index']);

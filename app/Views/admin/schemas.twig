@@ -1,12 +1,12 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Todos os schemas</h1>
             <p class="mt-1 text-sm text-slate-500">Todo database criado por qualquer pessoa no lab.</p>
         </div>
-        <span class="badge-indigo">{{ schemas|length }} schema{{ schemas|length == 1 ? '' : 's' }}</span>
+        <span class="badge-indigo self-start">{{ schemas|length }} schema{{ schemas|length == 1 ? '' : 's' }}</span>
     </div>
 
     <div class="card">
@@ -40,7 +40,12 @@
                                             Abrir
                                         </a>
                                         <form
-                                            x-data="ajaxForm({ confirmMessage: 'Excluir o schema \'{{ schema.dbName }}\'? Essa ação não pode ser desfeita.', removeRow: true })"
+                                            x-data="ajaxForm({
+                                                confirmTitle: 'Excluir schema',
+                                                confirmMessage: 'Excluir o schema \'{{ schema.dbName }}\'? Essa ação não pode ser desfeita.',
+                                                confirmLabel: 'Excluir',
+                                                removeRow: true,
+                                            })"
                                             @submit.prevent="submit"
                                             method="post" action="/admin/schemas/excluir"
                                         >

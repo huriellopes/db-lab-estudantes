@@ -13,8 +13,9 @@
         {{ app_name }}
     </a>
 
+    {% include 'partials/flash.twig' %}
+
     <div class="w-full max-w-md">
-        {% include 'partials/flash.twig' %}
         <div class="card">
             {% block content %}{% endblock %}
         </div>
@@ -22,5 +23,6 @@
 
     <p class="mt-8 text-center text-xs text-slate-400">Ambiente de estudos · MySQL 8 + phpMyAdmin via Docker</p>
 </div>
+{% include 'partials/toaster.twig' %}
 </body>
 </html>

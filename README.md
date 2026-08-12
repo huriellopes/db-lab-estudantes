@@ -108,6 +108,35 @@ também (progressive enhancement).
 `App\Core\Router` é um router simples próprio, sem framework, com suporte a segmentos
 dinâmicos (`/professor/alunos/{id}/editar`) via regex.
 
+### Toaster, modal de confirmação, navbar e responsividade
+
+- **Toaster**: `Alpine.store('toasts')` (em `resources/js/app.js`), desenhado uma vez em
+  `partials/toaster.twig` (incluído nos dois layouts). Flash do servidor (`partials/flash.twig`)
+  vira um toast automaticamente no load da página via `x-init`; respostas Ajax (sucesso ou
+  erro) também empurram pra lá — nunca mais um `alert()` nativo.
+- **Modal de confirmação**: `Alpine.store('confirmModal')` + `window.confirmAction({title,
+  message, confirmLabel, danger})` (retorna uma Promise), desenhado uma vez em
+  `partials/confirm-modal.twig`. Todas as ações destrutivas ou de impacto sobre outra
+  pessoa/identificador — excluir schema, excluir aluno/usuário, resetar senha, trocar papel,
+  renomear o login do phpMyAdmin — passam por ele antes de enviar o form (via `ajaxForm`).
+  Saves triviais do próprio usuário (nome, senha) não pedem confirmação extra.
+- **Navbar**: dropdown de conta (avatar + nome, com "Meu perfil"/"Sair") e menu hamburguer
+  para mobile (`md:hidden` / `hidden md:flex`), ambos em `layouts/app.twig` +
+  `partials/nav-links.twig` (links reaproveitados entre desktop e mobile).
+- **Responsivo**: grids viram coluna única, tabelas ganham scroll horizontal
+  (`overflow-x-auto`), linhas de listas empilham (`flex-col sm:flex-row`) abaixo do
+  breakpoint `sm`/`md` do Tailwind, em todas as páginas do painel.
+
+### Conectar via SGBD local (`/conectar`)
+
+Página de auto-ajuda para quem prefere um cliente de banco na própria máquina (TablePlus,
+DBeaver, MySQL Workbench, DataGrip, HeidiSQL...) em vez do phpMyAdmin: mostra host/porta/
+usuário, um comando `mysql -h ... -P ...` pronto pra copiar, e um comando de túnel SSH
+(`ssh -L 3306:127.0.0.1:<porta> usuario@host -N`) para quando o ambiente estiver num
+servidor remoto sem a porta do MySQL exposta publicamente. Host/porta exibidos vêm de
+`DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`) — troque `DB_PUBLIC_HOST` se
+não estiver rodando localmente.
+
 ## Segurança
 
 Veja **[SECURITY.md](SECURITY.md)** para a avaliação completa de SQL injection: onde estão

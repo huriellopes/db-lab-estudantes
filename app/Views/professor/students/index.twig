@@ -1,12 +1,12 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Alunos</h1>
             <p class="mt-1 text-sm text-slate-500">Veja, edite e gerencie as contas de alunos cadastrados.</p>
         </div>
-        <span class="badge-indigo">{{ students|length }} aluno{{ students|length == 1 ? '' : 's' }}</span>
+        <span class="badge-indigo self-start">{{ students|length }} aluno{{ students|length == 1 ? '' : 's' }}</span>
     </div>
 
     <div class="card">
@@ -37,7 +37,12 @@
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="/professor/alunos/{{ student.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>
                                         <form
-                                            x-data="ajaxForm({ confirmMessage: 'Excluir a conta de {{ student.name }}? Isso apaga também todos os schemas dela.', removeRow: true })"
+                                            x-data="ajaxForm({
+                                                confirmTitle: 'Excluir aluno',
+                                                confirmMessage: 'Excluir a conta de {{ student.name|e('js') }}? Isso apaga também todos os schemas dela.',
+                                                confirmLabel: 'Excluir',
+                                                removeRow: true,
+                                            })"
                                             @submit.prevent="submit"
                                             method="post" action="/professor/alunos/{{ student.id }}/excluir"
                                         >
