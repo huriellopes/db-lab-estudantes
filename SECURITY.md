@@ -143,9 +143,14 @@ descartável, tentei violar o isolamento na mão:
   dia, toda conta fica alcançável de qualquer lugar, dependendo só da senha.
 - `mysql_native_password` em vez do padrão mais atual do MySQL 8
   (`caching_sha2_password`) — algoritmo de hash mais antigo, oficialmente deprecated desde
-  a 8.0.34. Provavelmente escolhido por compatibilidade de cliente; trocar exigiria
-  recriar todas as contas (a senha em texto puro só existe no momento da criação) e testar
-  compatibilidade com phpMyAdmin/SGBDs de desktop — mudança maior, fica pra decisão futura.
+  a 8.0.34. **Tentativa de migração feita e revertida nesta sessão**: contas novas com
+  `IDENTIFIED WITH caching_sha2_password` funcionam pra logar na app, mas **quebram o
+  console SQL** — a conexão por usuário (`Database::connectAs()`) roda sem TLS entre os
+  containers, e `caching_sha2_password` exige troca de chave RSA que falha nesse cenário
+  (`Access denied`, mesmo com a senha certa — testado e confirmado). Corrigir de verdade
+  exigiria TLS entre app/phpMyAdmin e o MySQL (gerar/gerenciar certificado, configurar o
+  servidor) — mudança de infraestrutura maior que o escopo desta sessão, fica pra decisão
+  futura.
 
 ## Autenticação: proteções contra força bruta e CSRF
 
