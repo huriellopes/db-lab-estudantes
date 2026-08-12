@@ -11,6 +11,7 @@ use App\Models\Entities\User;
 use App\Models\SchemaRecord;
 use App\Models\User as UserModel;
 use App\Services\UserManager;
+use App\Support\ProfileFields;
 use App\Support\Role;
 use Throwable;
 
@@ -54,7 +55,7 @@ final class StudentController extends Controller
         $name = trim((string) ($_POST['name'] ?? ''));
         $email = trim((string) ($_POST['email'] ?? ''));
 
-        if ($name === '' || mb_strlen($name) < 2 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!ProfileFields::isValidName($name) || !ProfileFields::isValidEmail($email)) {
             $this->respond(false, 'Informe um nome e e-mail válidos.', '/professor/alunos');
         }
 

@@ -9,6 +9,7 @@ use App\Core\Controller;
 use App\Models\User;
 use App\Services\UserManager;
 use App\Support\MysqlIdentifier;
+use App\Support\ProfileFields;
 use Throwable;
 
 final class ProfileController extends Controller
@@ -29,7 +30,7 @@ final class ProfileController extends Controller
 
         $name = trim((string) ($_POST['name'] ?? ''));
 
-        if ($name === '' || mb_strlen($name) < 2) {
+        if (!ProfileFields::isValidName($name)) {
             $this->respond(false, 'Informe seu nome completo.', '/profile');
         }
 

@@ -24,10 +24,10 @@ final class RegistrationValidator
     ): array {
         $errors = [];
 
-        if ($name === '' || mb_strlen($name) < 2) {
+        if (!ProfileFields::isValidName($name)) {
             $errors[] = 'Informe seu nome completo.';
         }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!ProfileFields::isValidEmail($email)) {
             $errors[] = 'Informe um e-mail válido.';
         }
         if (!MysqlIdentifier::isValidCustomLogin($username)) {
