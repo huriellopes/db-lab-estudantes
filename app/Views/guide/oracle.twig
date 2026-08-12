@@ -1,0 +1,116 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🏛️</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Oracle Database</h1>
+            <p class="mt-1 text-sm text-slate-500">Relacional corporativo, comum em grandes empresas.</p>
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Um banco de dados relacional <strong>comercial</strong> (pago, com licenciamento por servidor/
+                núcleo), da empresa Oracle — um dos bancos mais antigos e usados no mundo corporativo. Tem uma
+                versão gratuita limitada (Oracle XE) pra estudo e projetos pequenos.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Sistemas corporativos de grande porte — bancos, seguradoras, governo, ERPs (SAP costuma rodar
+                sobre Oracle ou SQL Server) — onde suporte oficial, ferramentas de administração maduras e
+                recursos de alta disponibilidade/desempenho em larga escala pesam mais que o custo da licença.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Quando a empresa já usa Oracle (trocar de banco corporativo é caro e arriscado), quando o
+                projeto exige certificações/suporte contratual formal, ou quando a escala e os recursos de
+                tuning avançado do Oracle realmente fazem diferença. Pra projetos novos, pequenos ou de estudo,
+                costuma valer mais a pena um banco open-source.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Oracle não tem AUTO_INCREMENT/SERIAL "de fábrica" — usa SEQUENCE
+CREATE SEQUENCE aluno_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE aluno (
+    id    NUMBER PRIMARY KEY,
+    nome  VARCHAR2(100) NOT NULL
+);
+
+INSERT INTO aluno (id, nome) VALUES (aluno_seq.NEXTVAL, 'Ana Silva');
+
+-- DUAL: tabela "fantasma" de 1 linha, pra testar expressão sem consultar tabela nenhuma
+SELECT SYSDATE FROM dual;</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                <strong>PL/SQL</strong> — a extensão procedural do Oracle pra SQL (parecida em espírito com o
+                T-SQL do SQL Server): permite escrever lógica de verdade (variáveis, laços, condicionais) dentro
+                do banco, em <em>procedures</em>/<em>functions</em>/<em>triggers</em>.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>Stored procedure</strong> — lógica reutilizável que roda dentro do banco, útil pra regras que precisam de várias etapas em uma transação só.</li>
+                <li><strong>Trigger</strong> — código que dispara sozinho num <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code>, útil pra auditoria ou validação que não dá pra expressar só com constraint.</li>
+                <li><strong>FETCH FIRST n ROWS ONLY</strong> — forma padrão ANSI de limitar resultado (Oracle moderno aceita isso; versões antigas usavam <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROWNUM</code>).</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                PL/SQL quando a regra de negócio precisa rodar muito perto do dado (menos ida e volta com a
+                aplicação) ou quando várias aplicações diferentes precisam da mesma regra garantida — colocando
+                no banco, ninguém escapa dela. Em contrapartida, lógica de negócio dentro do banco é mais difícil
+                de testar/versionar que código na aplicação, então costuma ser reservada pro que realmente
+                precisa estar ali (integridade, auditoria).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Procedure simples em PL/SQL
+CREATE OR REPLACE PROCEDURE matricular_aluno(
+    p_aluno_id IN NUMBER,
+    p_curso_id IN NUMBER
+) AS
+BEGIN
+    INSERT INTO matricula (aluno_id, curso_id, criado_em)
+    VALUES (p_aluno_id, p_curso_id, SYSDATE);
+
+    COMMIT;
+END;
+/
+
+-- Chamando a procedure
+BEGIN
+    matricular_aluno(1, 10);
+END;
+/</code></pre>
+        </div>
+    </div>
+{% endblock %}

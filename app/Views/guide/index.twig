@@ -1,0 +1,23 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">Guia de bancos de dados</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            SQL, os principais bancos relacionais, e NoSQL — o que é, pra que serve e quando usar cada um,
+            com exemplos. Cada página tem uma parte pra quem tá começando e outra pra quem já manja o básico.
+        </p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for slug, topic in topics %}
+            <a href="/guia/{{ slug }}" class="card flex items-start gap-3 transition-shadow hover:shadow-md">
+                <span class="text-2xl">{{ topic.icon }}</span>
+                <div class="min-w-0">
+                    <h2 class="font-semibold text-slate-900">{{ topic.title }}</h2>
+                    <p class="mt-1 text-sm text-slate-500">{{ topic.summary }}</p>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+{% endblock %}
