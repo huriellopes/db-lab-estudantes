@@ -84,7 +84,7 @@ final class StudentController extends Controller
             UserManager::resetPassword($student, $newPassword);
             $this->respond(true, "Senha de {$student->name} atualizada.", '/professor/alunos');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível trocar a senha: ' . $e->getMessage(), '/professor/alunos');
+            $this->respond(false, $this->genericError('trocar a senha', $e), '/professor/alunos');
         }
     }
 
@@ -101,7 +101,7 @@ final class StudentController extends Controller
                 : "Conta de {$student->name} reativada.";
             $this->respond(true, $message, '/professor/alunos');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível atualizar o status: ' . $e->getMessage(), '/professor/alunos');
+            $this->respond(false, $this->genericError('atualizar o status', $e), '/professor/alunos');
         }
     }
 
@@ -115,7 +115,7 @@ final class StudentController extends Controller
             UserManager::softDelete($student);
             $this->respond(true, "Conta de {$student->name} excluída (um admin pode restaurar na lixeira).", '/professor/alunos');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível excluir a conta: ' . $e->getMessage(), '/professor/alunos');
+            $this->respond(false, $this->genericError('excluir a conta', $e), '/professor/alunos');
         }
     }
 

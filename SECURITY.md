@@ -163,10 +163,35 @@ validação de entrada e o que cada uma expõe.
   resposta — a sessão (`AuthenticatedUser`) é construída de propósito sem esse campo, e
   nenhum template Twig referencia `.passwordHash` em lugar nenhum.
 
+## Cabeçalhos HTTP de segurança (corrigido)
+
+`docker/nginx.conf` agora manda, em toda resposta (`always`, inclusive erro 403/404/50x):
+
+- `Content-Security-Policy`: `script-src 'self' 'unsafe-eval'` (o `unsafe-eval` é
+  necessário — Alpine.js usa `Function()` pra avaliar `x-data`/`@click`/etc., é assim que a
+  biblioteca funciona), `style-src`/`img-src`/`font-src`/`connect-src` só `'self'`,
+  `object-src 'none'`, `frame-ancestors 'self'`. Ainda bloqueia o principal: script/estilo
+  de origem externa e `<script>` injetado via um XSS que porventura apareça.
+- `X-Frame-Options: SAMEORIGIN` (clickjacking), `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` bloqueando
+  câmera/mic/geolocalização/pagamento (nada disso é usado pela app).
+
+Testado no navegador (não só via curl): toggle de senha, dropdown do navbar e login
+completo com conta descartável — zero mensagem no console, tudo funcionando normal com a
+CSP ativa.
+
+## Mensagens de erro genéricas pro usuário (corrigido)
+
+Os ~13 pontos que devolviam `$e->getMessage()` cru (fora do console SQL, onde isso é
+intencional) agora passam por `Controller::genericError($action, $e)`: loga o erro real
+(`error_log`, mesmo destino de sempre) e devolve uma mensagem genérica no padrão já usado
+("Não foi possível {$action}. Tente de novo em instantes."). Detalhe de MySQL/PDO
+(estrutura de tabela, nome de constraint, etc.) não chega mais no navegador.
+
 ## Não coberto por esta auditoria (próximos passos recomendados)
 
-- Cabeçalhos de segurança HTTP (CSP, `X-Frame-Options`, etc.) não configurados no nginx.
 - 2FA / MFA — fora de escopo pra esse tamanho de lab, mas vale considerar se crescer.
-- `$e->getMessage()` exposto cru ao usuário em ~13 pontos (fora do console SQL, onde isso
-  é intencional) — pode vazar detalhe interno do MySQL/PDO em caso de erro. Identificado,
-  não corrigido ainda (mudança grande o bastante pra alinhar antes).
+- `Strict-Transport-Security` (HSTS) não configurado — dá pra habilitar direto no Nginx
+  Proxy Manager (toggle "HSTS Enabled" na tela de SSL do proxy host), preferível a
+  configurar aqui: é o NPM que efetivamente termina o TLS, e HSTS mal configurado
+  (`max-age` longo) é chato de reverter rápido se algo mudar.

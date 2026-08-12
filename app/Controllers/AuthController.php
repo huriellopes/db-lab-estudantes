@@ -145,7 +145,7 @@ final class AuthController extends Controller
                     Flash::set(FlashType::Success, 'Cadastro realizado com sucesso! Faça login para continuar.');
                     $this->redirect('/login');
                 } catch (Throwable $e) {
-                    $errors[] = 'Não foi possível concluir o cadastro: ' . $e->getMessage();
+                    $errors[] = $this->genericError('concluir o cadastro', $e);
                 }
             }
         }

@@ -52,7 +52,7 @@ final class SchemaController extends Controller
                     // ignora falha de limpeza, o erro principal já será reportado abaixo
                 }
             }
-            $this->respond(false, 'Não foi possível criar o schema: ' . $e->getMessage(), '/dashboard');
+            $this->respond(false, $this->genericError('criar o schema', $e), '/dashboard');
         }
     }
 
@@ -78,7 +78,7 @@ final class SchemaController extends Controller
             SchemaRecord::delete($schema->id);
             $this->respond(true, "Schema \"{$dbName}\" removido.", '/dashboard');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível remover o schema: ' . $e->getMessage(), '/dashboard');
+            $this->respond(false, $this->genericError('remover o schema', $e), '/dashboard');
         }
     }
 }
