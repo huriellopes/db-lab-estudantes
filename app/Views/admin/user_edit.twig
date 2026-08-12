@@ -1,4 +1,5 @@
 {% extends 'layouts/app.twig' %}
+{% import 'macros/forms.twig' as forms %}
 
 {% block content %}
     <div class="mb-8">
@@ -44,10 +45,7 @@
                 @submit.prevent="submit"
                 method="post" action="/admin/usuarios/{{ user.id }}/senha" class="space-y-4"
             >
-                <div>
-                    <label for="new_password" class="field-label">Nova senha</label>
-                    <input type="password" id="new_password" name="new_password" required minlength="6" class="field-input">
-                </div>
+                {{ forms.password_field('new_password', 'new_password', 'Nova senha', 6) }}
                 <button :disabled="loading" type="submit" class="btn-secondary w-full">
                     <span x-show="!loading">Resetar senha</span>
                     <span x-show="loading" x-cloak>Atualizando…</span>

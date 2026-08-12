@@ -1,4 +1,5 @@
 {% extends 'layouts/app.twig' %}
+{% import 'macros/forms.twig' as forms %}
 
 {% block content %}
     {% set user = auth_user() %}
@@ -39,18 +40,9 @@
                 x-data="ajaxForm({ onSuccess: () => $el.reset() })" @submit.prevent="submit"
                 method="post" action="/profile/password" class="space-y-4"
             >
-                <div>
-                    <label for="current_password" class="field-label">Senha atual</label>
-                    <input type="password" id="current_password" name="current_password" required class="field-input">
-                </div>
-                <div>
-                    <label for="new_password" class="field-label">Nova senha</label>
-                    <input type="password" id="new_password" name="new_password" required minlength="6" class="field-input">
-                </div>
-                <div>
-                    <label for="new_password_confirm" class="field-label">Confirmar nova senha</label>
-                    <input type="password" id="new_password_confirm" name="new_password_confirm" required minlength="6" class="field-input">
-                </div>
+                {{ forms.password_field('current_password', 'current_password', 'Senha atual') }}
+                {{ forms.password_field('new_password', 'new_password', 'Nova senha', 6) }}
+                {{ forms.password_field('new_password_confirm', 'new_password_confirm', 'Confirmar nova senha', 6) }}
                 <button :disabled="loading" type="submit" class="btn-primary w-full">
                     <span x-show="!loading">Atualizar senha</span>
                     <span x-show="loading" x-cloak>Atualizando…</span>
