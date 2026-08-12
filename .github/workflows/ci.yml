@@ -1,0 +1,84 @@
+name: CI
+
+# Roda em toda branch de feature (via PR) e nas duas branches "guarda-chuva" (dev/main),
+# pra garantir que nada quebrado chega nem na dev nem na main.
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php:
+    name: PHP — testes e padrão de código
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_mysql, mysqli
+          coverage: none
+
+      - name: Cache do Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: composer install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Testes (Pest)
+        run: composer test
+
+      - name: Padrão de código (PHP-CS-Fixer)
+        run: composer cs
+
+      - name: php -l em tudo
+        run: |
+          find app public bin database tests -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  js:
+    name: JS/CSS — build e formatação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Formatação (Prettier)
+        run: npm run format:check
+
+      - name: Build do Vite
+        run: npm run build
+
+  docker:
+    name: Docker — a imagem de produção builda
+    runs-on: ubuntu-latest
+    needs: [php, js]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build da imagem (sem push — só valida que o Dockerfile builda)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: db-lab-estudantes-app:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

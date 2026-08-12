@@ -64,9 +64,17 @@ composer db:seed               # roda database/seeders/DatabaseSeeder (promove A
 composer.json            # autoload PSR-4 (App\, Database\Seeders\, Database\Factories\)
 package.json              # Vite, Tailwind v4, Alpine.js, Axios, Prettier
 vite.config.js
-Dockerfile                # multi-stage: composer -> npm/vite -> php:8.5-apache
-docker/app-entrypoint.sh   # roda `migrate` e sobe o Apache
-docker-compose.yml
+Dockerfile                # multi-stage: composer -> npm/vite -> php:8.5-fpm + nginx + supervisord
+docker-compose.yml           # dev — MESMA imagem/Dockerfile da produção (paridade de ambiente)
+docker-compose.prod.yml       # produção (Contabo) — sem porta pública na app, rede própria
+docker/
+  nginx.conf                    # site do nginx (fastcgi -> php-fpm)
+  supervisord.conf                # gerencia nginx + php-fpm dentro do container
+  app-entrypoint.sh                # roda `migrate` e sobe o supervisord
+  deploy.sh                         # roda NO SERVIDOR — git pull + docker compose up --build
+.github/workflows/
+  ci.yml                    # testes, padrão de código, build (toda branch/PR pra dev e main)
+  deploy.yml                 # SSH no Contabo + deploy.sh (só depois do CI passar na main)
 bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed)
 phpunit.xml, tests/          # Pest
 .php-cs-fixer.php             # padrão de código PHP (PSR-12 + regras extra)
@@ -192,8 +200,10 @@ docker compose up -d --build
 O `Dockerfile` faz tudo dentro do build — não precisa rodar `composer install`/`npm install`
 na sua máquina: um stage instala as dependências PHP (sem as de dev — Pest/PHP-CS-Fixer/
 Faker ficam só local), outro roda `npm run build` (Tailwind v4 + Alpine + Axios via Vite), e
-a imagem final é só `php:8.5-apache` + os artefatos prontos. No boot do container, o
-`docker/app-entrypoint.sh` roda as migrations pendentes antes de subir o Apache.
+a imagem final é `php:8.5-fpm` + `nginx` + `supervisord` (gerenciando os dois processos) +
+os artefatos prontos. No boot do container, o `docker/app-entrypoint.sh` roda as migrations
+pendentes antes de subir o supervisord. **Essa é a mesma imagem usada em produção** — dev e
+prod só diferem em `.env`/rede/exposição de porta, nunca no software rodando dentro.
 
 Serviços (portas padrão, configuráveis no `.env`):
 
@@ -206,6 +216,34 @@ Serviços (portas padrão, configuráveis no `.env`):
 Depois de se cadastrar como o e-mail que você quer que seja admin, defina `ADMIN_EMAIL` no
 `.env` e rode `docker compose exec app php bin/console.php db:seed` (ou `composer db:seed`
 localmente) pra promover essa conta.
+
+## Produção (Contabo)
+
+Segue o mesmo padrão dos outros projetos no servidor (`/apps/<projeto>/`, Nginx Proxy
+Manager como proxy reverso já existente, banco só em `127.0.0.1` sem exposição pública).
+
+- **URL**: `https://dblab.217.76.60.113.sslip.io` (domínio `sslip.io` — resolve sozinho pro
+  IP do servidor, sem precisar configurar DNS; é o mesmo padrão usado por `bookid-api`,
+  `fintrack-admin` etc. nesse Contabo).
+- **MySQL e phpMyAdmin não são públicos** — só em `127.0.0.1` no servidor, acesso de fora
+  só via túnel SSH (a própria página `/conectar` da app já ensina isso).
+- **Deploy**: `git push` numa PR de `dev` → `main`; depois que o CI passar, o workflow
+  **Deploy** roda `deploy.sh` no servidor via SSH (`git pull` + `docker compose -f
+  docker-compose.prod.yml up -d --build`, migrations automáticas no entrypoint).
+- **Chaves de deploy** (geradas dedicadas pra esse projeto, nenhuma reaproveitada):
+  - Contabo → GitHub: deploy key só leitura, registrada no repo, guardada em
+    `~/.ssh/id_ed25519_db-lab-estudantes` no servidor (com um alias `github.com-db-lab-estudantes`
+    no `~/.ssh/config` do servidor, no mesmo padrão que este projeto já usa localmente).
+  - GitHub Actions → Contabo: chave restrita via `authorized_keys` com
+    `command="/apps/db-lab-estudantes/deploy.sh"` — mesmo que vaze, só executa esse script,
+    nada mais. Guardada nos secrets do repo (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
+- **`.env` de produção** fica só no servidor (`/apps/db-lab-estudantes/.env`, nunca no git)
+  — veja `.env.production.example` pro formato.
+- **Passo manual pendente** (fora do escopo do que a automação cobre): registrar o proxy
+  host no Nginx Proxy Manager (domínio acima → container `dblab-app:80`, rede `dblab-net`)
+  e rodar `docker network connect dblab-net proxy` no servidor — isso é feito uma vez, pela
+  UI do NPM (acesse via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`, depois
+  `http://localhost:8181`).
 
 ## Testes (Pest)
 
