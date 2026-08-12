@@ -1,7 +1,26 @@
 import Alpine from 'alpinejs';
 import axios from 'axios';
+import htmx from 'htmx.org';
 
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+// Navegação suave, sem recarregar a página: hx-boost="true" nos layouts (ver
+// layouts/app.twig e layouts/guest.twig) faz o htmx interceptar clique em link e submit
+// de form comuns e trocar só o <body> via AJAX, com histórico do navegador funcionando
+// (voltar/avançar) e sem o flash branco de uma navegação normal. Continua funcionando
+// sem JS: sem o htmx carregado, os mesmos <a>/<form> navegam do jeito clássico — é só
+// enhancement, igual o resto da app (ver comentário do ajaxForm mais abaixo).
+htmx.config.globalViewTransitions = true; // cross-fade suave (View Transitions API do navegador; sem suporte, cai pra troca instantânea)
+window.htmx = htmx;
+
+// Barra de progresso fininha no topo durante a navegação — feedback visual de que algo
+// está carregando, sem travar a tela (troca só acontece quando a resposta chega).
+document.addEventListener('htmx:beforeRequest', (e) => {
+  if (e.detail.boosted) document.documentElement.classList.add('htmx-navigating');
+});
+document.addEventListener('htmx:afterRequest', (e) => {
+  if (e.detail.boosted) document.documentElement.classList.remove('htmx-navigating');
+});
 
 // Token CSRF da sessão (ver csrf_token() no Twig, renderizado numa <meta> no <head> dos
 // dois layouts) — mandado em toda requisição Axios, verificado central em public/index.php.
@@ -143,9 +162,13 @@ document.addEventListener('alpine:init', () => {
    * SELECT com colunas dinâmicas, ou só "X linha(s) afetada(s)" pra INSERT/UPDATE/DDL),
    * por isso é um componente dedicado em vez do ajaxForm genérico.
    */
-  Alpine.data('sqlConsole', (initialSchema = '') => ({
+  Alpine.data('sqlConsole', (initialSchema = '', initialSchemas = []) => ({
     sql: '',
     schema: initialSchema,
+    // Lista do <select>: começa com o que o servidor já sabia, e é atualizada a cada
+    // resposta do console (ver run() abaixo) — cobre o caso de rodar CREATE/DROP DATABASE
+    // sem nenhum schema selecionado (o backend sincroniza e devolve a lista atual).
+    schemas: initialSchemas,
     loading: false,
     results: [],
     summary: null,
@@ -184,10 +207,12 @@ document.addEventListener('alpine:init', () => {
           new URLSearchParams({ sql, schema: this.schema }),
         );
         this.results = response.data.results ?? [];
+        this.schemas = response.data.schemas ?? this.schemas;
         this.summary = { ok: true, message: response.data.message };
         Alpine.store('toasts').push('success', response.data.message);
       } catch (error) {
         this.results = error.response?.data?.results ?? [];
+        this.schemas = error.response?.data?.schemas ?? this.schemas;
         const message = error.response?.data?.message ?? 'Não foi possível executar o comando.';
         this.summary = { ok: false, message };
         Alpine.store('toasts').push('error', message);
@@ -204,7 +229,7 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
-  /** Botão de copiar texto (credenciais, comando de túnel SSH...) com feedback via toast. */
+  /** Botão de copiar texto (credenciais, comando de conexão do SGBD...) com feedback via toast. */
   Alpine.data('copyable', (text) => ({
     copy() {
       navigator.clipboard

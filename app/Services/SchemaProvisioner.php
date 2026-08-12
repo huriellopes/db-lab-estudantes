@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Database;
+use PDOException;
 
 /**
  * Executa as operações administrativas no MySQL (criar/apagar contas e databases).
@@ -35,6 +36,28 @@ final class SchemaProvisioner
         $quotedPassword = $pdo->quote($password);
 
         $pdo->exec("CREATE USER IF NOT EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}");
+
+        // Escopo idêntico ao prefixo que a app já valida/usa pros schemas "oficiais" (ver
+        // App\Support\SchemaNameBuilder) — deixa a própria conta MySQL do aluno rodar
+        // CREATE DATABASE dentro do próprio namespace direto pelo console SQL (ver
+        // SqlConsoleController), sem precisar passar pelo formulário. Fora desse prefixo a
+        // conta continua sem NENHUM privilégio: não é uma conta mais poderosa, só move
+        // onde o CREATE é concedido. ALL PRIVILEGES pra ficar idêntico ao que já é
+        // concedido por schema em createDatabase() abaixo.
+        $pdo->exec('GRANT ALL PRIVILEGES ON `' . self::ownDatabasesPattern($login) . "`.* TO '{$login}'@'%'");
+    }
+
+    /**
+     * Pattern de database-level GRANT (com wildcard % no fim) escopado ao prefixo
+     * "<login>__" — usado tanto na concessão quanto na revogação (rename). "_" é wildcard
+     * de 1 caractere em pattern de GRANT mesmo dentro de crases, por isso escapamos todo
+     * "_" literal do login como "\_": sem isso, o login "ana_costa" também bateria (por
+     * coincidência de wildcard) com um database prefixado "anaXcosta__", furando o
+     * isolamento entre contas.
+     */
+    private static function ownDatabasesPattern(string $login): string
+    {
+        return str_replace('_', '\\_', $login . '__') . '%';
     }
 
     public static function changeMysqlPassword(string $login, string $password): void
@@ -45,10 +68,31 @@ final class SchemaProvisioner
         $pdo->exec("ALTER USER IF EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}");
     }
 
-    /** RENAME USER preserva todos os GRANTs existentes — os schemas continuam acessíveis. */
+    /**
+     * RENAME USER preserva todos os GRANTs existentes — os schemas já criados continuam
+     * acessíveis. Mas o pattern com wildcard de ownDatabasesPattern() é só uma string pro
+     * MySQL (ele não entende que era baseado no login antigo), então RENAME USER não a
+     * atualiza sozinho: sem o REVOKE/GRANT abaixo, a pessoa perderia a permissão de criar
+     * schema novo pelo console SQL com o login novo (o antigo pattern fica órfão, sem
+     * efeito prático já que não há mais nenhum database com aquele prefixo criável).
+     *
+     * O REVOKE vai numa tentativa isolada porque REVOKE não tem "IF EXISTS" no MySQL:
+     * contas criadas antes desse GRANT existir (ou que já passaram por outro rename) não
+     * têm esse privilégio específico pra revogar, e isso não pode quebrar o rename inteiro.
+     */
     public static function renameMysqlAccount(string $oldLogin, string $newLogin): void
     {
-        Database::connection()->exec("RENAME USER '{$oldLogin}'@'%' TO '{$newLogin}'@'%'");
+        $pdo = Database::connection();
+
+        $pdo->exec("RENAME USER '{$oldLogin}'@'%' TO '{$newLogin}'@'%'");
+
+        try {
+            $pdo->exec('REVOKE ALL PRIVILEGES ON `' . self::ownDatabasesPattern($oldLogin) . "`.* FROM '{$newLogin}'@'%'");
+        } catch (PDOException) {
+            // Sem esse GRANT específico pra revogar — tudo bem, é só limpeza de um pattern órfão.
+        }
+
+        $pdo->exec('GRANT ALL PRIVILEGES ON `' . self::ownDatabasesPattern($newLogin) . "`.* TO '{$newLogin}'@'%'");
     }
 
     /** Bloqueia o login (a conta e os databases continuam intactos) — usado em desativar/soft delete. */

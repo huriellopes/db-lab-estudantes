@@ -86,4 +86,30 @@ final class SchemaRecord
         $stmt = Database::connection()->prepare('DELETE FROM schemas_criados WHERE id = ?');
         $stmt->execute([$id]);
     }
+
+    /**
+     * Sincroniza os registros de um usuário com o que realmente existe no MySQL pro
+     * prefixo dele — necessário porque o console SQL (ver SqlConsoleController) permite
+     * criar/apagar schema com `CREATE`/`DROP DATABASE` direto, fora do formulário oficial
+     * "Criar novo schema" (o único lugar que fazia o INSERT/DELETE nessa tabela antes).
+     * Sem isso, um schema criado assim não apareceria em "Meus schemas", e um apagado
+     * assim ficaria como registro fantasma.
+     *
+     * @param list<string> $actualDbNames Nomes de database do prefixo do usuário que existem agora no MySQL.
+     */
+    public static function reconcileForUser(int $userId, array $actualDbNames): void
+    {
+        $tracked = self::allForUser($userId);
+        $trackedNames = array_map(static fn (Schema $s): string => $s->dbName, $tracked);
+
+        foreach (array_diff($actualDbNames, $trackedNames) as $newName) {
+            self::create($userId, $newName);
+        }
+
+        foreach ($tracked as $schema) {
+            if (!in_array($schema->dbName, $actualDbNames, true)) {
+                self::delete($schema->id);
+            }
+        }
+    }
 }

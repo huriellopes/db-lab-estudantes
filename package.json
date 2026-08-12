@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "alpinejs": "^3.14.0",
-    "axios": "^1.7.0"
+    "axios": "^1.7.0",
+    "htmx.org": "^2.0.10"
   }
 }

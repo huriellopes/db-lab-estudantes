@@ -11,8 +11,9 @@
     </div>
 
     <div class="card">
-        {{ tc.search_form('/admin/schemas', query, 'Buscar por schema ou dono…') }}
+        {{ tc.search_form('/admin/schemas', query, 'Buscar por schema ou dono…', 'schemas-results') }}
 
+        <div id="schemas-results">
         {% if paginator.total == 0 and query.search == '' %}
             <div class="rounded-xl border border-dashed border-slate-200 py-10 text-center">
                 <p class="text-sm text-slate-500">Nenhum schema criado ainda.</p>
@@ -47,7 +48,7 @@
                                             </a>
                                         {% endif %}
                                         <form
-                                            x-data="ajaxForm({
+                                            hx-boost="false" x-data="ajaxForm({
                                                 confirmTitle: 'Excluir schema',
                                                 confirmMessage: 'Excluir o schema \'{{ schema.dbName|e('js') }}\'? Essa ação não pode ser desfeita.',
                                                 confirmLabel: 'Excluir',
@@ -73,5 +74,6 @@
 
             {{ tc.pagination('/admin/schemas', paginator, query) }}
         {% endif %}
+        </div>
     </div>
 {% endblock %}
