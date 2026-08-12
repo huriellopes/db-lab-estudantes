@@ -64,13 +64,88 @@ Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão aci
   variável impressa com `{{ }}` é escapada automaticamente.
 - **Senhas**: `password_hash()`/`password_verify()` (bcrypt), nunca texto puro persistido
   na tabela `users`.
-- **Privilégio do usuário da aplicação**: `appuser` tem `ALL PRIVILEGES ON *.* WITH GRANT
-  OPTION` — decisão deliberada para viabilizar criação dinâmica de databases/contas nesse
-  laboratório local (ver aviso no `README.md`). Isso significa que a barreira real contra
-  um `db_name`/`mysql_login` malicioso é **inteiramente a validação em `App\Support`**,
-  não um limite de privilégio do lado do MySQL — por isso essa validação é tratada como
-  código de segurança crítico, coberto por testes (`tests/Unit/SchemaNameBuilderTest.php`,
+- **Privilégio do usuário da aplicação**: `appuser` tem, de propósito, um conjunto amplo
+  de privilégios `ON *.* WITH GRANT OPTION` — necessário pra viabilizar criação dinâmica
+  de databases/contas nesse laboratório (ver seção "Modelo de dados e acessos ao banco"
+  abaixo pro conjunto exato, reduzido de "praticamente root" pra só o que o código usa).
+  Isso significa que a barreira real contra um `db_name`/`mysql_login` malicioso é
+  **inteiramente a validação em `App\Support`**, não um limite de privilégio do lado do
+  MySQL pra esses valores específicos — por isso essa validação é tratada como código de
+  segurança crítico, coberto por testes (`tests/Unit/SchemaNameBuilderTest.php`,
   `tests/Unit/MysqlIdentifierTest.php`).
+
+## Modelo de dados e acessos ao banco
+
+**Tabelas** (`schoolapp`, só o `appuser` acessa): `users`, `schemas_criados` (FK
+`ON DELETE CASCADE` pra `users` — só entra em ação em exclusão física, que a app nunca faz
+sozinha, já que usa soft delete), `rate_limit_hits`, `password_reset_tokens`. Nenhuma
+guarda dado sensível em texto puro (senha sempre `password_hash`, token sempre hash
+sha256) nem coluna supérflua.
+
+**Achado corrigido — `appuser` tinha privilégios equivalentes a `root`**: comparei
+`SHOW GRANTS` de `appuser` com `root` em produção — eram **idênticos**
+(`SUPER`, `FILE`, `SHUTDOWN`, `RELOAD`, `PROCESS`, `REPLICATION SLAVE`/`CLIENT`,
+`CREATE TABLESPACE`, `CREATE`/`DROP ROLE`, e todos os privilégios administrativos
+dinâmicos do MySQL 8 — `BACKUP_ADMIN`, `BINLOG_ADMIN`, `CONNECTION_ADMIN`,
+`ENCRYPTION_KEY_ADMIN`, `SYSTEM_VARIABLES_ADMIN` etc., todos `WITH GRANT OPTION`), muito
+além do que `App\Services\SchemaProvisioner` de fato executa (`CREATE`/`DROP DATABASE`,
+`CREATE`/`ALTER`/`RENAME`/`DROP USER`, `GRANT` em schemas específicos). Causa: `mysql/init/
+01-grants.sql` roda como `root` (assim que o entrypoint oficial do MySQL executa scripts
+de init), e um `GRANT ALL PRIVILEGES ON *.*` feito por uma conta que já possui privilégios
+dinâmicos (root tem todos) propaga esses privilégios dinâmicos junto — não é intencional,
+é como o MySQL 8 expande `ALL PRIVILEGES` nesse caso.
+
+Por que importa: a credencial do `appuser` fica em texto puro no `.env`. Com o privilégio
+antigo, um vazamento dela (bug futuro, backup mal protegido) equivalia a vazar a senha de
+root — desligar o servidor, configurar replicação pra copiar o binlog inteiro, ler/escrever
+arquivo (mitigado em parte por `secure_file_priv` já restrito), mudar variável de sistema.
+
+**Corrigido**: `mysql/init/01-grants.sql` agora concede só o necessário (privilégio
+enumerado explicitamente, nunca `ALL PRIVILEGES` — nomear privilégios estáticos não
+arrasta os dinâmicos, só `ALL`/`ALL PRIVILEGES` faz isso):
+
+```sql
+GRANT CREATE, DROP, ALTER, CREATE USER,
+      SELECT, INSERT, UPDATE, DELETE, REFERENCES, INDEX,
+      CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE,
+      CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE,
+      EVENT, TRIGGER
+  ON *.* TO 'appuser'@'%' WITH GRANT OPTION;
+```
+
+Aplicado com `REVOKE` cirúrgico (não recriando do zero) tanto em dev quanto em produção,
+validado rodando a bateria completa de fluxos que dependem do MySQL antes e depois:
+registro, login, criar/excluir schema, console SQL, trocar senha, renomear login,
+ativar/desativar (admin), resetar senha (admin), soft delete/restaurar (admin) — todos
+passando com o privilégio reduzido.
+
+Efeito colateral descoberto no processo: `FLUSH PRIVILEGES` (chamado depois de todo
+`CREATE`/`ALTER`/`RENAME USER`/`GRANT` em `SchemaProvisioner`) exige `RELOAD` — mas é
+**desnecessário**: confirmado na prática que `CREATE USER`/`GRANT` já atualizam o cache de
+privilégios sozinhos (um usuário criado sem nenhum `FLUSH` já loga e usa o `GRANT` na
+hora). Removido do código — um motivo a menos pra precisar de `RELOAD`.
+
+**Isolamento entre usuários — testado ativamente, não só lido no código**: com conta
+descartável, tentei violar o isolamento na mão:
+
+| Tentativa | Resultado |
+|---|---|
+| `USE schoolapp` (schema da própria app) | `1044 Access denied` |
+| `SELECT * FROM schoolapp.users` direto, sem `USE` | `1142 SELECT command denied` |
+| `SHOW DATABASES` | Só `information_schema`/`performance_schema` — nem `schoolapp` nem schema de outra pessoa aparece |
+| `SHOW PROCESSLIST` / `performance_schema.processlist` | Só a própria sessão — não vê query de outros usuários |
+
+**Não corrigido, risco aceito e documentado**:
+
+- Todas as contas MySQL (`appuser` e as pessoais) usam `@'%'` (qualquer host) — hoje sem
+  efeito prático porque o MySQL nunca é público (só `127.0.0.1` + túnel SSH), mas é uma
+  dependência total da camada de rede: se a porta for exposta publicamente por engano um
+  dia, toda conta fica alcançável de qualquer lugar, dependendo só da senha.
+- `mysql_native_password` em vez do padrão mais atual do MySQL 8
+  (`caching_sha2_password`) — algoritmo de hash mais antigo, oficialmente deprecated desde
+  a 8.0.34. Provavelmente escolhido por compatibilidade de cliente; trocar exigiria
+  recriar todas as contas (a senha em texto puro só existe no momento da criação) e testar
+  compatibilidade com phpMyAdmin/SGBDs de desktop — mudança maior, fica pra decisão futura.
 
 ## Autenticação: proteções contra força bruta e CSRF
 
