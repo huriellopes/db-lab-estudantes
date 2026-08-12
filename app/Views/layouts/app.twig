@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-br" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if pageTitle is defined %}{{ pageTitle }} · {% endif %}{{ app_name }}</title>
+    {{ vite() }}
+</head>
+<body class="h-full bg-slate-50">
+<div class="min-h-full">
+    <header class="border-b border-slate-200 bg-white">
+        <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+            <a href="/dashboard" class="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">DB</span>
+                {{ app_name }}
+            </a>
+
+            <nav class="flex flex-wrap items-center gap-1 text-sm font-medium text-slate-600">
+                <a href="/dashboard" class="rounded-lg px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">Meu painel</a>
+                {% if can_manage_students() %}
+                    <a href="/professor/alunos" class="rounded-lg px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">Alunos</a>
+                {% endif %}
+                {% if is_admin() %}
+                    <a href="/admin" class="rounded-lg px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">Administração</a>
+                    <a href="/admin/usuarios" class="rounded-lg px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">Usuários</a>
+                    <a href="/admin/schemas" class="rounded-lg px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">Schemas</a>
+                {% endif %}
+                <a href="/profile" class="rounded-lg px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">Meu perfil</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <div class="hidden text-right sm:block">
+                    <p class="text-sm font-medium text-slate-900">{{ auth_user().name }}</p>
+                    <p class="text-xs capitalize text-slate-500">{{ auth_user().role }}</p>
+                </div>
+                <form method="post" action="/logout">
+                    <button type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">Sair</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        {% include 'partials/flash.twig' %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+</body>
+</html>

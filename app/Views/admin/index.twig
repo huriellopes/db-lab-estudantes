@@ -1,0 +1,44 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">Administração</h1>
+        <p class="mt-1 text-sm text-slate-500">Visão geral do lab — usuários, papéis e schemas.</p>
+    </div>
+
+    <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div class="card">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Alunos</p>
+            <p class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.alunos }}</p>
+        </div>
+        <div class="card">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Professores</p>
+            <p class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.professores }}</p>
+        </div>
+        <div class="card">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Admins</p>
+            <p class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.admins }}</p>
+        </div>
+        <div class="card">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Schemas</p>
+            <p class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.schemas }}</p>
+        </div>
+    </div>
+
+    <div class="grid gap-6 sm:grid-cols-2">
+        <a href="/admin/usuarios" class="card flex items-center justify-between transition-shadow hover:shadow-md">
+            <div>
+                <h2 class="text-base font-semibold text-slate-900">Gerenciar usuários</h2>
+                <p class="mt-1 text-sm text-slate-500">Editar, trocar papel, resetar senha ou excluir qualquer conta.</p>
+            </div>
+            <span class="text-slate-400">→</span>
+        </a>
+        <a href="/admin/schemas" class="card flex items-center justify-between transition-shadow hover:shadow-md">
+            <div>
+                <h2 class="text-base font-semibold text-slate-900">Todos os schemas</h2>
+                <p class="mt-1 text-sm text-slate-500">Ver e excluir qualquer database criado no lab.</p>
+            </div>
+            <span class="text-slate-400">→</span>
+        </a>
+    </div>
+{% endblock %}

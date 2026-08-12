@@ -1,0 +1,62 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Todos os schemas</h1>
+            <p class="mt-1 text-sm text-slate-500">Todo database criado por qualquer pessoa no lab.</p>
+        </div>
+        <span class="badge-indigo">{{ schemas|length }} schema{{ schemas|length == 1 ? '' : 's' }}</span>
+    </div>
+
+    <div class="card">
+        {% if schemas is empty %}
+            <div class="rounded-xl border border-dashed border-slate-200 py-10 text-center">
+                <p class="text-sm text-slate-500">Nenhum schema criado ainda.</p>
+            </div>
+        {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+                            <th class="py-2 pr-4 font-medium">Schema</th>
+                            <th class="py-2 pr-4 font-medium">Dono</th>
+                            <th class="py-2 pr-4 font-medium">Criado em</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for schema in schemas %}
+                            <tr data-row>
+                                <td class="py-3 pr-4 font-mono text-slate-800">{{ schema.db_name }}</td>
+                                <td class="py-3 pr-4 text-slate-500">{{ schema.owner_name }} <span class="text-slate-400">({{ schema.owner_email }})</span></td>
+                                <td class="py-3 pr-4 text-slate-500">{{ schema.created_at|date('d/m/Y') }}</td>
+                                <td class="py-3">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a
+                                            href="{{ pmaUrl|default('') }}/index.php?route=/database/structure&db={{ schema.db_name|url_encode }}"
+                                            target="_blank" rel="noopener" class="btn-secondary !px-3 !py-1.5 text-xs"
+                                        >
+                                            Abrir
+                                        </a>
+                                        <form
+                                            x-data="ajaxForm({ confirmMessage: 'Excluir o schema \'{{ schema.db_name }}\'? Essa ação não pode ser desfeita.', removeRow: true })"
+                                            @submit.prevent="submit"
+                                            method="post" action="/admin/schemas/excluir"
+                                        >
+                                            <input type="hidden" name="db_name" value="{{ schema.db_name }}">
+                                            <button :disabled="loading" type="submit" class="btn-danger !px-3 !py-1.5 text-xs">
+                                                <span x-show="!loading">Excluir</span>
+                                                <span x-show="loading" x-cloak>Excluindo…</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

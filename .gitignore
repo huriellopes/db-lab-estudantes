@@ -1,0 +1,13 @@
+.env
+mysql_data/
+*.bak-*
+
+# Dependências / build (gerados via `composer install`, `npm install`/`npm run build`
+# e no build da imagem Docker)
+/vendor/
+/node_modules/
+/public/build/
+/storage/twig-cache/
+
+# Pest/PHPUnit
+.phpunit.cache/

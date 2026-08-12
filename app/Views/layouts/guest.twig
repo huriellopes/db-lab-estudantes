@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-br" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if pageTitle is defined %}{{ pageTitle }} · {% endif %}{{ app_name }}</title>
+    {{ vite() }}
+</head>
+<body class="h-full">
+<div class="flex min-h-full flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-slate-100 px-4 py-12">
+    <a href="/" class="mb-8 flex items-center gap-2 text-xl font-semibold text-slate-900">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">DB</span>
+        {{ app_name }}
+    </a>
+
+    <div class="w-full max-w-md">
+        {% include 'partials/flash.twig' %}
+        <div class="card">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <p class="mt-8 text-center text-xs text-slate-400">Ambiente de estudos · MySQL 8 + phpMyAdmin via Docker</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Tailwind v4: os caminhos de conteúdo são detectados automaticamente pelo plugin do
+   Vite (varre o projeto respeitando o .gitignore) — não precisa de tailwind.config.js
+   para o caso básico.
+
+   Também no v4, uma classe custom só pode ser referenciada dentro de outro @apply se
+   for declarada via @utility (em vez de @layer components) — por isso as classes base
+   abaixo usam @utility, e as variantes as compõem com @apply normalmente. */
+
+@layer base {
+    body {
+        @apply bg-slate-50 text-slate-800 antialiased;
+    }
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@utility btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+@utility field-input {
+    @apply w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100;
+}
+
+@utility badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+@layer components {
+    .btn-primary {
+        @apply btn bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500;
+    }
+    .btn-danger {
+        @apply btn bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-400;
+    }
+    .btn-secondary {
+        @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-indigo-400;
+    }
+    .field-label {
+        @apply mb-1.5 block text-sm font-medium text-slate-700;
+    }
+    .card {
+        @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8;
+    }
+    .badge-indigo {
+        @apply badge bg-indigo-50 text-indigo-700;
+    }
+    .badge-slate {
+        @apply badge bg-slate-100 text-slate-600;
+    }
+    .badge-amber {
+        @apply badge bg-amber-50 text-amber-700;
+    }
+}

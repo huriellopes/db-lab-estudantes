@@ -1,0 +1,57 @@
+{% extends 'layouts/guest.twig' %}
+
+{% block content %}
+    <h1 class="mb-1 text-xl font-semibold text-slate-900">Criar conta</h1>
+    <p class="mb-6 text-sm text-slate-500">Cadastre-se como aluno ou professor e crie seus próprios schemas no MySQL.</p>
+
+    {% for error in errors %}
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
+    {% endfor %}
+
+    <form method="post" action="/register" class="space-y-4">
+        <div>
+            <label for="name" class="field-label">Nome completo</label>
+            <input type="text" id="name" name="name" value="{{ old.name }}" required autofocus class="field-input">
+        </div>
+
+        <div>
+            <label for="email" class="field-label">E-mail</label>
+            <input type="email" id="email" name="email" value="{{ old.email }}" required class="field-input">
+        </div>
+
+        <div>
+            <span class="field-label">Perfil</span>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="cursor-pointer">
+                    <input type="radio" name="role" value="aluno" class="peer sr-only" {{ old.role == 'aluno' ? 'checked' : '' }}>
+                    <div class="rounded-lg border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-600 transition-colors peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700">
+                        Aluno
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="role" value="professor" class="peer sr-only" {{ old.role == 'professor' ? 'checked' : '' }}>
+                    <div class="rounded-lg border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-600 transition-colors peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700">
+                        Professor
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <label for="password" class="field-label">Senha</label>
+            <input type="password" id="password" name="password" required minlength="6" class="field-input">
+        </div>
+
+        <div>
+            <label for="password_confirm" class="field-label">Confirmar senha</label>
+            <input type="password" id="password_confirm" name="password_confirm" required minlength="6" class="field-input">
+        </div>
+
+        <button type="submit" class="btn-primary w-full">Cadastrar</button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-slate-500">
+        Já tem conta?
+        <a href="/login" class="font-medium text-indigo-600 hover:text-indigo-700">Entrar</a>
+    </p>
+{% endblock %}
