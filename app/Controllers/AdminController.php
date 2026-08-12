@@ -44,7 +44,7 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
-        $query = TableQuery::fromParams($_GET, ['name', 'email', 'role', 'status', 'created']);
+        $query = TableQuery::fromParams($_GET, ['name', 'email', 'role', 'status', 'created', 'last_login']);
         $paginator = TableFilter::paginate(
             UserModel::allManageable(),
             $query,
@@ -55,6 +55,8 @@ final class AdminController extends Controller
                 'role' => static fn (User $u): string => $u->role->label(),
                 'status' => static fn (User $u): int => $u->active ? 1 : 0,
                 'created' => static fn (User $u): int => $u->createdAt->getTimestamp(),
+                // Quem nunca logou (lastLoginAt null) vai pro fim em qualquer direção.
+                'last_login' => static fn (User $u): int => $u->lastLoginAt?->getTimestamp() ?? -1,
             ],
             perPage: 10,
         );
