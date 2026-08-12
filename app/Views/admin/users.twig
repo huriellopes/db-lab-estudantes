@@ -33,6 +33,7 @@
                             {{ tc.sort_th('Papel', 'role', '/admin/usuarios', query) }}
                             {{ tc.sort_th('Status', 'status', '/admin/usuarios', query) }}
                             {{ tc.sort_th('Cadastrado em', 'created', '/admin/usuarios', query) }}
+                            {{ tc.sort_th('Último login', 'last_login', '/admin/usuarios', query) }}
                             <th class="py-2"></th>
                         </tr>
                     </thead>
@@ -78,6 +79,13 @@
                                     </form>
                                 </td>
                                 <td class="py-3 pr-4 text-slate-500">{{ user.createdAt|date('d/m/Y') }}</td>
+                                <td class="py-3 pr-4 text-slate-500">
+                                    {% if user.lastLoginAt %}
+                                        {{ user.lastLoginAt|date('d/m/Y H:i') }}
+                                    {% else %}
+                                        <span class="text-slate-400">Nunca</span>
+                                    {% endif %}
+                                </td>
                                 <td class="py-3">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="/admin/usuarios/{{ user.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>

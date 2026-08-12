@@ -19,6 +19,7 @@ final readonly class User
         public bool $active,
         public DateTimeImmutable $createdAt,
         public ?DateTimeImmutable $deletedAt,
+        public ?DateTimeImmutable $lastLoginAt,
     ) {
     }
 
@@ -40,6 +41,7 @@ final readonly class User
             active: (bool) $row['active'],
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             deletedAt: $row['deleted_at'] !== null ? new DateTimeImmutable((string) $row['deleted_at']) : null,
+            lastLoginAt: $row['last_login_at'] !== null ? new DateTimeImmutable((string) $row['last_login_at']) : null,
         );
     }
 }

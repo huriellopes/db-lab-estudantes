@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Models\Entities\User;
+use App\Models\RememberToken;
+use App\Models\User as UserModel;
 use App\Support\AuthenticatedUser;
 use App\Support\Crypto;
 use App\Support\Policy;
+use App\Support\RequestScheme;
 
 final class Auth
 {
+    /** Nome do cookie de "lembrar de mim" — separado do cookie de sessão do PHP. */
+    private const REMEMBER_COOKIE = 'remember_token';
     public static function check(): bool
     {
         return self::user() !== null;
@@ -53,6 +58,60 @@ final class Auth
         }
     }
 
+    /**
+     * Chamado só quando a pessoa marca "Manter conectado" no login — emite um token novo
+     * (App\Models\RememberToken) e guarda num cookie separado do de sessão, próprio pra
+     * sobreviver ao navegador fechar (a sessão do PHP em si nunca teve "lembrar", ver
+     * session_set_cookie_params em public/index.php).
+     */
+    public static function remember(int $userId): void
+    {
+        self::setRememberCookie(RememberToken::issueFor($userId));
+    }
+
+    /**
+     * Se não há sessão ativa mas existe um cookie "lembrar de mim" válido, reabre a
+     * sessão sozinha (sem pedir senha) e troca o token por um novo (ver
+     * RememberToken::rotate — fecha a janela de uso caso o cookie tenha vazado). Chamado
+     * uma vez só, no bootstrap (public/index.php) antes do roteamento — assim check()/
+     * user() continuam uma leitura pura da sessão, sem efeito colateral escondido em
+     * todo lugar que os chama.
+     *
+     * De propósito NÃO cacheia a senha MySQL (Auth::login() sem $plainPassword): quem
+     * abriu a sessão foi o cookie, não a pessoa digitando a senha — o console SQL do
+     * dashboard só volta a funcionar depois de um login de verdade (mensagem já existente
+     * em SqlConsoleController cobre esse caso).
+     */
+    public static function attemptRememberLogin(): void
+    {
+        if (self::check()) {
+            return;
+        }
+
+        $plainToken = $_COOKIE[self::REMEMBER_COOKIE] ?? null;
+        if (!is_string($plainToken) || $plainToken === '') {
+            return;
+        }
+
+        $record = RememberToken::findValid($plainToken);
+        if ($record === null) {
+            self::clearRememberCookie();
+
+            return;
+        }
+
+        $user = UserModel::find($record->userId);
+        if ($user === null || !$user->active) {
+            self::clearRememberCookie();
+
+            return;
+        }
+
+        self::login($user);
+        UserModel::touchLastLogin($user->id);
+        self::setRememberCookie(RememberToken::rotate($record->id, $record->userId));
+    }
+
     /** Chamado depois que a pessoa troca a própria senha, pra manter o cache em dia. */
     public static function refreshMysqlPassword(string $plainPassword): void
     {
@@ -73,6 +132,14 @@ final class Auth
 
     public static function logout(): void
     {
+        $plainToken = $_COOKIE[self::REMEMBER_COOKIE] ?? null;
+        if (is_string($plainToken) && $plainToken !== '') {
+            // Só derruba o token DESSE dispositivo — logout num navegador não desconecta
+            // os outros (ver App\Models\RememberToken).
+            RememberToken::revoke($plainToken);
+        }
+        self::clearRememberCookie();
+
         $_SESSION = [];
         session_destroy();
     }
@@ -128,5 +195,30 @@ final class Auth
         http_response_code(403);
         echo View::render('errors/403');
         exit;
+    }
+
+    /** Mesmas flags de segurança do cookie de sessão (ver public/index.php): HttpOnly,
+     *  SameSite=Lax e Secure só quando a requisição já chegou por HTTPS. */
+    private static function setRememberCookie(string $plainToken): void
+    {
+        setcookie(self::REMEMBER_COOKIE, $plainToken, [
+            'expires' => time() + RememberToken::TTL_DAYS * 24 * 60 * 60,
+            'path' => '/',
+            'httponly' => true,
+            'secure' => RequestScheme::isHttps($_SERVER),
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    private static function clearRememberCookie(): void
+    {
+        setcookie(self::REMEMBER_COOKIE, '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'httponly' => true,
+            'secure' => RequestScheme::isHttps($_SERVER),
+            'samesite' => 'Lax',
+        ]);
+        unset($_COOKIE[self::REMEMBER_COOKIE]);
     }
 }

@@ -80,6 +80,12 @@ final class AuthController extends Controller
                 $errors[] = 'Esta conta está desativada. Fale com um professor ou admin.';
             } else {
                 Auth::login($user, $password);
+                User::touchLastLogin($user->id);
+
+                if (($_POST['remember'] ?? null) === '1') {
+                    Auth::remember($user->id);
+                }
+
                 $this->redirect('/dashboard');
             }
         }

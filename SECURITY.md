@@ -273,6 +273,29 @@ agora.
   estiver configurado — só loga e segue (dev/instâncias novas funcionam sem SMTP; o fluxo
   de reset fica inoperante até alguém preencher isso).
 
+## "Manter conectado" (remember-me)
+
+- Checkbox opcional no login. Token de 256 bits (`random_bytes(32)`), guardado no banco só
+  como hash (sha256, `App\Models\RememberToken`) — mesmo padrão do reset de senha. Cookie
+  **separado** do de sessão do PHP (`remember_token`), `HttpOnly` + `SameSite=Lax` sempre,
+  `Secure` quando a requisição chega por HTTPS de verdade — mesmas flags do cookie de
+  sessão (`App\Support\RequestScheme`).
+- Validade de 30 dias (`RememberToken::TTL_DAYS`), mas **rotativo**: toda vez que o cookie é
+  usado pra reabrir sessão sozinho (`Auth::attemptRememberLogin()`, chamado uma vez no
+  bootstrap de `public/index.php`), o token é trocado por um novo — se o cookie vazar,
+  quem roubou só consegue usar até a próxima vez que a pessoa dona da conta abrir o site;
+  depois disso o token roubado já não existe mais.
+- Um token por dispositivo/navegador (ao contrário do reset de senha, que invalida
+  qualquer token anterior) — múltiplas sessões "lembradas" simultâneas são esperadas
+  (celular, notebook do trabalho...). Logout derruba só o token do dispositivo atual.
+- De propósito **não** cacheia a senha MySQL (`Auth::login()` sem `$plainPassword`) quando
+  a sessão é reaberta pelo cookie: quem autenticou foi o cookie, não a pessoa digitando a
+  senha — o console SQL do dashboard continua exigindo um login de verdade pra funcionar
+  (mensagem já existente em `SqlConsoleController` cobre esse caso).
+- Conta desativada entre uma visita e outra: `attemptRememberLogin()` confere `active`
+  antes de reabrir a sessão, então desativar uma conta já barra o cookie dela também, sem
+  precisar revogar o token manualmente.
+
 ## Vazamento de erro (corrigido)
 
 Confirmado na prática (uma exceção de teste, provisória, revertida em seguida): sem
@@ -354,6 +377,48 @@ intencional) agora passam por `Controller::genericError($action, $e)`: loga o er
 (`error_log`, mesmo destino de sempre) e devolve uma mensagem genérica no padrão já usado
 ("Não foi possível {$action}. Tente de novo em instantes."). Detalhe de MySQL/PDO
 (estrutura de tabela, nome de constraint, etc.) não chega mais no navegador.
+
+## Disponibilidade (uptime) em produção — o que foi feito e o que não dá pra prometer
+
+Pedido explícito: "garanta que essa aplicação jamais caia, fique sempre 24/7 no ar". Não
+tenho acesso SSH direto ao servidor (as credenciais de deploy existem só como secret do
+GitHub Actions, ver `.github/workflows/deploy.yml`) — tudo aqui é feito via mudança no
+repo, que só chega em produção no próximo deploy (`dev` → `main`, disparado por quem
+mergeia). E nenhum sistema consegue prometer 100% de uptime de verdade — o que dá pra
+fazer é reduzir bastante a chance e o tempo de uma queda:
+
+- **Rotação de log** (`docker-compose.prod.yml` e `docker-compose.yml`, todos os
+  serviços): sem isso, o log de cada container cresce sem limite — em meses/anos de
+  uptime, disco cheio já derrubou servidor inteiro em outros contextos (não só esse app —
+  o Contabo hospeda vários projetos em `/apps/*`). Limitado a 10MB × 3 arquivos por
+  serviço.
+- **`autoheal`** (container novo, `willfarrell/autoheal`): reinicia sozinho `mysql` ou
+  `app` se o `HEALTHCHECK` do Docker marcar "unhealthy" — cobre o caso de um processo
+  travado mas ainda "vivo" (php-fpm engasgado, por exemplo), que o `restart: unless-
+  stopped` sozinho não pega (só reage a o processo morrer de vez). Precisa de acesso ao
+  socket do Docker (`/var/run/docker.sock`) pra poder reiniciar containers — na prática
+  equivalente a root no host; aceito de propósito, decisão confirmada explicitamente
+  antes de aplicar.
+- **`restart: unless-stopped`** já existia em todos os serviços — cobre crash do processo
+  e reboot do host (volta sozinho, contanto que ninguém tenha parado manualmente antes).
+
+**Avaliado e não aplicado — precisa de mais informação**: limite de CPU/memória
+(`deploy.resources.limits`) em produção, pro contrário também valer (esse app sozinho não
+consumir todo o servidor e derrubar os outros projetos que moram lá, nem ser derrubado por
+eles). Não apliquei um número às cegas porque errar pra menos faria o próprio app cair sob
+uso normal — exatamente o oposto do pedido. Falta saber o tamanho real do VPS (RAM/CPU
+total) pra calibrar isso direito; documentado aqui como pendência.
+
+**Fora do alcance de uma mudança no repo** (dependem de acesso direto ao servidor ou de
+serviço externo — nenhum dos dois eu tenho aqui):
+- Confirmar se o `docker.service` inicia sozinho no boot do host (normalmente já vem
+  assim numa instalação padrão do Docker, mas não dá pra confirmar sem acessar a máquina).
+- Monitoramento/alerta externo (ex.: UptimeRobot, Better Uptime) — avisa alguém quando o
+  site sai do ar de verdade, o que nenhuma das medidas acima faz sozinha. Precisa de uma
+  conta/serviço terceiro escolhido por quem administra.
+- Nginx Proxy Manager (fora deste repo) é quem termina o TLS e expõe o app pro público —
+  se ele cair, o app fica inacessível mesmo saudável por dentro; a resiliência dele não
+  está coberta aqui.
 
 ## Não coberto por esta auditoria (próximos passos recomendados)
 

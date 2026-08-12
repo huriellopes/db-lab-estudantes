@@ -166,6 +166,13 @@ final class User
         $stmt->execute([$active ? 1 : 0, $id]);
     }
 
+    /** Chamado a cada login (normal ou via cookie "lembrar de mim") — exibido pro admin. */
+    public static function touchLastLogin(int $id): void
+    {
+        $stmt = Database::connection()->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?');
+        $stmt->execute([$id]);
+    }
+
     public static function softDelete(int $id): void
     {
         $stmt = Database::connection()->prepare('UPDATE users SET deleted_at = NOW() WHERE id = ?');
