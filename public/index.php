@@ -13,6 +13,7 @@ use App\Controllers\SchemaController;
 use App\Controllers\SqlConsoleController;
 use App\Controllers\StudentController;
 use App\Core\Router;
+use App\Support\RequestScheme;
 use Dotenv\Dotenv;
 
 // Só é usado fora do Docker (ex.: `php -S localhost:8000 -t public`), já que em
@@ -21,6 +22,17 @@ if (file_exists(dirname(__DIR__) . '/.env')) {
     Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
 }
 
+// Cookie de sessão travado: HttpOnly (JS não lê), SameSite=Lax (mitiga CSRF cross-site
+// básico) e Secure só quando a requisição realmente chegou por HTTPS (RequestScheme —
+// necessário porque o TLS termina no Nginx Proxy Manager, não no PHP-FPM; em dev, sobre
+// HTTP puro, Secure ligado quebraria o cookie por completo).
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'httponly' => true,
+    'secure' => RequestScheme::isHttps($_SERVER),
+    'samesite' => 'Lax',
+]);
 session_start();
 
 $router = new Router();
