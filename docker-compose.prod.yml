@@ -31,6 +31,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # Sem isso, o log do container (docker logs) cresce sem limite — em anos de uptime,
+    # já vi disco cheio derrubar servidor inteiro (todos os apps de /apps/*, não só esse).
+    # 10MB x 3 arquivos por serviço é bastante pra debugar sem virar risco de disco cheio.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - dblab-net
 
@@ -50,6 +58,11 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - dblab-net
       - proxy
@@ -62,6 +75,11 @@ services:
     container_name: dblab-app
     restart: unless-stopped
     env_file: .env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       DB_HOST: mysql
       DB_NAME: ${MYSQL_DATABASE}
@@ -87,6 +105,22 @@ services:
     networks:
       - dblab-net
       - proxy
+
+  # Reinicia sozinho qualquer container marcado "unhealthy" pelo HEALTHCHECK do Docker —
+  # sem isso, `restart: unless-stopped` só age se o processo cair de vez (crash), não se
+  # ele travar mas continuar "vivo" (ex.: php-fpm engasgado, nginx no ar mas sem responder
+  # rota nenhuma). Só reage a `mysql` e `app` (únicos com HEALTHCHECK definido); precisa
+  # do socket do Docker pra poder reiniciar containers — acesso equivalente a root no host,
+  # aceito de propósito aqui em troca de resiliência real (ver SECURITY.md).
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: dblab-autoheal
+    restart: always
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_INTERVAL: 30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 # Volumes com nome fixo (persistem através de renomeações da pasta do compose).
 volumes:
