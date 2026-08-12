@@ -1,0 +1,24 @@
+name: Deploy
+
+# Só dispara depois que o workflow "CI" terminar com sucesso NA main — ou seja, só depois
+# que testes, padrão de código e o build do Vite/Docker passarem. dev nunca deploya.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy em produção (Contabo)
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    environment: production
+    steps:
+      - name: Rodar deploy.sh via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: /apps/db-lab-estudantes/deploy.sh

@@ -16,10 +16,12 @@
             Seu login MySQL (usado também no phpMyAdmin) é
             <code class="rounded bg-white px-1.5 py-0.5 font-mono text-indigo-700">{{ user.mysqlLogin }}</code>,
             com a mesma senha da sua conta aqui na plataforma.
-            <a href="{{ pmaUrl }}" target="_blank" rel="noopener" class="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900">
-                Abrir phpMyAdmin →
-            </a>
-            ou
+            {% if pmaUrl %}
+                <a href="{{ pmaUrl }}" target="_blank" rel="noopener" class="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900">
+                    Abrir phpMyAdmin →
+                </a>
+                ou
+            {% endif %}
             <a href="/conectar" class="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900">
                 conectar por um SGBD local →
             </a>
@@ -74,12 +76,14 @@
                                 <p class="text-xs text-slate-400">Criado em {{ schema.createdAt|date('d/m/Y') }} às {{ schema.createdAt|date('H:i') }}</p>
                             </div>
                             <div class="flex shrink-0 items-center gap-2">
-                                <a
-                                    href="{{ pmaUrl }}/index.php?route=/database/structure&db={{ schema.dbName|url_encode }}"
-                                    target="_blank" rel="noopener" class="btn-secondary !px-3 !py-1.5 text-xs"
-                                >
-                                    Abrir
-                                </a>
+                                {% if pmaUrl %}
+                                    <a
+                                        href="{{ pmaUrl }}/index.php?route=/database/structure&db={{ schema.dbName|url_encode }}"
+                                        target="_blank" rel="noopener" class="btn-secondary !px-3 !py-1.5 text-xs"
+                                    >
+                                        Abrir
+                                    </a>
+                                {% endif %}
                                 <form
                                     x-data="ajaxForm({
                                         confirmTitle: 'Excluir schema',

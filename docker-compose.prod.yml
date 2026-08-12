@@ -1,0 +1,80 @@
+# Stack de produção (Contabo) — mesmo padrão dos outros projetos em /apps/*:
+# a app NÃO expõe porta pública, é publicada pelo Nginx Proxy Manager já existente
+# (conectando o container 'proxy' à rede 'dblab-net': docker network connect dblab-net proxy).
+# MySQL e phpMyAdmin ficam só em 127.0.0.1 — acesso externo apenas via túnel SSH
+# (a própria app já ensina isso em /conectar).
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dblab-mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - dblab-mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    # Porta própria (13306) pra não colidir com outros bancos do servidor.
+    ports:
+      - "127.0.0.1:${MYSQL_PORT}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dblab-net
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: dblab-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "127.0.0.1:${PMA_PORT}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - dblab-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dblab-app:latest
+    container_name: dblab-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: mysql
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
+      # phpMyAdmin não é público em produção — sem PMA_URL a app some o link e mostra
+      # só "conectar por um SGBD local" (túnel SSH), que já cobre o phpMyAdmin também.
+      MYSQL_EXTERNAL_PORT: ${MYSQL_PORT}
+      DB_PUBLIC_HOST: ${DB_PUBLIC_HOST}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "80"
+    networks:
+      - dblab-net
+
+# Volumes com nome fixo (persistem através de renomeações da pasta do compose).
+volumes:
+  dblab-mysql-data:
+    name: dblab-mysql-data
+
+networks:
+  dblab-net:
+    name: dblab-net
