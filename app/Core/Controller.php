@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Support\FlashType;
+use Throwable;
 
 abstract class Controller
 {
@@ -42,5 +43,21 @@ abstract class Controller
 
         Flash::set($success ? FlashType::Success : FlashType::Error, $message);
         $this->redirect($redirectTo);
+    }
+
+    /**
+     * Loga o erro real (detalhe de PDO/MySQL nunca deve chegar no navegador — pode
+     * revelar estrutura do banco) e devolve uma mensagem genérica no padrão já usado em
+     * toda a app ("Não foi possível {$action}."). Uso: `$this->respond(false,
+     * $this->genericError('criar o schema', $e), '/dashboard');`
+     *
+     * Exceção deliberada: App\Controllers\SqlConsoleController mostra o erro real do
+     * MySQL de propósito (é um console SQL — o erro é o produto, ver SECURITY.md).
+     */
+    protected function genericError(string $action, Throwable $e): string
+    {
+        error_log(static::class . " — não foi possível {$action}: {$e->getMessage()}");
+
+        return "Não foi possível {$action}. Tente de novo em instantes.";
     }
 }

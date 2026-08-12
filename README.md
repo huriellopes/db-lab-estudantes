@@ -74,8 +74,9 @@ docker-compose.prod.yml       # produção (Contabo) — sem porta pública na a
 docker/
   nginx.conf                    # site do nginx (fastcgi -> php-fpm)
   supervisord.conf                # gerencia nginx + php-fpm dentro do container
-  app-entrypoint.sh                # roda `migrate` e sobe o supervisord
-  deploy.sh                         # roda NO SERVIDOR — git pull + docker compose up --build
+  php-hardening.ini                # display_errors/expose_php Off, log_errors On (stderr)
+  app-entrypoint.sh                 # roda `migrate` e sobe o supervisord
+  deploy.sh                          # roda NO SERVIDOR — git pull + docker compose up --build
 .github/workflows/
   ci.yml                    # testes, padrão de código, build (toda branch/PR pra dev e main)
   deploy.yml                 # SSH no Contabo + deploy.sh (só depois do CI passar na main)

@@ -112,7 +112,7 @@ final class AdminController extends Controller
 
                 $this->respond(true, "Usuário \"{$name}\" criado.", '/admin/usuarios');
             } catch (Throwable $e) {
-                $errors[] = 'Não foi possível criar o usuário: ' . $e->getMessage();
+                $errors[] = $this->genericError('criar o usuário', $e);
             }
         }
 
@@ -186,7 +186,7 @@ final class AdminController extends Controller
                 : "Conta de {$target->name} reativada.";
             $this->respond(true, $message, '/admin/usuarios');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível atualizar o status: ' . $e->getMessage(), '/admin/usuarios');
+            $this->respond(false, $this->genericError('atualizar o status', $e), '/admin/usuarios');
         }
     }
 
@@ -205,7 +205,7 @@ final class AdminController extends Controller
             UserManager::resetPassword($target, $newPassword);
             $this->respond(true, "Senha de {$target->name} atualizada.", '/admin/usuarios');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível trocar a senha: ' . $e->getMessage(), '/admin/usuarios');
+            $this->respond(false, $this->genericError('trocar a senha', $e), '/admin/usuarios');
         }
     }
 
@@ -219,7 +219,7 @@ final class AdminController extends Controller
             UserManager::softDelete($target);
             $this->respond(true, "Conta de {$target->name} excluída (dá pra restaurar na lixeira).", '/admin/usuarios');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível excluir a conta: ' . $e->getMessage(), '/admin/usuarios');
+            $this->respond(false, $this->genericError('excluir a conta', $e), '/admin/usuarios');
         }
     }
 
@@ -261,7 +261,7 @@ final class AdminController extends Controller
             UserManager::restore($target);
             $this->respond(true, "Conta de {$target->name} restaurada.", '/admin/usuarios/lixeira');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível restaurar a conta: ' . $e->getMessage(), '/admin/usuarios/lixeira');
+            $this->respond(false, $this->genericError('restaurar a conta', $e), '/admin/usuarios/lixeira');
         }
     }
 
@@ -314,7 +314,7 @@ final class AdminController extends Controller
             SchemaRecord::delete($record->id);
             $this->respond(true, "Schema \"{$dbName}\" removido.", '/admin/schemas');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível remover o schema: ' . $e->getMessage(), '/admin/schemas');
+            $this->respond(false, $this->genericError('remover o schema', $e), '/admin/schemas');
         }
     }
 
