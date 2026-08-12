@@ -8,6 +8,7 @@ use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\ConnectionController;
 use App\Controllers\DashboardController;
+use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\SchemaController;
 use App\Controllers\SqlConsoleController;
@@ -68,6 +69,10 @@ $router->post('/login', [AuthController::class, 'login']);
 $router->get('/register', [AuthController::class, 'showRegister']);
 $router->post('/register', [AuthController::class, 'register']);
 $router->post('/logout', [AuthController::class, 'logout']);
+$router->get('/esqueci-senha', [PasswordResetController::class, 'showForgot']);
+$router->post('/esqueci-senha', [PasswordResetController::class, 'sendResetLink']);
+$router->get('/redefinir-senha/{token}', [PasswordResetController::class, 'showReset']);
+$router->post('/redefinir-senha', [PasswordResetController::class, 'resetPassword']);
 
 $router->get('/dashboard', [DashboardController::class, 'index']);
 $router->post('/schemas', [SchemaController::class, 'store']);

@@ -92,6 +92,20 @@ Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão aci
 - **Cookie de sessão**: `HttpOnly` + `SameSite=Lax` sempre, `Secure` quando a requisição
   chega por HTTPS de verdade (`App\Support\RequestScheme`, via `X-Forwarded-Proto`).
 
+## Redefinição de senha por e-mail (self-service)
+
+- Token de 256 bits (`random_bytes(32)`), guardado no banco só como hash (sha256,
+  `App\Models\PasswordResetToken`) — o texto puro só existe no e-mail enviado. Expira em
+  1h, uso único (`used_at`), e pedir um novo invalida qualquer token anterior da mesma
+  conta automaticamente.
+- Resposta de `/esqueci-senha` é **sempre a mesma mensagem**, exista o e-mail ou não —
+  evita enumeração de contas por aqui (confirmado manualmente: e-mail real e inexistente
+  devolvem o mesmo 200 com o mesmo texto).
+- Rate limit próprio (por IP) além do token em si já ser inadivinhável.
+- `App\Core\Mailer` (SMTP via PHPMailer) não derruba a aplicação se `MAIL_HOST` não
+  estiver configurado — só loga e segue (dev/instâncias novas funcionam sem SMTP; o fluxo
+  de reset fica inoperante até alguém preencher isso).
+
 ## Não coberto por esta auditoria (próximos passos recomendados)
 
 - Cabeçalhos de segurança HTTP (CSP, `X-Frame-Options`, etc.) não configurados no nginx.
