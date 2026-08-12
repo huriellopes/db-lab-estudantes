@@ -17,6 +17,7 @@
                 x-data="ajaxForm()" @submit.prevent="submit"
                 method="post" action="/profile" class="space-y-4"
             >
+                {{ csrf_field() }}
                 <div>
                     <label for="name" class="field-label">Nome</label>
                     <input type="text" id="name" name="name" value="{{ user.name }}" required minlength="2" class="field-input">
@@ -40,6 +41,7 @@
                 x-data="ajaxForm({ onSuccess: () => $el.reset() })" @submit.prevent="submit"
                 method="post" action="/profile/password" class="space-y-4"
             >
+                {{ csrf_field() }}
                 {{ forms.password_field('current_password', 'current_password', 'Senha atual') }}
                 {{ forms.password_field('new_password', 'new_password', 'Nova senha', 6) }}
                 {{ forms.password_field('new_password_confirm', 'new_password_confirm', 'Confirmar nova senha', 6) }}
@@ -67,6 +69,7 @@
                 @submit.prevent="submit"
                 method="post" action="/profile/mysql-login" class="flex flex-col gap-3 sm:flex-row sm:items-end"
             >
+                {{ csrf_field() }}
                 <div class="flex-1">
                     <label for="mysql_login" class="field-label">Novo login</label>
                     <input

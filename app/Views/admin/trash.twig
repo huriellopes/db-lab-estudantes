@@ -54,6 +54,7 @@
                                             @submit.prevent="submit"
                                             method="post" action="/admin/usuarios/{{ user.id }}/restaurar"
                                         >
+                                            {{ csrf_field() }}
                                             <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">
                                                 <span x-show="!loading">Restaurar</span>
                                                 <span x-show="loading" x-cloak>Restaurando…</span>

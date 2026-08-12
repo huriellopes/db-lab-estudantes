@@ -8,11 +8,14 @@ use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\ConnectionController;
 use App\Controllers\DashboardController;
+use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\SchemaController;
 use App\Controllers\SqlConsoleController;
 use App\Controllers\StudentController;
 use App\Core\Router;
+use App\Core\View;
+use App\Support\Csrf;
 use App\Support\RequestScheme;
 use Dotenv\Dotenv;
 
@@ -35,6 +38,29 @@ session_set_cookie_params([
 ]);
 session_start();
 
+// Toda requisição POST precisa do token CSRF da própria sessão — via campo _csrf (forms
+// clássicos, ver csrf_field() no Twig) ou header X-CSRF-Token (Axios, ver resources/js/app.js).
+// Verificado aqui, antes do roteamento, pra não precisar repetir em cada controller.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $submitted = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+
+    if (!Csrf::verify(is_string($submitted) ? $submitted : null)) {
+        http_response_code(419);
+
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Sessão expirada — recarregue a página e tente de novo.',
+            ]);
+        } else {
+            echo View::render('errors/419');
+        }
+
+        exit;
+    }
+}
+
 $router = new Router();
 
 $router->get('/', [AuthController::class, 'redirectHome']);
@@ -43,6 +69,10 @@ $router->post('/login', [AuthController::class, 'login']);
 $router->get('/register', [AuthController::class, 'showRegister']);
 $router->post('/register', [AuthController::class, 'register']);
 $router->post('/logout', [AuthController::class, 'logout']);
+$router->get('/esqueci-senha', [PasswordResetController::class, 'showForgot']);
+$router->post('/esqueci-senha', [PasswordResetController::class, 'sendResetLink']);
+$router->get('/redefinir-senha/{token}', [PasswordResetController::class, 'showReset']);
+$router->post('/redefinir-senha', [PasswordResetController::class, 'resetPassword']);
 
 $router->get('/dashboard', [DashboardController::class, 'index']);
 $router->post('/schemas', [SchemaController::class, 'store']);

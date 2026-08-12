@@ -21,6 +21,10 @@ num SGBD local.
 
 - No cadastro, a pessoa escolhe seu **username** — vira o login MySQL/phpMyAdmin *e* uma
   forma alternativa de logar na própria app (login aceita e-mail **ou** username).
+- **Esqueceu a senha?** `/esqueci-senha` manda um link por e-mail (válido por 1h, uso
+  único) pra escolher uma senha nova — sem precisar de admin/professor pra resetar.
+  Precisa de SMTP configurado (`MAIL_HOST` etc. no `.env`); sem isso, a app não quebra, só
+  não envia o e-mail (ver `App\Core\Mailer`).
 - No painel (`/dashboard`), a pessoa cria schemas: a aplicação executa `CREATE DATABASE` e
   concede `GRANT ALL PRIVILEGES` **apenas** naquele schema para a conta MySQL da pessoa.
 - Em "Meu perfil" dá pra trocar o nome, a senha (atualiza app + MySQL juntos) e o username/
@@ -88,16 +92,19 @@ database/
   factories/       # UserFactory (Faker)
 
 app/
-  Controllers/    # Auth, Dashboard, Schema, Profile, Connection, SqlConsole, Student (professor), Admin
+  Controllers/    # Auth, PasswordReset, Dashboard, Schema, Profile, Connection, SqlConsole,
+                    Student (professor), Admin
   Core/            # Router (com {id} dinâmico), Controller, View (Twig), Vite, Database (PDO,
-                    incl. connectAs() pro console SQL), Migration/Migrator/Console, Seeder,
-                    Auth (sessão + papéis + senha MySQL cacheada), Flash, Config
+                    incl. connectAs() pro console SQL), Mailer (PHPMailer/SMTP),
+                    Migration/Migrator/Console, Seeder, Auth (sessão + papéis + senha MySQL
+                    cacheada), Flash, Config
   Support/         # Lógica pura, sem I/O — o que os testes do Pest cobrem:
                     Role (enum), AuthenticatedUser (com shortName()), AdminStats,
                     FlashType/FlashMessage, MysqlIdentifier, RegistrationValidator,
                     SchemaNameBuilder, Policy, TableQuery/Paginator/TableFilter (busca/
                     ordenação/paginação das listagens), Crypto (libsodium, senha MySQL em
-                    cache de sessão), SqlScriptSplitter (console SQL)
+                    cache de sessão), SqlScriptSplitter (console SQL), Csrf, RateLimitDecision,
+                    ClientIp, RequestScheme
   Models/
     Entities/          # DTOs readonly tipados: User, Schema, SchemaWithOwner, StudentSummary
     User.php, SchemaRecord.php  # acesso às tabelas da própria app, devolvem as Entities
@@ -273,11 +280,11 @@ Manager como proxy reverso já existente, banco só em `127.0.0.1` sem exposiç�
     nada mais. Guardada nos secrets do repo (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
 - **`.env` de produção** fica só no servidor (`/apps/db-lab-estudantes/.env`, nunca no git)
   — veja `.env.production.example` pro formato (inclui `PMA_URL` e `APP_KEY`).
-- **Passo manual pendente** (fora do escopo do que a automação cobre, feito uma vez pela UI
-  do NPM — acesse via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`, depois
-  `http://localhost:8181`): registrar o proxy host do phpMyAdmin (`pma.dblab.217.76.60.113.sslip.io`
-  → container `dblab-phpmyadmin:80`, com Let's Encrypt), e preencher `PMA_URL`/`APP_KEY` no
-  `.env` real do servidor antes do próximo deploy.
+- **phpMyAdmin público**: `https://pma.dblab.217.76.60.113.sslip.io` (proxy host próprio no
+  NPM, Let's Encrypt) — login com o mesmo usuário/senha MySQL de cada pessoa. A UI do NPM em
+  si (pra mexer nos proxy hosts) continua só via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`,
+  depois `http://localhost:8181` — não é algo que a automação de deploy cobre, é feito uma vez
+  na mão quando um novo proxy host precisa ser criado.
 
 ## Testes (Pest)
 
