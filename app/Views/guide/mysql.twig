@@ -22,6 +22,32 @@
         </div>
     </div>
 
+    <div class="card mb-6">
+        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
+        <p class="mb-4 text-sm text-slate-500">
+            Neste laboratório é só usar <a href="/conectar" class="font-medium text-indigo-600 hover:text-indigo-700">a página "Conectar"</a>
+            com seu login/senha daqui — mas de forma geral, num MySQL qualquer:
+        </p>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <h3 class="field-label">Linha de comando</h3>
+                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>mysql -h HOST -P PORTA -u USUARIO -p</code></pre>
+            </div>
+            <div>
+                <h3 class="field-label">Ferramentas GUI comuns</h3>
+                <p class="text-sm text-slate-600">MySQL Workbench, DBeaver, TablePlus, DataGrip/PhpStorm, HeidiSQL, phpMyAdmin.</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h3 class="field-label">Via código (driver PDO do PHP, como esta app usa)</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
+    "mysql:host=HOST;port=PORTA;dbname=SCHEMA;charset=utf8mb4",
+    "USUARIO",
+    "SENHA"
+);</code></pre>
+        </div>
+    </div>
+
     <div class="card mb-6 space-y-4">
         <span class="badge-indigo">Iniciante</span>
 
@@ -55,6 +81,16 @@
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                No dia a dia: conecte com um cliente (linha de comando ou GUI, ver acima), escolha o schema com
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">USE nome_do_schema;</code> (ou já selecione ele na hora de conectar), e rode os comandos. Pra apagar
+                tudo de uma tabela sem apagar a tabela em si, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">TRUNCATE TABLE nome;</code> é mais rápido que
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE FROM nome;</code> sem <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code> (mas não dá pra desfazer com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROLLBACK</code>).
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- AUTO_INCREMENT gera o id sozinho a cada INSERT
 CREATE TABLE tarefa (
@@ -67,6 +103,11 @@ INSERT INTO tarefa (titulo) VALUES ('Estudar JOIN');
 
 -- LIMIT: sintaxe do MySQL pra paginar resultado (outros bancos usam OFFSET/FETCH)
 SELECT * FROM tarefa ORDER BY id DESC LIMIT 10;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- SHOW: comandos exclusivos do MySQL pra "olhar" o banco por dentro
+SHOW DATABASES;
+SHOW TABLES;
+DESCRIBE tarefa;          -- mostra as colunas da tabela
+SHOW CREATE TABLE tarefa; -- mostra o CREATE TABLE completo, como ele existe hoje</code></pre>
         </div>
     </div>
 
@@ -106,6 +147,17 @@ SELECT * FROM tarefa ORDER BY id DESC LIMIT 10;</code></pre>
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Ao desenhar uma tabela nova, pense primeiro nas chaves estrangeiras (o que essa linha depende
+                pra existir?) antes de criar os índices — o MySQL já cria um índice automático em toda coluna
+                com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY</code>. Pra saber se uma consulta está lenta por falta de índice, rode <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">EXPLAIN</code>
+                na frente dela — ele mostra se o MySQL está varrendo a tabela inteira ("full scan") ou usando
+                um índice.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>CREATE TABLE matricula (
     id       INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,6 +172,11 @@ SELECT * FROM tarefa ORDER BY id DESC LIMIT 10;</code></pre>
 SELECT curso, detalhes->>'$.turno' AS turno
 FROM matricula
 WHERE detalhes->>'$.turno' = 'noite';</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- EXPLAIN: mostra como o MySQL vai executar a consulta, antes de rodar de verdade
+EXPLAIN SELECT * FROM matricula WHERE aluno_id = 42;
+
+-- Índice composto: acelera filtro/ordenação que usa as duas colunas juntas
+CREATE INDEX idx_matricula_aluno_curso ON matricula (aluno_id, curso);</code></pre>
         </div>
     </div>
 {% endblock %}

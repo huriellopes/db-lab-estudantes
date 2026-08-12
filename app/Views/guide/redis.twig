@@ -11,6 +11,27 @@
         </div>
     </div>
 
+    <div class="card mb-6">
+        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
+        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 6379. Sem "schema" — é só o servidor e, no máximo, um número de banco (0 a 15, por padrão).</p>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <h3 class="field-label">Linha de comando (redis-cli)</h3>
+                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>redis-cli -h HOST -p 6379 -a SENHA</code></pre>
+            </div>
+            <div>
+                <h3 class="field-label">Ferramentas GUI comuns</h3>
+                <p class="text-sm text-slate-600">RedisInsight (oficial, gratuita), TablePlus, Another Redis Desktop Manager.</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h3 class="field-label">Via código (extensão Redis do PHP)</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$redis = new Redis();
+$redis->connect('HOST', 6379);
+$redis->auth('SENHA');</code></pre>
+        </div>
+    </div>
+
     <div class="card mb-6 space-y-4">
         <span class="badge-indigo">Iniciante</span>
 
@@ -48,6 +69,18 @@
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Pense em Redis como um dicionário gigante: toda operação é "pega o valor dessa chave" ou "grava
+                esse valor nessa chave" — não tem <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code>, não tem consulta por "conteúdo" do valor (só
+                pelas estruturas de dado específicas, ver a seção intermediária). Um padrão comum de nome de
+                chave é <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">tipo:identificador</code> (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">sessao:abc123</code>), pra organizar sem precisar de "tabelas".
+                Sempre que a chave é temporária por natureza, defina um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">EXPIRE</code> — senão ela fica pra sempre
+                na RAM.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># SET/GET básico
 SET sessao:abc123 "usuario_id=42"
@@ -58,6 +91,12 @@ EXPIRE sessao:abc123 1800
 
 # INCR: contador atômico, base de qualquer rate-limit
 INCR tentativas_login:200.1.2.3</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># SET com expiração já embutida (equivalente a SET + EXPIRE, mas atômico)
+SET cache:ranking_prova42 "[...]" EX 300
+
+# DEL apaga uma chave; EXISTS confere se ela ainda está lá
+EXISTS sessao:abc123
+DEL sessao:abc123</code></pre>
         </div>
     </div>
 
@@ -96,6 +135,17 @@ INCR tentativas_login:200.1.2.3</code></pre>
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Escolha a estrutura pelo jeito que você vai <strong>ler</strong> o dado, não só como ele "parece"
+                naturalmente: precisa de ordem/ranking? Sorted set. Precisa de vários campos de um mesmo
+                "objeto"? Hash. Precisa só de fila FIFO? List. Usar <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SET</code> com um JSON serializado dentro
+                funciona, mas aí você perde a possibilidade de atualizar um campo só sem reescrever tudo — vale
+                a pena conhecer as estruturas antes de recorrer a isso.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># Sorted set: ranking de pontuação por prova
 ZADD ranking:prova42 950 "aluno:1"
@@ -107,6 +157,12 @@ ZREVRANGE ranking:prova42 0 9 WITHSCORES
 # Hash: um "objeto" sessão numa chave só
 HSET sessao:abc123 usuario_id 42 papel "aluno"
 HGET sessao:abc123 papel</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># List: fila simples de tarefas pra processar
+LPUSH fila:emails "enviar boas-vindas para aluno:42"
+RPOP fila:emails
+
+# Pub/Sub: publica um evento pra quem estiver ouvindo o canal
+PUBLISH notificacoes:aluno:42 "Nova nota disponível"</code></pre>
         </div>
     </div>
 {% endblock %}
