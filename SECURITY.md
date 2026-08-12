@@ -135,12 +135,39 @@ descartável, tentei violar o isolamento na mão:
 | `SHOW DATABASES` | Só `information_schema`/`performance_schema` — nem `schoolapp` nem schema de outra pessoa aparece |
 | `SHOW PROCESSLIST` / `performance_schema.processlist` | Só a própria sessão — não vê query de outros usuários |
 
-**Não corrigido, risco aceito e documentado**:
+## MySQL público (decisão explícita — sem túnel SSH)
 
-- Todas as contas MySQL (`appuser` e as pessoais) usam `@'%'` (qualquer host) — hoje sem
-  efeito prático porque o MySQL nunca é público (só `127.0.0.1` + túnel SSH), mas é uma
-  dependência total da camada de rede: se a porta for exposta publicamente por engano um
-  dia, toda conta fica alcançável de qualquer lugar, dependendo só da senha.
+A partir desta sessão, o MySQL de produção é público (`0.0.0.0:${MYSQL_PORT}`) — decisão
+pedida explicitamente, pra qualquer aluno/professor conectar direto por um SGBD local
+(TablePlus, DBeaver etc.) sem precisar abrir túnel SSH antes. Isso **reverte** uma decisão
+de segurança anterior (documentada nas sessões passadas) e reabre, de fato, riscos que
+antes eram só teóricos:
+
+- **Tráfego sem criptografia por padrão**: sem o túnel SSH, a conexão MySQL não é mais
+  automaticamente criptografada. O servidor aceita TLS (certificado autoassinado que o
+  próprio MySQL gera sozinho) se o cliente pedir, mas não é obrigatório — não forcei
+  (`require_secure_transport`) porque isso quebraria a conexão interna da própria app
+  (`Database.php`) sem retrabalho considerável. Quem usar "Use SSL" no cliente fica
+  protegido contra bisbilhotagem passiva; quem não usar, não.
+- **`@'%'` (qualquer host) agora importa de verdade** — antes um risco só teórico
+  (mitigado 100% pela rede), agora é a única barreira de rede que resta. A senha de cada
+  conta é a defesa real.
+- **Sem rate limit no nível do MySQL** — o rate limit que existe (`RateLimiter`) é só na
+  aplicação; um ataque de força bruta direto na porta 3306 não passa por ele. O MySQL em
+  si não tem lockout nativo por tentativa errada (só `max_connect_errors`, por host, que
+  não tentei ajustar pra não arriscar bloquear gente legítima atrás de NAT compartilhado).
+
+**Mitigado**: isolamento entre contas continua garantido pelos `GRANT`s do MySQL (testado
+ativamente, ver acima) — isso nunca dependeu da rede, só de cada conta só ter privilégio
+no próprio schema. Então mesmo com a porta pública, ninguém lê schema alheio.
+
+**Recomendação pra quem usa a conta**: senha forte de verdade agora importa mais do que
+antes — vale reforçar isso pros alunos/professores.
+
+## Outros pontos de configuração do MySQL
+
+- Todas as contas MySQL (`appuser` e as pessoais) usam `@'%'` (qualquer host) — ver seção
+  acima, agora é um risco ativo, não só teórico.
 - `mysql_native_password` em vez do padrão mais atual do MySQL 8
   (`caching_sha2_password`) — algoritmo de hash mais antigo, oficialmente deprecated desde
   a 8.0.34. **Tentativa de migração feita e revertida nesta sessão**: contas novas com
