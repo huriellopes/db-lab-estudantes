@@ -15,6 +15,13 @@ use App\Core\Database;
  * transação PDO deixa o estado da conexão fora de sincronia e o commit()/rollBack()
  * seguinte falha com "There is no active transaction", mesmo com a operação já persistida.
  *
+ * Sem FLUSH PRIVILEGES depois de CREATE/ALTER/RENAME USER e GRANT: esses comandos já
+ * atualizam o cache de privilégios em memória sozinhos (confirmado na prática — um usuário
+ * criado agora mesmo já consegue logar e usar o GRANT imediatamente, sem flush nenhum).
+ * FLUSH PRIVILEGES só é necessário quando alguém edita as tabelas mysql.* na mão via
+ * INSERT/UPDATE direto, o que a app nunca faz. Removido de propósito: exigia o privilégio
+ * RELOAD pro appuser sem necessidade real (ver SECURITY.md).
+ *
  * Todos os parâmetros que viram identificador (login, dbName) DEVEM ter sido validados
  * contra uma allow-list de caracteres por quem chama (ver App\Support\MysqlIdentifier e
  * App\Support\SchemaNameBuilder) — aqui eles são interpolados diretamente, porque o MySQL
@@ -28,7 +35,6 @@ final class SchemaProvisioner
         $quotedPassword = $pdo->quote($password);
 
         $pdo->exec("CREATE USER IF NOT EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}");
-        $pdo->exec('FLUSH PRIVILEGES');
     }
 
     public static function changeMysqlPassword(string $login, string $password): void
@@ -37,16 +43,12 @@ final class SchemaProvisioner
         $quotedPassword = $pdo->quote($password);
 
         $pdo->exec("ALTER USER IF EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}");
-        $pdo->exec('FLUSH PRIVILEGES');
     }
 
     /** RENAME USER preserva todos os GRANTs existentes — os schemas continuam acessíveis. */
     public static function renameMysqlAccount(string $oldLogin, string $newLogin): void
     {
-        $pdo = Database::connection();
-
-        $pdo->exec("RENAME USER '{$oldLogin}'@'%' TO '{$newLogin}'@'%'");
-        $pdo->exec('FLUSH PRIVILEGES');
+        Database::connection()->exec("RENAME USER '{$oldLogin}'@'%' TO '{$newLogin}'@'%'");
     }
 
     /** Bloqueia o login (a conta e os databases continuam intactos) — usado em desativar/soft delete. */
@@ -71,7 +73,6 @@ final class SchemaProvisioner
 
         $pdo->exec("CREATE DATABASE `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         $pdo->exec("GRANT ALL PRIVILEGES ON `{$dbName}`.* TO '{$mysqlLogin}'@'%'");
-        $pdo->exec('FLUSH PRIVILEGES');
     }
 
     public static function dropDatabase(string $dbName): void
