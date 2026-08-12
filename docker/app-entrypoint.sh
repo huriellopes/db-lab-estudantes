@@ -16,4 +16,4 @@ done
 
 echo "Migrations em dia."
 
-exec apache2-foreground
+exec supervisord -c /etc/supervisor/conf.d/supervisord.conf
