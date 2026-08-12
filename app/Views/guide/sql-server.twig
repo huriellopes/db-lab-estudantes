@@ -1,0 +1,109 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🪟</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">SQL Server</h1>
+            <p class="mt-1 text-sm text-slate-500">Relacional da Microsoft, forte no ecossistema .NET/Windows.</p>
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Banco de dados relacional da Microsoft. Assim como o Oracle, é comercial (tem uma edição gratuita
+                limitada, a Express), historicamente mais forte no mundo Windows, mas hoje roda em Linux e
+                containers também.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                A mesma coisa de qualquer relacional, com integração forte ao ecossistema Microsoft: aplicações
+                .NET/C#, Active Directory pra autenticação, e uma suíte de ferramentas de BI (SSRS pra relatório,
+                SSAS pra cubos analíticos, SSIS pra ETL) que muitas empresas já usam.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Times/empresas já dentro do ecossistema Microsoft (.NET, Azure, Active Directory), ou quando as
+                ferramentas de BI integradas (relatórios, dashboards, ETL) pesam na decisão. Fora desse contexto,
+                a escolha costuma ser mais sobre preferência/contrato do que sobre um recurso técnico que só o
+                SQL Server tem.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- IDENTITY é o "AUTO_INCREMENT" do SQL Server
+CREATE TABLE tarefa (
+    id     INT IDENTITY(1,1) PRIMARY KEY,
+    titulo NVARCHAR(150) NOT NULL
+);
+
+INSERT INTO tarefa (titulo) VALUES (N'Estudar T-SQL');
+
+-- TOP: sintaxe do SQL Server pra limitar resultado (vem ANTES das colunas, não depois)
+SELECT TOP 10 * FROM tarefa ORDER BY id DESC;</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                <strong>T-SQL</strong> (Transact-SQL) é a extensão procedural do SQL Server — parecida em
+                objetivo com o PL/SQL do Oracle: variáveis, controle de fluxo, <em>stored procedures</em> e
+                <em>triggers</em> rodando dentro do banco.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>Stored procedure</strong> — lógica reutilizável no banco, chamada por nome em vez de reenviar SQL toda vez.</li>
+                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code></strong> — um comando só pra "insere se não existe, atualiza se já existe" (upsert), sem precisar de duas queries separadas.</li>
+                <li><strong>Índice columnstore</strong> — pensado pra consultas analíticas (somar/agregar muitas linhas), bem diferente de um índice comum otimizado pra achar poucas linhas rápido.</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Stored procedure quando a mesma lógica é chamada de vários lugares (aplicação, job agendado,
+                relatório) e faz sentido centralizar. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code> quando o padrão "upsert" é comum no
+                sistema (ex.: sincronizar dados vindos de outro sistema). Columnstore quando a tabela é grande e
+                as consultas são majoritariamente analíticas (somas, médias) em vez de buscar registros
+                individuais.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Stored procedure simples em T-SQL
+CREATE PROCEDURE MatricularAluno
+    @AlunoId INT,
+    @CursoId INT
+AS
+BEGIN
+    INSERT INTO matricula (aluno_id, curso_id, criado_em)
+    VALUES (@AlunoId, @CursoId, GETDATE());
+END;
+GO
+
+-- Chamando a procedure
+EXEC MatricularAluno @AlunoId = 1, @CursoId = 10;</code></pre>
+        </div>
+    </div>
+{% endblock %}

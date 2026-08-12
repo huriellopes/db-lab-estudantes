@@ -1,0 +1,107 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🍃</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">MongoDB</h1>
+            <p class="mt-1 text-sm text-slate-500">NoSQL orientado a documentos.</p>
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                "NoSQL" é o nome guarda-chuva pra bancos que <strong>não</strong> organizam dado em tabelas
+                fixas com colunas pré-definidas — existem vários tipos (documento, chave-valor, coluna larga,
+                grafo). MongoDB é o mais popular do tipo <strong>documento</strong>: cada registro é um
+                "documento" parecido com JSON, guardado dentro de uma <em>collection</em> (o equivalente
+                aproximado de uma tabela, mas sem exigir que todo documento tenha as mesmas colunas).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Guardar dados cujo formato varia de registro pra registro, ou que mudam de forma com frequência
+                durante o desenvolvimento — sem precisar de uma migração de schema toda vez que um campo novo
+                aparece. Também é comum quando o "objeto" da aplicação já é naturalmente aninhado (ex.: um
+                pedido com uma lista de itens dentro dele) e faz sentido guardar tudo junto, em vez de espalhar
+                em várias tabelas relacionadas.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Catálogos de produto com atributos variáveis por categoria, conteúdo de CMS, logs/eventos,
+                protótipos em fase inicial (schema ainda incerto), ou sistemas que precisam escalar
+                horizontalmente (adicionar mais servidores) com muita facilidade. Quando os dados são
+                fortemente relacionais e a integridade entre eles importa muito (ex.: sistema financeiro), um
+                relacional tradicional costuma ser mais seguro — o próprio MongoDB recomenda isso.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>// Inserindo um documento (sintaxe do mongo shell/driver)
+db.alunos.insertOne({
+  nome: "Ana Silva",
+  email: "ana@exemplo.com",
+  cursos: ["Banco de Dados", "Redes"]
+});
+
+// Consultando com filtro
+db.alunos.find({ cursos: "Banco de Dados" });</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                O <strong>aggregation pipeline</strong> — a forma do MongoDB de fazer o que em SQL seria
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JOIN</code>/agregação: uma sequência de "estágios" (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$match</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$group</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$lookup</code>...) que o documento
+                passa, um transformando o resultado do anterior.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$match</code></strong> — filtra documentos (equivalente ao <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code>).</li>
+                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$group</code></strong> — agrupa e agrega (equivalente ao <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> + funções como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SUM</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COUNT</code>).</li>
+                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$lookup</code></strong> — "junta" dado de outra collection (parecido com um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">LEFT JOIN</code>), usado com moderação — MongoDB é mais rápido quando o dado já vem embutido no próprio documento.</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Aggregation pipeline pra relatórios e resumos sobre a mesma collection. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$lookup</code> quando é
+                realmente necessário combinar duas collections, mas sem abusar — se isso vira frequente e
+                pesado, geralmente é sinal de que o modelo de dado deveria embutir a informação junto (a
+                filosofia do MongoDB é "modele pro jeito que você consulta", diferente do relacional que modela
+                pra evitar repetição antes de mais nada).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>// Quantos alunos por curso, só cursos com mais de 1 aluno
+db.alunos.aggregate([
+  { $unwind: "$cursos" },
+  { $group: { _id: "$cursos", total: { $sum: 1 } } },
+  { $match: { total: { $gt: 1 } } },
+  { $sort: { total: -1 } }
+]);</code></pre>
+        </div>
+    </div>
+{% endblock %}
