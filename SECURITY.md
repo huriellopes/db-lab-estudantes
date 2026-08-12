@@ -106,10 +106,67 @@ Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão aci
   estiver configurado — só loga e segue (dev/instâncias novas funcionam sem SMTP; o fluxo
   de reset fica inoperante até alguém preencher isso).
 
+## Vazamento de erro (corrigido)
+
+Confirmado na prática (uma exceção de teste, provisória, revertida em seguida): sem
+configuração própria de PHP, `display_errors` vinha ligado por padrão na imagem
+`php:8.5-fpm` — um erro não tratado devolvia stack trace completo **e caminho de arquivo
+do servidor** direto na resposta HTTP, com status 200/500 normal (não era preciso nada
+especial pra ver isso, só um bug comum de runtime bastava). Corrigido com
+`docker/php-hardening.ini`:
+
+- `display_errors = Off` — erro nunca mais aparece na resposta.
+- `log_errors = On` + `error_log = /dev/stderr` — o erro real continua indo pro log
+  (`docker logs`, mesmo fluxo de depuração já usado o resto do projeto), só não vaza pra
+  quem está navegando.
+- `expose_php = Off` — tira o header `X-Powered-By: PHP/x.y.z` (não ajuda em nada e só
+  entrega a versão exata pra quem for procurar CVE conhecida).
+- `set_exception_handler()` em `public/index.php`: rede de segurança final — qualquer
+  exceção que escape de um controller vira uma página 500 normal (`errors/500.twig`) em
+  vez de branco ou do erro cru do PHP.
+
+## Mapa de endpoints
+
+39 rotas (`public/index.php`), auditadas uma a uma: guarda de autorização, rate limiting,
+validação de entrada e o que cada uma expõe.
+
+| Área | Rotas | Autorização | Rate limit | Validação de entrada | Exposição de dados |
+|---|---|---|---|---|---|
+| Público | `/`, `GET /login`, `GET /register`, `GET /esqueci-senha` | nenhuma (por design) | — | — | Nada sensível — formulários vazios |
+| Login | `POST /login` | nenhuma | ✅ por IP e por identificador (6/5min + 15/5min) | `password_verify` roda sempre (sem timing leak, ver seção acima) | Mensagem de erro genérica, não diferencia usuário inexistente de senha errada |
+| Cadastro | `POST /register` | nenhuma | ✅ por IP (8/15min) | `RegistrationValidator` + `ProfileFields` (tamanho, formato, allow-list de username) | — |
+| Logout | `POST /logout` | nenhuma (idempotente) | — | — | — |
+| Esqueci senha | `POST /esqueci-senha` | nenhuma | ✅ por IP (5/15min) | `filter_var` e-mail | Resposta **idêntica** exista o e-mail ou não |
+| Redefinir senha | `GET/POST /redefinir-senha[/{token}]` | nenhuma | — (token de 256 bits já é a proteção — força bruta nele não é viável) | token via hash lookup, senha 6+ chars | Página só diz "válido"/"inválido", nunca a quem pertence |
+| Painel próprio | `GET /dashboard`, `GET/POST /profile*`, `GET /conectar` | `requireLogin` | ❌ nenhum (self-service, exige senha atual pra trocar senha) | `ProfileFields`, `MysqlIdentifier`, `TableQuery` (allow-list de sort) | Só dados da própria conta |
+| Schemas próprios | `POST /schemas`, `POST /schemas/delete` | `requireLogin` | ❌ nenhum | `SchemaNameBuilder` + posse via `SchemaRecord::findOwned` (não pelo prefixo do login atual) | — |
+| Console SQL | `POST /dashboard/sql` | `requireLogin` | ❌ nenhum (ver observação abaixo) | schema via `isValidDbName`; o SQL em si é livre **de propósito** (ver seção própria) | Isolado por schema via `GRANT` do MySQL, não por validação da app |
+| Alunos (professor) | `GET/POST /professor/alunos*` | `requireProfessorOrAdmin` | ❌ nenhum | `findStudentOrFail` restringe a `role = Aluno` | **Qualquer professor vê/gerencia todos os alunos do sistema**, sem vínculo turma/professor (ver observação abaixo) |
+| Usuários (admin) | `GET/POST /admin/usuarios*` | `requireAdmin` | ❌ nenhum | `findManageableUserOrFail` exclui outros admins e a própria conta | Lista todo mundo — esperado, é o painel de administração |
+| Schemas (admin) | `GET /admin/schemas`, `POST /admin/schemas/excluir` | `requireAdmin` | ❌ nenhum | `SchemaNameBuilder` + `findByName` | Lista todos os schemas do sistema com dono — esperado |
+
+**Observações que não são bugs, mas valem registrar:**
+
+- **Rate limit só existe nas 3 rotas públicas** (login, cadastro, esqueci-senha) — as
+  únicas alcançáveis sem estar autenticado. Rotas pós-login (trocar senha, resetar senha
+  de aluno, console SQL) não têm, mas todas exigem sessão válida antes — não são um alvo
+  de força bruta anônima. O console SQL em específico poderia, em teoria, ser usado pra
+  martelar o MySQL com queries repetidas num loop automatizado; como cada pessoa só afeta
+  o próprio schema/conexão, é mais um risco de recurso próprio que de terceiros, mas é o
+  candidato mais razoável a rate limit se isso virar problema na prática.
+- **Isolamento entre professores**: `StudentController::index()` lista **todos** os
+  alunos do sistema (`UserModel::all(Role::Aluno)`) pra **qualquer** professor — não existe
+  o conceito de turma/vínculo. Decisão de design (já sinalizada antes), não bug — mas
+  significa que, se o lab crescer pra vários professores de turmas diferentes, um professor
+  pode editar/desativar/excluir alunos que não são "dele".
+- **Nenhum endpoint expõe `password_hash` ou senha MySQL em texto puro** em nenhuma
+  resposta — a sessão (`AuthenticatedUser`) é construída de propósito sem esse campo, e
+  nenhum template Twig referencia `.passwordHash` em lugar nenhum.
+
 ## Não coberto por esta auditoria (próximos passos recomendados)
 
 - Cabeçalhos de segurança HTTP (CSP, `X-Frame-Options`, etc.) não configurados no nginx.
 - 2FA / MFA — fora de escopo pra esse tamanho de lab, mas vale considerar se crescer.
-- Isolamento entre professores: qualquer professor gerencia qualquer aluno do sistema (sem
-  vínculo turma/professor) — decisão de design, não bug, mas vale confirmar que é
-  intencional se o lab crescer pra múltiplos professores.
+- `$e->getMessage()` exposto cru ao usuário em ~13 pontos (fora do console SQL, onde isso
+  é intencional) — pode vazar detalhe interno do MySQL/PDO em caso de erro. Identificado,
+  não corrigido ainda (mudança grande o bastante pra alinhar antes).

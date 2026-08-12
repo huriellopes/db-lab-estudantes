@@ -26,6 +26,7 @@ RUN apt-get update \
 
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/php-hardening.ini /usr/local/etc/php/conf.d/zz-hardening.ini
 
 WORKDIR /var/www/html
 
