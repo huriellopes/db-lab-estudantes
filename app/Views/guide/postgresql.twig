@@ -11,6 +11,29 @@
         </div>
     </div>
 
+    <div class="card mb-6">
+        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
+        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 5432 (a do MySQL é 3306).</p>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <h3 class="field-label">Linha de comando</h3>
+                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>psql -h HOST -p 5432 -U USUARIO -d SCHEMA</code></pre>
+            </div>
+            <div>
+                <h3 class="field-label">Ferramentas GUI comuns</h3>
+                <p class="text-sm text-slate-600">pgAdmin, DBeaver, TablePlus, DataGrip.</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h3 class="field-label">Via código (driver PDO do PHP)</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
+    "pgsql:host=HOST;port=5432;dbname=SCHEMA",
+    "USUARIO",
+    "SENHA"
+);</code></pre>
+        </div>
+    </div>
+
     <div class="card mb-6 space-y-4">
         <span class="badge-indigo">Iniciante</span>
 
@@ -44,6 +67,16 @@
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Diferente do MySQL, o Postgres organiza databases dentro de um servidor e <em>schemas</em> dentro
+                de cada database (por padrão, tudo cai no schema <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">public</code>) — então "schema" no Postgres não é
+                sinônimo de "database" como no MySQL. Pra listar o que existe: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">\l</code> (databases) e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">\dt</code>
+                (tabelas) são atalhos do <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">psql</code>.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- SERIAL é o "AUTO_INCREMENT" do Postgres
 CREATE TABLE tarefa (
@@ -55,6 +88,10 @@ CREATE TABLE tarefa (
 -- RETURNING: devolve a linha inserida sem precisar de um SELECT extra
 INSERT INTO tarefa (titulo) VALUES ('Estudar Postgres')
 RETURNING id, titulo;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Atalhos do psql (não são SQL, só funcionam no terminal do psql)
+\l          -- lista os databases
+\dt         -- lista as tabelas do schema atual
+\d tarefa   -- mostra a estrutura da tabela tarefa</code></pre>
         </div>
     </div>
 
@@ -91,6 +128,17 @@ RETURNING id, titulo;</code></pre>
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Comece pela CTE quando notar que uma subquery está se repetindo ou que a consulta ficou difícil
+                de ler numa linha só — dar nome aos passos ajuda até você mesmo a revisar depois. Window
+                function entra quando a pergunta é "como essa linha se compara às vizinhas" (ranking, acumulado,
+                diferença pro próximo registro) — se você está pensando em fazer isso com um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> e uma
+                subquery por fora, provavelmente uma window function resolve mais direto.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- CTE + window function: ranking de alunos por nota, por turma
 WITH notas_turma AS (
@@ -104,6 +152,15 @@ SELECT
     nota,
     RANK() OVER (PARTITION BY turma_id ORDER BY nota DESC) AS posicao
 FROM notas_turma;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- JSONB: guarda e consulta um campo flexível com índice
+CREATE TABLE evento (
+    id      SERIAL PRIMARY KEY,
+    tipo    VARCHAR(50) NOT NULL,
+    payload JSONB NOT NULL
+);
+CREATE INDEX idx_evento_payload ON evento USING GIN (payload);
+
+SELECT * FROM evento WHERE payload->>'turno' = 'noite';</code></pre>
         </div>
     </div>
 {% endblock %}

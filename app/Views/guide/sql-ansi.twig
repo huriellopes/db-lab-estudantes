@@ -11,6 +11,21 @@
         </div>
     </div>
 
+    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            <strong>Como conectar</strong> não é algo que o padrão SQL define — isso é sempre específico do
+            banco que você escolher (protocolo, porta, driver...). Veja a seção "Como conectar" na página de
+            <a href="/guia/mysql" class="font-medium text-indigo-600 hover:text-indigo-700">MySQL</a>,
+            <a href="/guia/postgresql" class="font-medium text-indigo-600 hover:text-indigo-700">PostgreSQL</a>,
+            <a href="/guia/oracle" class="font-medium text-indigo-600 hover:text-indigo-700">Oracle</a> ou
+            <a href="/guia/sql-server" class="font-medium text-indigo-600 hover:text-indigo-700">SQL Server</a> —
+            o SQL que você escreve depois de conectado é o mesmo assunto desta página.
+        </div>
+    </div>
+
     <div class="card mb-6 space-y-4">
         <span class="badge-indigo">Iniciante</span>
 
@@ -50,6 +65,17 @@
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                O fluxo básico de qualquer tabela nova costuma ser sempre esse: (1) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> define a
+                estrutura uma vez; (2) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code> vai populando linha por linha (ou em lote); (3) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SELECT</code> é o
+                comando que você mais vai usar no dia a dia, pra consultar; (4) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code> corrigem/removem
+                depois. Uma regra que evita desastre: <strong>sempre</strong> escreva o <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code> de um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code>
+                antes de rodar — sem <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code>, os dois afetam a tabela <strong>inteira</strong>.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- DDL: cria a tabela
 CREATE TABLE aluno (
@@ -66,6 +92,10 @@ SELECT nome, email
 FROM aluno
 WHERE nome LIKE 'A%'
 ORDER BY nome ASC;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- UPDATE e DELETE sempre com WHERE — sem ele, mexe na tabela inteira
+UPDATE aluno SET email = 'ana.silva@exemplo.com' WHERE id = 1;
+
+DELETE FROM aluno WHERE id = 1;</code></pre>
         </div>
     </div>
 
@@ -105,6 +135,18 @@ ORDER BY nome ASC;</code></pre>
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Pensando em passos: primeiro normalize (separe os dados em tabelas ligadas por chave, evitando
+                repetir informação); depois escreva <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JOIN</code>s pra reconectar essas tabelas na hora de consultar;
+                use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> quando precisar de um resumo (total, média) em vez das linhas individuais; e
+                embrulhe numa transação qualquer sequência de <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code> que só faz sentido acontecer
+                junto. Rode um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SELECT</code> com o mesmo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code> antes de um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code> em produção — é a forma
+                mais simples de conferir quais linhas vão ser afetadas antes de afetar de verdade.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- JOIN + agregação: quantas matrículas por curso
 SELECT c.nome AS curso, COUNT(m.id) AS total_matriculas
@@ -119,6 +161,19 @@ START TRANSACTION;
 UPDATE conta SET saldo = saldo - 100 WHERE id = 1;
 UPDATE conta SET saldo = saldo + 100 WHERE id = 2;
 COMMIT;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Subquery: alunos que nunca fizeram nenhuma matrícula
+SELECT nome
+FROM aluno
+WHERE id NOT IN (SELECT aluno_id FROM matricula);
+
+-- A mesma ideia com CTE (WITH), mais legível quando a consulta cresce
+WITH alunos_matriculados AS (
+    SELECT DISTINCT aluno_id FROM matricula
+)
+SELECT a.nome
+FROM aluno a
+LEFT JOIN alunos_matriculados am ON am.aluno_id = a.id
+WHERE am.aluno_id IS NULL;</code></pre>
         </div>
     </div>
 {% endblock %}

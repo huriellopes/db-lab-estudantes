@@ -11,6 +11,31 @@
         </div>
     </div>
 
+    <div class="card mb-6">
+        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
+        <p class="mb-4 text-sm text-slate-500">
+            O Oracle usa um formato de endereço próprio, chamado <strong>TNS</strong>, em vez de só host/porta.
+        </p>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <h3 class="field-label">Linha de comando (SQL*Plus)</h3>
+                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>sqlplus USUARIO/SENHA@HOST:1521/SERVICO</code></pre>
+            </div>
+            <div>
+                <h3 class="field-label">Ferramentas GUI comuns</h3>
+                <p class="text-sm text-slate-600">Oracle SQL Developer (gratuita), DataGrip, DBeaver.</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h3 class="field-label">Via código (driver PDO OCI do PHP)</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
+    "oci:dbname=//HOST:1521/SERVICO",
+    "USUARIO",
+    "SENHA"
+);</code></pre>
+        </div>
+    </div>
+
     <div class="card mb-6 space-y-4">
         <span class="badge-indigo">Iniciante</span>
 
@@ -43,6 +68,16 @@
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                No Oracle, "usuário" e "schema" são basicamente a mesma coisa — cada usuário tem seu próprio
+                schema, e as tabelas que ele cria ficam nele (diferente do MySQL, onde schema/database é uma
+                coisa à parte de quem loga). Por isso raramente se troca de schema no meio de uma sessão como
+                se faz com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">USE</code> no MySQL.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Oracle não tem AUTO_INCREMENT/SERIAL "de fábrica" — usa SEQUENCE
 CREATE SEQUENCE aluno_seq START WITH 1 INCREMENT BY 1;
@@ -56,6 +91,10 @@ INSERT INTO aluno (id, nome) VALUES (aluno_seq.NEXTVAL, 'Ana Silva');
 
 -- DUAL: tabela "fantasma" de 1 linha, pra testar expressão sem consultar tabela nenhuma
 SELECT SYSDATE FROM dual;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- FETCH FIRST: forma padrão ANSI de limitar resultado (Oracle 12c+)
+SELECT nome FROM aluno
+ORDER BY nome
+FETCH FIRST 10 ROWS ONLY;</code></pre>
         </div>
     </div>
 
@@ -92,6 +131,16 @@ SELECT SYSDATE FROM dual;</code></pre>
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Escreva a lógica em PL/SQL só quando ela precisa mesmo estar perto do dado (validação que várias
+                aplicações compartilham, auditoria automática). Pra tudo que é regra específica de uma aplicação
+                só, prefira manter na aplicação — fica mais fácil de testar e não trava a evolução do sistema
+                numa alteração de banco toda vez.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Procedure simples em PL/SQL
 CREATE OR REPLACE PROCEDURE matricular_aluno(
@@ -109,6 +158,15 @@ END;
 -- Chamando a procedure
 BEGIN
     matricular_aluno(1, 10);
+END;
+/</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Trigger: audita toda alteração de saldo, sozinho, sem a aplicação pedir
+CREATE OR REPLACE TRIGGER trg_auditoria_conta
+AFTER UPDATE OF saldo ON conta
+FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria_conta (conta_id, saldo_antigo, saldo_novo, quando)
+    VALUES (:OLD.id, :OLD.saldo, :NEW.saldo, SYSDATE);
 END;
 /</code></pre>
         </div>

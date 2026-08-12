@@ -11,6 +11,29 @@
         </div>
     </div>
 
+    <div class="card mb-6">
+        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
+        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 1433.</p>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <h3 class="field-label">Linha de comando (sqlcmd)</h3>
+                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>sqlcmd -S HOST,1433 -U USUARIO -P SENHA -d SCHEMA</code></pre>
+            </div>
+            <div>
+                <h3 class="field-label">Ferramentas GUI comuns</h3>
+                <p class="text-sm text-slate-600">SQL Server Management Studio (SSMS), Azure Data Studio, DataGrip, DBeaver.</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <h3 class="field-label">Via código (driver PDO SQLSRV do PHP)</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
+    "sqlsrv:Server=HOST,1433;Database=SCHEMA",
+    "USUARIO",
+    "SENHA"
+);</code></pre>
+        </div>
+    </div>
+
     <div class="card mb-6 space-y-4">
         <span class="badge-indigo">Iniciante</span>
 
@@ -43,6 +66,15 @@
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Um servidor SQL Server hospeda vários <em>databases</em>; pra trocar de um pro outro na mesma
+                sessão, usa-se <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">USE nome_do_banco;</code>, igual ao MySQL. Strings usam o prefixo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">N</code> (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">N'texto'</code>)
+                quando a coluna é <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NVARCHAR</code> (Unicode) — sem isso, acento pode não gravar certo.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- IDENTITY é o "AUTO_INCREMENT" do SQL Server
 CREATE TABLE tarefa (
@@ -54,6 +86,9 @@ INSERT INTO tarefa (titulo) VALUES (N'Estudar T-SQL');
 
 -- TOP: sintaxe do SQL Server pra limitar resultado (vem ANTES das colunas, não depois)
 SELECT TOP 10 * FROM tarefa ORDER BY id DESC;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Listar bancos e tabelas (metadados do próprio SQL Server)
+SELECT name FROM sys.databases;
+SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES;</code></pre>
         </div>
     </div>
 
@@ -90,6 +125,16 @@ SELECT TOP 10 * FROM tarefa ORDER BY id DESC;</code></pre>
         </div>
 
         <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Centralize numa stored procedure quando a mesma operação é chamada por mais de um lugar
+                (aplicação web, job agendado no SQL Server Agent, relatório). Use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code> só quando o
+                "insere ou atualiza" for realmente a operação natural — pra um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code> comum, forçar um
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code> só deixa a query mais difícil de ler à toa.
+            </p>
+        </div>
+
+        <div>
             <h3 class="field-label">Exemplo</h3>
             <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Stored procedure simples em T-SQL
 CREATE PROCEDURE MatricularAluno
@@ -104,6 +149,14 @@ GO
 
 -- Chamando a procedure
 EXEC MatricularAluno @AlunoId = 1, @CursoId = 10;</code></pre>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- MERGE: upsert num comando só
+MERGE INTO estoque AS alvo
+USING (SELECT 42 AS produto_id, 10 AS quantidade) AS novo
+ON alvo.produto_id = novo.produto_id
+WHEN MATCHED THEN
+    UPDATE SET alvo.quantidade = alvo.quantidade + novo.quantidade
+WHEN NOT MATCHED THEN
+    INSERT (produto_id, quantidade) VALUES (novo.produto_id, novo.quantidade);</code></pre>
         </div>
     </div>
 {% endblock %}
