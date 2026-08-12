@@ -9,10 +9,11 @@ function validRegistration(array $overrides = []): array
     return array_merge([
         'name' => 'Maria Souza',
         'email' => 'maria@example.com',
+        'username' => 'mariasouza',
         'password' => 'segredo123',
         'passwordConfirm' => 'segredo123',
-        'role' => 'aluno',
         'emailExists' => false,
+        'usernameExists' => false,
     ], $overrides);
 }
 
@@ -38,11 +39,11 @@ it('rejects an invalid email', function () {
         ->toContain('Informe um e-mail válido.');
 });
 
-it('rejects a role outside aluno/professor', function () {
-    $data = validRegistration(['role' => 'admin']);
+it('rejects an invalid username', function () {
+    $data = validRegistration(['username' => 'ab']);
 
     expect(RegistrationValidator::validate(...array_values($data)))
-        ->toContain('Selecione um perfil válido.');
+        ->toContain('Username inválido. Use 3 a 32 caracteres, começando com uma letra (minúsculas, números e "_").');
 });
 
 it('rejects a password shorter than 6 characters', function () {
@@ -66,9 +67,18 @@ it('rejects when the email already exists, but only if nothing else failed first
         ->toBe(['Já existe uma conta com este e-mail.']);
 });
 
-it('does not pile on the "email already exists" error when other fields are also invalid', function () {
-    $data = validRegistration(['name' => '', 'emailExists' => true]);
+it('rejects when the username already exists, but only if nothing else failed first', function () {
+    $data = validRegistration(['usernameExists' => true]);
 
     expect(RegistrationValidator::validate(...array_values($data)))
-        ->not->toContain('Já existe uma conta com este e-mail.');
+        ->toBe(['Esse username já está em uso.']);
+});
+
+it('does not pile on the "already exists" errors when other fields are also invalid', function () {
+    $data = validRegistration(['name' => '', 'emailExists' => true, 'usernameExists' => true]);
+
+    $errors = RegistrationValidator::validate(...array_values($data));
+
+    expect($errors)->not->toContain('Já existe uma conta com este e-mail.')
+        ->and($errors)->not->toContain('Esse username já está em uso.');
 });

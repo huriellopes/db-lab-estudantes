@@ -1,0 +1,58 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8">
+        <a href="/admin/usuarios" class="text-sm text-slate-500 hover:text-slate-700">← Voltar para usuários</a>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Novo usuário</h1>
+        <p class="mt-1 text-sm text-slate-500">Cria a conta na app e a conta MySQL real (com o mesmo username/senha).</p>
+    </div>
+
+    <div class="card max-w-lg">
+        {% for error in errors %}
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
+        {% endfor %}
+
+        <form method="post" action="/admin/usuarios" class="space-y-4">
+            <div>
+                <label for="name" class="field-label">Nome completo</label>
+                <input type="text" id="name" name="name" value="{{ old.name }}" required minlength="2" autofocus class="field-input">
+            </div>
+
+            <div>
+                <label for="email" class="field-label">E-mail</label>
+                <input type="email" id="email" name="email" value="{{ old.email }}" required class="field-input">
+            </div>
+
+            <div>
+                <label for="username" class="field-label">Username</label>
+                <input
+                    type="text" id="username" name="username" value="{{ old.username }}"
+                    pattern="[a-z][a-z0-9_]{2,31}" maxlength="32" required class="field-input font-mono"
+                    placeholder="joaosilva"
+                >
+                <p class="mt-1.5 text-xs text-slate-500">Login da pessoa na app e no phpMyAdmin.</p>
+            </div>
+
+            <div>
+                <label for="role" class="field-label">Perfil</label>
+                <select id="role" name="role" required class="field-input">
+                    {% for role in roles %}
+                        <option value="{{ role.value }}" {{ role.value == old.role ? 'selected' : '' }}>{{ role.label() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="password" class="field-label">Senha</label>
+                <input type="password" id="password" name="password" required minlength="6" class="field-input">
+            </div>
+
+            <div>
+                <label for="password_confirm" class="field-label">Confirmar senha</label>
+                <input type="password" id="password_confirm" name="password_confirm" required minlength="6" class="field-input">
+            </div>
+
+            <button type="submit" class="btn-primary w-full">Criar usuário</button>
+        </form>
+    </div>
+{% endblock %}

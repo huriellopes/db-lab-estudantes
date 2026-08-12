@@ -8,9 +8,8 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Flash;
 use App\Models\User;
-use App\Services\SchemaProvisioner;
+use App\Services\UserManager;
 use App\Support\FlashType;
-use App\Support\MysqlIdentifier;
 use App\Support\RegistrationValidator;
 use App\Support\Role;
 use Throwable;
@@ -30,7 +29,7 @@ final class AuthController extends Controller
 
         $this->render('auth/login', [
             'pageTitle' => 'Entrar',
-            'old' => ['email' => ''],
+            'old' => ['identifier' => ''],
             'errors' => [],
         ]);
     }
@@ -41,14 +40,16 @@ final class AuthController extends Controller
             $this->redirect('/dashboard');
         }
 
-        $email = trim((string) ($_POST['email'] ?? ''));
+        $identifier = trim((string) ($_POST['identifier'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
         $errors = [];
 
-        $user = User::findByEmail($email);
+        $user = User::findByEmailOrUsername($identifier);
 
         if ($user === null || !password_verify($password, $user->passwordHash)) {
-            $errors[] = 'E-mail ou senha inválidos.';
+            $errors[] = 'E-mail/username ou senha inválidos.';
+        } elseif (!$user->active) {
+            $errors[] = 'Esta conta está desativada. Fale com um professor ou admin.';
         } else {
             Auth::login($user);
             $this->redirect('/dashboard');
@@ -56,7 +57,7 @@ final class AuthController extends Controller
 
         $this->render('auth/login', [
             'pageTitle' => 'Entrar',
-            'old' => ['email' => $email],
+            'old' => ['identifier' => $identifier],
             'errors' => $errors,
         ]);
     }
@@ -69,7 +70,7 @@ final class AuthController extends Controller
 
         $this->render('auth/register', [
             'pageTitle' => 'Cadastro',
-            'old' => ['name' => '', 'email' => '', 'role' => Role::Aluno->value],
+            'old' => ['name' => '', 'email' => '', 'username' => ''],
             'errors' => [],
         ]);
     }
@@ -82,55 +83,30 @@ final class AuthController extends Controller
 
         $name = trim((string) ($_POST['name'] ?? ''));
         $email = trim((string) ($_POST['email'] ?? ''));
+        $username = strtolower(trim((string) ($_POST['username'] ?? '')));
         $password = (string) ($_POST['password'] ?? '');
         $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
-        $roleInput = (string) ($_POST['role'] ?? '');
-        $old = compact('name', 'email') + ['role' => $roleInput];
+        $old = compact('name', 'email', 'username');
 
         $errors = RegistrationValidator::validate(
             $name,
             $email,
+            $username,
             $password,
             $passwordConfirm,
-            $roleInput,
             User::emailExists($email),
+            User::mysqlLoginExists($username),
         );
 
         if (!$errors) {
-            // Sem transação PDO aqui: CREATE USER é DDL (ver aviso em SchemaProvisioner).
-            // Em caso de falha no meio do caminho, desfazemos manualmente o que já foi criado.
-            $userId = null;
-            $mysqlLogin = null;
-
             try {
-                $role = Role::from($roleInput);
-                $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-                $userId = User::create($name, $email, $passwordHash, $role);
-
-                $mysqlLogin = MysqlIdentifier::build($userId, $email);
-                User::setMysqlLogin($userId, $mysqlLogin);
-
-                // Cria a conta MySQL real do aluno/professor, com a MESMA senha da conta
-                // na plataforma — ele usa esse login para acessar o phpMyAdmin depois.
-                SchemaProvisioner::createMysqlAccount($mysqlLogin, $password);
+                // O cadastro público é sempre "aluno" (ver Role::registrable()) — quem
+                // cria professores/admins é o próprio admin, pelo painel.
+                UserManager::provisionNewUser($name, $email, $username, $password, Role::registrable());
 
                 Flash::set(FlashType::Success, 'Cadastro realizado com sucesso! Faça login para continuar.');
                 $this->redirect('/login');
             } catch (Throwable $e) {
-                if ($userId !== null) {
-                    try {
-                        User::delete($userId);
-                    } catch (Throwable $cleanupError) {
-                        // ignora falha de limpeza, o erro principal já será reportado abaixo
-                    }
-                }
-                if ($mysqlLogin !== null) {
-                    try {
-                        SchemaProvisioner::dropMysqlAccount($mysqlLogin);
-                    } catch (Throwable $cleanupError) {
-                        // ignora falha de limpeza, o erro principal já será reportado abaixo
-                    }
-                }
                 $errors[] = 'Não foi possível concluir o cadastro: ' . $e->getMessage();
             }
         }

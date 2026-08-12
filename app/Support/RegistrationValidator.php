@@ -7,7 +7,8 @@ namespace App\Support;
 final class RegistrationValidator
 {
     /**
-     * Validação pura do formulário de cadastro. $emailExists é calculado fora (pelo
+     * Validação pura do formulário de cadastro (sempre papel "aluno" — ver
+     * Role::registrable()). $emailExists/$usernameExists são calculados fora (pelo
      * chamador, via consulta ao banco) para manter esta classe sem dependência de I/O.
      *
      * @return string[] lista de mensagens de erro (vazia = válido)
@@ -15,10 +16,11 @@ final class RegistrationValidator
     public static function validate(
         string $name,
         string $email,
+        string $username,
         string $password,
         string $passwordConfirm,
-        string $role,
         bool $emailExists,
+        bool $usernameExists,
     ): array {
         $errors = [];
 
@@ -28,9 +30,8 @@ final class RegistrationValidator
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Informe um e-mail válido.';
         }
-        $roleEnum = Role::tryFrom($role);
-        if ($roleEnum === null || !in_array($roleEnum, Role::registrable(), true)) {
-            $errors[] = 'Selecione um perfil válido.';
+        if (!MysqlIdentifier::isValidCustomLogin($username)) {
+            $errors[] = 'Username inválido. Use 3 a 32 caracteres, começando com uma letra (minúsculas, números e "_").';
         }
         if (strlen($password) < 6) {
             $errors[] = 'A senha deve ter pelo menos 6 caracteres.';
@@ -40,6 +41,9 @@ final class RegistrationValidator
         }
         if (!$errors && $emailExists) {
             $errors[] = 'Já existe uma conta com este e-mail.';
+        }
+        if (!$errors && $usernameExists) {
+            $errors[] = 'Esse username já está em uso.';
         }
 
         return $errors;

@@ -29,8 +29,15 @@ WORKDIR /var/www/html
 
 COPY --from=vendor /app/vendor ./vendor
 COPY app ./app
+COPY bin ./bin
+COPY database ./database
+COPY composer.json ./
 COPY public ./public
 COPY --from=assets /assets/public/build ./public/build
+COPY docker/app-entrypoint.sh /usr/local/bin/app-entrypoint.sh
 
 RUN mkdir -p storage/twig-cache \
+    && chmod +x /usr/local/bin/app-entrypoint.sh bin/console.php \
     && chown -R www-data:www-data /var/www/html
+
+ENTRYPOINT ["app-entrypoint.sh"]

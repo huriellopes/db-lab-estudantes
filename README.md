@@ -2,74 +2,110 @@
 
 Ambiente de estudos em Docker com **MySQL 8**, **phpMyAdmin** e uma aplicação **PHP 8.5 em
 MVC altamente tipado** (Composer, sem framework), templates em **Twig** (zero PHP misturado
-com HTML), frontend com **Tailwind CSS v4 + Alpine.js + Axios** via **Vite**, e testes
-unitários com **Pest**.
+com HTML), frontend com **Tailwind CSS v4 + Alpine.js + Axios** via **Vite**, migrations/
+seeders/factories no estilo Laravel, e testes unitários com **Pest**.
 
-Alunos, professores e um super admin se cadastram/logam e podem criar e gerenciar os
-próprios schemas (databases) no MySQL — cada um com uma conta MySQL real, utilizável
-também no phpMyAdmin, com login renomeável.
+Alunos se cadastram sozinhos; professores e admins são criados pelo admin. Todo mundo tem
+uma conta MySQL real (username escolhido no cadastro), utilizável também no phpMyAdmin ou
+num SGBD local.
 
 ## Papéis
 
 | Papel | Pode |
 |---|---|
-| **Aluno** | Cadastrar-se, logar, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/login do phpMyAdmin). |
-| **Professor** | Tudo do aluno, **+** ver, editar, resetar senha e excluir contas de aluno (`/professor/alunos`). |
-| **Admin** (super admin) | Tudo do professor, **+** gerenciar qualquer usuário (aluno/professor/admin), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). O e-mail `huriellopes1996@gmail.com` já vem promovido. |
+| **Aluno** | Cadastrar-se (só alunos se autocadastram), logar com e-mail **ou** username, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/username). |
+| **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (soft delete) contas de aluno (`/professor/alunos`). |
+| **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `composer db:seed` + `ADMIN_EMAIL` no `.env` — não listado em `/admin/usuarios` (contas admin não aparecem nessa lista). |
 
 ## Como funciona
 
-- No cadastro, além do registro na tabela `users`, é criada **uma conta MySQL real** para
-  a pessoa (`u<id>_<usuario>`), com a mesma senha usada na plataforma.
+- No cadastro, a pessoa escolhe seu **username** — vira o login MySQL/phpMyAdmin *e* uma
+  forma alternativa de logar na própria app (login aceita e-mail **ou** username).
 - No painel (`/dashboard`), a pessoa cria schemas: a aplicação executa `CREATE DATABASE` e
   concede `GRANT ALL PRIVILEGES` **apenas** naquele schema para a conta MySQL da pessoa.
-- Com essa conta, a pessoa entra no **phpMyAdmin** e enxerga **somente os schemas que ela
-  mesma criou**. Em "Meu perfil" dá pra trocar o nome, a senha (atualiza app + MySQL juntos)
-  e o **login do phpMyAdmin** (`RENAME USER` real — preserva os acessos aos schemas já
-  criados, só o identificador de login muda).
-- Exclusão de conta (pelo professor/admin) remove em cascata: todos os databases da pessoa,
-  a conta MySQL dela, e o registro em `users`.
+- Em "Meu perfil" dá pra trocar o nome, a senha (atualiza app + MySQL juntos) e o username/
+  login do phpMyAdmin (`RENAME USER` real — preserva os acessos aos schemas já criados).
+- **Ativar/desativar** (professor sobre alunos, admin sobre todo mundo): bloqueia o login na
+  app *e* o acesso MySQL/phpMyAdmin (`ALTER USER ... ACCOUNT LOCK`), sem apagar nada —
+  reversível a qualquer momento.
+- **Excluir é soft delete**, como o `SoftDeletes` do Laravel: marca `deleted_at`, bloqueia o
+  acesso MySQL, mas **não apaga** a linha, os databases nem a conta MySQL da pessoa. O admin
+  vê e restaura contas excluídas em `/admin/usuarios/lixeira`.
+
+## Migrations, seeders e factories (estilo Laravel)
+
+```bash
+composer migrate            # roda as migrations pendentes (também roda sozinho ao subir o container)
+composer migrate:status      # lista o que já rodou
+composer migrate:rollback     # desfaz o último lote
+composer db:seed               # roda database/seeders/DatabaseSeeder (promove ADMIN_EMAIL a admin)
+```
+
+- `database/migrations/*.php`: cada arquivo devolve uma classe anônima `extends
+  App\Core\Migration` com `up()`/`down()` — igual ao estilo de migration do Laravel 8+.
+  `App\Core\Migrator` roda as pendentes e registra em uma tabela `migrations` (com `batch`,
+  pra dar pra reverter o último lote).
+- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada; hoje só chama
+  `AdminUserSeeder`, que promove `ADMIN_EMAIL` (do `.env`) a admin se a conta já existir —
+  idempotente, seguro rodar de novo.
+- `database/factories/UserFactory.php`: no estilo das factories do Laravel, com
+  [`fakerphp/faker`](https://fakerphp.org/) (`require-dev` — só disponível localmente, não
+  na imagem Docker de produção). `create()`/`createMany()` usam
+  `App\Services\UserManager::provisionNewUser()`, o mesmo método usado no cadastro real e
+  na criação de usuário pelo admin — então o resultado é um usuário "de verdade" (linha na
+  app + conta MySQL), útil para popular um ambiente local de testes.
+- O `Dockerfile`/`docker/app-entrypoint.sh` rodam `migrate` automaticamente toda vez que o
+  container da app sobe, antes de iniciar o Apache — não precisa rodar nada na mão num
+  `docker compose up` normal.
 
 ## Arquitetura
 
 ```
-composer.json            # autoload PSR-4 (App\ -> app/), twig/twig, vlucas/phpdotenv
+composer.json            # autoload PSR-4 (App\, Database\Seeders\, Database\Factories\)
 package.json              # Vite, Tailwind v4, Alpine.js, Axios, Prettier
 vite.config.js
 Dockerfile                # multi-stage: composer -> npm/vite -> php:8.5-apache
+docker/app-entrypoint.sh   # roda `migrate` e sobe o Apache
 docker-compose.yml
-phpunit.xml, tests/        # Pest
-.php-cs-fixer.php          # padrão de código PHP (PSR-12 + regras extra)
-.prettierrc.json           # padrão de código JS/CSS
+bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed)
+phpunit.xml, tests/          # Pest
+.php-cs-fixer.php             # padrão de código PHP (PSR-12 + regras extra)
+.prettierrc.json                # padrão de código JS/CSS
 .editorconfig
-SECURITY.md                 # avaliação de SQL injection e como é mitigada
+SECURITY.md                       # avaliação de SQL injection e como é mitigada
+
+database/
+  migrations/    # classes anônimas com up()/down() — fonte da verdade do schema
+  seeders/        # DatabaseSeeder, AdminUserSeeder
+  factories/       # UserFactory (Faker)
 
 app/
-  Controllers/            # Auth, Dashboard, Schema, Profile, Student (professor), Admin
-  Core/                    # Router (com {id} dinâmico), Controller, View (Twig), Vite,
-                            Database (PDO), Auth (sessão + papéis), Flash, Config
-  Support/                 # Lógica pura, sem I/O — o que os testes do Pest cobrem:
-                            Role (enum), AuthenticatedUser, AdminStats, FlashType/FlashMessage,
-                            MysqlIdentifier, RegistrationValidator, SchemaNameBuilder, Policy
+  Controllers/    # Auth, Dashboard, Schema, Profile, Connection, Student (professor), Admin
+  Core/            # Router (com {id} dinâmico), Controller, View (Twig), Vite, Database (PDO),
+                    Migration/Migrator/Console, Seeder, Auth (sessão + papéis), Flash, Config
+  Support/         # Lógica pura, sem I/O — o que os testes do Pest cobrem:
+                    Role (enum), AuthenticatedUser (com shortName()), AdminStats,
+                    FlashType/FlashMessage, MysqlIdentifier, RegistrationValidator,
+                    SchemaNameBuilder, Policy
   Models/
-    Entities/                # DTOs readonly tipados: User, Schema, SchemaWithOwner, StudentSummary
-    User.php, SchemaRecord.php   # acesso às tabelas da própria app, devolvem as Entities
-  Services/                # SchemaProvisioner (DDL no MySQL), UserManager (exclusão/reset/
-                            rename completos, coordenando app + MySQL)
-  Views/                   # .twig — SEM PHP misturado, só a sintaxe do Twig
-    layouts/ (app, guest), auth/, dashboard/, profile/, professor/students/, admin/,
-    partials/, errors/
+    Entities/          # DTOs readonly tipados: User, Schema, SchemaWithOwner, StudentSummary
+    User.php, SchemaRecord.php  # acesso às tabelas da própria app, devolvem as Entities
+  Services/        # SchemaProvisioner (DDL no MySQL, incl. ACCOUNT LOCK/UNLOCK), UserManager
+                    (provisionNewUser/resetPassword/rename/setActive/softDelete/restore)
+  Views/           # .twig — SEM PHP misturado, só a sintaxe do Twig
+    layouts/ (app, guest), auth/, dashboard/, profile/, connection/, professor/students/,
+    admin/, partials/, errors/
 
 public/
-  index.php                # front controller — todas as rotas passam por aqui
+  index.php        # front controller — todas as rotas passam por aqui
   .htaccess
-  build/                    # gerado pelo `npm run build` (Vite) — não editar
+  build/            # gerado pelo `npm run build` (Vite) — não editar
 
 resources/
-  css/app.css               # fonte do Tailwind v4 (@import "tailwindcss"; + @utility/@layer)
-  js/app.js                 # Alpine.js + Axios (componente `ajaxForm` reutilizável)
+  css/app.css       # fonte do Tailwind v4 (@import "tailwindcss"; + @utility/@layer)
+  js/app.js          # Alpine.js + Axios (toaster, modal de confirmação, `ajaxForm`)
 
-mysql/init/                 # 01-schema.sql, 02-grants.sql, 03-admin-role.sql
+mysql/init/          # só o bootstrap de privilégios do appuser (o schema em si vem das migrations)
 ```
 
 ### MVC altamente tipado
@@ -96,12 +132,12 @@ templates compilados com `auto_reload` sempre ligado, pra nunca servir uma vers�
 
 ### Ações via Alpine.js + Axios
 
-Botões de excluir/editar/trocar-papel usam um componente Alpine genérico (`ajaxForm`, em
-`resources/js/app.js`) que envia o `<form>` via Axios com o header `X-Requested-With`. O
-controller (`Controller::respond()`) detecta esse header e responde com **JSON** (a linha
-some da tela sem recarregar a página); sem esse header — ou se o JS não carregar — o mesmo
-endpoint responde do jeito clássico (redirect + flash), então tudo funciona sem JavaScript
-também (progressive enhancement).
+Botões de excluir/editar/trocar-papel/ativar-desativar usam um componente Alpine genérico
+(`ajaxForm`, em `resources/js/app.js`) que envia o `<form>` via Axios com o header
+`X-Requested-With`. O controller (`Controller::respond()`) detecta esse header e responde
+com **JSON** (a linha some da tela sem recarregar a página); sem esse header — ou se o JS
+não carregar — o mesmo endpoint responde do jeito clássico (redirect + flash), então tudo
+funciona sem JavaScript também (progressive enhancement).
 
 ### Roteamento
 
@@ -116,13 +152,15 @@ dinâmicos (`/professor/alunos/{id}/editar`) via regex.
   erro) também empurram pra lá — nunca mais um `alert()` nativo.
 - **Modal de confirmação**: `Alpine.store('confirmModal')` + `window.confirmAction({title,
   message, confirmLabel, danger})` (retorna uma Promise), desenhado uma vez em
-  `partials/confirm-modal.twig`. Todas as ações destrutivas ou de impacto sobre outra
-  pessoa/identificador — excluir schema, excluir aluno/usuário, resetar senha, trocar papel,
-  renomear o login do phpMyAdmin — passam por ele antes de enviar o form (via `ajaxForm`).
-  Saves triviais do próprio usuário (nome, senha) não pedem confirmação extra.
-- **Navbar**: dropdown de conta (avatar + nome, com "Meu perfil"/"Sair") e menu hamburguer
-  para mobile (`md:hidden` / `hidden md:flex`), ambos em `layouts/app.twig` +
-  `partials/nav-links.twig` (links reaproveitados entre desktop e mobile).
+  `partials/confirm-modal.twig`. Toda ação destrutiva ou de impacto sobre outra pessoa —
+  excluir schema/aluno/usuário, resetar senha, trocar papel, ativar/desativar, restaurar,
+  renomear o username — passa por ele antes de enviar o form (via `ajaxForm`). Saves
+  triviais do próprio usuário (nome, senha) não pedem confirmação extra.
+- **Navbar**: o dropdown de conta mostra só primeiro+último nome
+  (`AuthenticatedUser::shortName()`, testado) — evita quebra de linha no botão. Links de
+  Administração/Usuários/Schemas ficam agrupados num dropdown "Admin" (`partials/nav-links.twig`,
+  reaproveitado entre desktop e o menu hamburguer mobile, que mostra os mesmos links em
+  lista plana em vez de dropdown aninhado).
 - **Responsivo**: grids viram coluna única, tabelas ganham scroll horizontal
   (`overflow-x-auto`), linhas de listas empilham (`flex-col sm:flex-row`) abaixo do
   breakpoint `sm`/`md` do Tailwind, em todas as páginas do painel.
@@ -152,9 +190,10 @@ docker compose up -d --build
 ```
 
 O `Dockerfile` faz tudo dentro do build — não precisa rodar `composer install`/`npm install`
-na sua máquina: um stage instala as dependências PHP (sem as de dev — Pest/PHP-CS-Fixer
-ficam só local), outro roda `npm run build` (Tailwind v4 + Alpine + Axios via Vite), e a
-imagem final é só `php:8.5-apache` + os artefatos prontos.
+na sua máquina: um stage instala as dependências PHP (sem as de dev — Pest/PHP-CS-Fixer/
+Faker ficam só local), outro roda `npm run build` (Tailwind v4 + Alpine + Axios via Vite), e
+a imagem final é só `php:8.5-apache` + os artefatos prontos. No boot do container, o
+`docker/app-entrypoint.sh` roda as migrations pendentes antes de subir o Apache.
 
 Serviços (portas padrão, configuráveis no `.env`):
 
@@ -164,20 +203,20 @@ Serviços (portas padrão, configuráveis no `.env`):
 | phpMyAdmin  | http://localhost:8081         |
 | MySQL       | localhost:3307 (root: ver `.env`) |
 
-Na primeira subida, os scripts em `mysql/init/` criam o schema `schoolapp` (tabelas `users`
-e `schemas_criados`, já com o papel `admin`) e concedem ao usuário `appuser` os privilégios
-extras para criar databases e contas MySQL dinamicamente.
+Depois de se cadastrar como o e-mail que você quer que seja admin, defina `ADMIN_EMAIL` no
+`.env` e rode `docker compose exec app php bin/console.php db:seed` (ou `composer db:seed`
+localmente) pra promover essa conta.
 
 ## Testes (Pest)
 
 ```bash
-composer install       # inclui as dependências de dev (Pest, PHP-CS-Fixer)
+composer install       # inclui as dependências de dev (Pest, PHP-CS-Fixer, Faker)
 composer test           # ou: ./vendor/bin/pest
 ```
 
-Cobrem a lógica pura em `App\Support` (sem tocar banco): geração e validação do login MySQL
+Cobrem a lógica pura em `App\Support` (sem tocar banco): geração e validação de username
 (inclusive contra injeção), validação de cadastro, validação/montagem de nomes de schema, o
-enum `Role`, e as regras de autorização por papel.
+enum `Role`, `AuthenticatedUser::shortName()`, e as regras de autorização por papel.
 
 ## Padrão de código
 
@@ -200,8 +239,8 @@ php -S localhost:8000 -t public   # em outro terminal
 ```
 Crie um `.env` na raiz (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` apontando para
 o MySQL do docker-compose — ex. `DB_HOST=127.0.0.1`, `DB_PORT=3307`) — é lido automaticamente
-via `vlucas/phpdotenv`. Para usar o Vite em modo dev (hot-reload) em vez do build estático,
-defina `VITE_DEV_SERVER_URL=http://localhost:5173` no `.env`.
+via `vlucas/phpdotenv`. Rode `php bin/console.php migrate` na primeira vez. Para usar o Vite
+em modo dev (hot-reload) em vez do build estático, defina `VITE_DEV_SERVER_URL=http://localhost:5173`.
 
 ## Avisos importantes (leia antes de usar fora do seu computador)
 
@@ -210,15 +249,19 @@ defina `VITE_DEV_SERVER_URL=http://localhost:5173` no `.env`.
   de estudos isolado, rodando localmente. **Não exponha essas portas na internet como está.**
   Detalhes de como isso é mitigado: [SECURITY.md](SECURITY.md).
 - Trocar o valor de `MYSQL_USER` no `.env` exige atualizar também o nome fixo usado em
-  `mysql/init/02-grants.sql`.
+  `mysql/init/01-grants.sql`.
 - Nenhuma operação de `CREATE`/`DROP DATABASE`/`CREATE`/`ALTER`/`RENAME`/`DROP USER` roda
   dentro de uma transação PDO — são comandos DDL e o MySQL faz commit implícito neles, o que
   quebraria `beginTransaction()`/`commit()`. Veja o aviso em `App\Services\SchemaProvisioner`.
-- Renomear o login do phpMyAdmin **não** renomeia os databases já criados (MySQL não tem um
-  "RENAME DATABASE" seguro) — só o identificador de login. Os acessos continuam funcionando
-  porque `RENAME USER` preserva os `GRANT`s.
-- Sessão guarda o papel do usuário no momento do login: se um admin troca o papel de alguém
-  que já está logado em outra aba/sessão, essa sessão só reflete a mudança no próximo login.
+- Renomear o username **não** renomeia os databases já criados (MySQL não tem um "RENAME
+  DATABASE" seguro) — só o identificador de login. Os acessos continuam funcionando porque
+  `RENAME USER` preserva os `GRANT`s.
+- Soft delete apaga só o *acesso* (bloqueia login na app e no MySQL) — os databases da
+  pessoa continuam ocupando espaço até alguém excluir os schemas dela manualmente ou (fora
+  do escopo atual) implementar uma exclusão definitiva a partir da lixeira.
+- Sessão guarda o papel/status do usuário no momento do login: se um admin muda o papel ou
+  desativa alguém que já está logado em outra aba/sessão, essa sessão só sente a mudança na
+  próxima ação que precisar reconsultar o banco (ex. próximo login).
 - Não há CSRF token nos formulários — bom próximo passo antes de um uso mais sério.
 - Os limites de CPU/memória por serviço no `docker-compose.yml` seguem a convenção já usada
   neste computador para evitar sobrecarga da máquina; ajuste conforme necessário.

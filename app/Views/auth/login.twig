@@ -10,8 +10,8 @@
 
     <form method="post" action="/login" class="space-y-4">
         <div>
-            <label for="email" class="field-label">E-mail</label>
-            <input type="email" id="email" name="email" value="{{ old.email }}" required autofocus class="field-input">
+            <label for="identifier" class="field-label">E-mail ou username</label>
+            <input type="text" id="identifier" name="identifier" value="{{ old.identifier }}" required autofocus class="field-input">
         </div>
         <div>
             <label for="password" class="field-label">Senha</label>

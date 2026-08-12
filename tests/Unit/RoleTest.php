@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 use App\Support\Role;
 
-it('only allows aluno and professor to self-register', function () {
-    expect(Role::registrable())->toBe([Role::Aluno, Role::Professor])
-        ->and(Role::registrable())->not->toContain(Role::Admin);
+it('only allows aluno to self-register', function () {
+    expect(Role::registrable())->toBe(Role::Aluno);
 });
 
 it('has a human-readable label per case', function () {

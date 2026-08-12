@@ -10,7 +10,9 @@
     },
     "autoload": {
         "psr-4": {
-            "App\\": "app/"
+            "App\\": "app/",
+            "Database\\Seeders\\": "database/seeders/",
+            "Database\\Factories\\": "database/factories/"
         }
     },
     "config": {
@@ -21,6 +23,7 @@
         }
     },
     "require-dev": {
+        "fakerphp/faker": "^1.24",
         "friendsofphp/php-cs-fixer": "^3.95",
         "pestphp/pest": "^2.0"
     },
@@ -32,6 +35,10 @@
     "scripts": {
         "test": "pest",
         "cs": "php-cs-fixer fix --diff --dry-run",
-        "cs:fix": "php-cs-fixer fix"
+        "cs:fix": "php-cs-fixer fix",
+        "migrate": "php bin/console.php migrate",
+        "migrate:rollback": "php bin/console.php migrate:rollback",
+        "migrate:status": "php bin/console.php migrate:status",
+        "db:seed": "php bin/console.php db:seed"
     }
 }

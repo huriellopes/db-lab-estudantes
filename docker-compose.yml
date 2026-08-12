@@ -62,6 +62,7 @@ services:
       PMA_URL: ${PMA_URL}
       MYSQL_EXTERNAL_PORT: ${MYSQL_PORT}
       DB_PUBLIC_HOST: ${DB_PUBLIC_HOST:-localhost}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
     ports:
       - "${APP_PORT}:80"
     depends_on:

@@ -1,8 +1,10 @@
 {% extends 'layouts/guest.twig' %}
 
 {% block content %}
-    <h1 class="mb-1 text-xl font-semibold text-slate-900">Criar conta</h1>
-    <p class="mb-6 text-sm text-slate-500">Cadastre-se como aluno ou professor e crie seus próprios schemas no MySQL.</p>
+    <h1 class="mb-1 text-xl font-semibold text-slate-900">Criar conta de aluno</h1>
+    <p class="mb-6 text-sm text-slate-500">
+        Crie seus próprios schemas no MySQL. Contas de professor são criadas por um admin.
+    </p>
 
     {% for error in errors %}
         <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
@@ -20,21 +22,15 @@
         </div>
 
         <div>
-            <span class="field-label">Perfil</span>
-            <div class="grid grid-cols-2 gap-3">
-                <label class="cursor-pointer">
-                    <input type="radio" name="role" value="aluno" class="peer sr-only" {{ old.role == 'aluno' ? 'checked' : '' }}>
-                    <div class="rounded-lg border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-600 transition-colors peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700">
-                        Aluno
-                    </div>
-                </label>
-                <label class="cursor-pointer">
-                    <input type="radio" name="role" value="professor" class="peer sr-only" {{ old.role == 'professor' ? 'checked' : '' }}>
-                    <div class="rounded-lg border border-slate-300 px-4 py-3 text-center text-sm font-medium text-slate-600 transition-colors peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700">
-                        Professor
-                    </div>
-                </label>
-            </div>
+            <label for="username" class="field-label">Username</label>
+            <input
+                type="text" id="username" name="username" value="{{ old.username }}"
+                pattern="[a-z][a-z0-9_]{2,31}" maxlength="32" required class="field-input font-mono"
+                placeholder="joaosilva"
+            >
+            <p class="mt-1.5 text-xs text-slate-500">
+                3 a 32 caracteres, começando com letra. Usado pra logar aqui e também como login do phpMyAdmin.
+            </p>
         </div>
 
         <div>

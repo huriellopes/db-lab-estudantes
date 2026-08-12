@@ -25,4 +25,16 @@ final readonly class AuthenticatedUser
     {
         return new self($user->id, $user->name, $user->email, $user->role, $user->mysqlLogin);
     }
+
+    /** "Huriel Correia Lopes" -> "Huriel Lopes" — usado na navbar, que tem pouco espaço. */
+    public function shortName(): string
+    {
+        $parts = array_values(array_filter(preg_split('/\s+/', trim($this->name)) ?: []));
+
+        return match (count($parts)) {
+            0 => '',
+            1 => $parts[0],
+            default => $parts[0] . ' ' . $parts[array_key_last($parts)],
+        };
+    }
 }

@@ -13,6 +13,7 @@ final readonly class StudentSummary
         public int $id,
         public string $name,
         public string $email,
+        public bool $active,
         public DateTimeImmutable $createdAt,
         public int $schemasCount,
     ) {
@@ -20,6 +21,6 @@ final readonly class StudentSummary
 
     public static function fromUser(User $user, int $schemasCount): self
     {
-        return new self($user->id, $user->name, $user->email, $user->createdAt, $schemasCount);
+        return new self($user->id, $user->name, $user->email, $user->active, $user->createdAt, $schemasCount);
     }
 }

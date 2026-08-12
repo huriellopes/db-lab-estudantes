@@ -49,6 +49,17 @@ final class SchemaProvisioner
         $pdo->exec('FLUSH PRIVILEGES');
     }
 
+    /** Bloqueia o login (a conta e os databases continuam intactos) — usado em desativar/soft delete. */
+    public static function lockMysqlAccount(string $login): void
+    {
+        Database::connection()->exec("ALTER USER IF EXISTS '{$login}'@'%' ACCOUNT LOCK");
+    }
+
+    public static function unlockMysqlAccount(string $login): void
+    {
+        Database::connection()->exec("ALTER USER IF EXISTS '{$login}'@'%' ACCOUNT UNLOCK");
+    }
+
     public static function dropMysqlAccount(string $login): void
     {
         Database::connection()->exec("DROP USER IF EXISTS '{$login}'@'%'");

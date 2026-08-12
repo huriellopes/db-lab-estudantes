@@ -21,9 +21,12 @@ enum Role: string
         };
     }
 
-    /** Papéis que uma pessoa pode escolher no formulário de cadastro (admin nunca se autocadastra). */
-    public static function registrable(): array
+    /**
+     * O cadastro público é só para alunos — contas de professor/admin são criadas pelo
+     * admin (App\Controllers\AdminController) ou promovidas depois via troca de papel.
+     */
+    public static function registrable(): self
     {
-        return [self::Aluno, self::Professor];
+        return self::Aluno;
     }
 }

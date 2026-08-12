@@ -13,6 +13,7 @@ use App\Models\User as UserModel;
 use App\Services\SchemaProvisioner;
 use App\Services\UserManager;
 use App\Support\AdminStats;
+use App\Support\RegistrationValidator;
 use App\Support\Role;
 use App\Support\SchemaNameBuilder;
 use Throwable;
@@ -41,8 +42,65 @@ final class AdminController extends Controller
 
         $this->render('admin/users', [
             'pageTitle' => 'Usuários',
-            'users' => UserModel::all(),
+            'users' => UserModel::allManageable(),
             'roles' => Role::cases(),
+        ]);
+    }
+
+    public function create(array $params = []): void
+    {
+        Auth::requireAdmin();
+
+        $this->render('admin/user_create', [
+            'pageTitle' => 'Novo usuário',
+            'old' => ['name' => '', 'email' => '', 'username' => '', 'role' => Role::Aluno->value],
+            'roles' => Role::cases(),
+            'errors' => [],
+        ]);
+    }
+
+    public function store(array $params = []): void
+    {
+        Auth::requireAdmin();
+
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $username = strtolower(trim((string) ($_POST['username'] ?? '')));
+        $password = (string) ($_POST['password'] ?? '');
+        $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
+        $roleInput = (string) ($_POST['role'] ?? '');
+        $old = compact('name', 'email', 'username') + ['role' => $roleInput];
+
+        $errors = RegistrationValidator::validate(
+            $name,
+            $email,
+            $username,
+            $password,
+            $passwordConfirm,
+            UserModel::emailExists($email),
+            UserModel::mysqlLoginExists($username),
+        );
+
+        $role = Role::tryFrom($roleInput);
+        if ($role === null) {
+            $errors[] = 'Selecione um perfil válido.';
+        }
+
+        if (!$errors) {
+            try {
+                UserManager::provisionNewUser($name, $email, $username, $password, $role);
+
+                $this->respond(true, "Usuário \"{$name}\" criado.", '/admin/usuarios');
+            } catch (Throwable $e) {
+                $errors[] = 'Não foi possível criar o usuário: ' . $e->getMessage();
+            }
+        }
+
+        $this->render('admin/user_create', [
+            'pageTitle' => 'Novo usuário',
+            'old' => $old,
+            'roles' => Role::cases(),
+            'errors' => $errors,
         ]);
     }
 
@@ -52,7 +110,7 @@ final class AdminController extends Controller
 
         $this->render('admin/user_edit', [
             'pageTitle' => 'Editar usuário',
-            'user' => $this->findUserOrFail((int) $params['id']),
+            'user' => $this->findManageableUserOrFail((int) $params['id']),
         ]);
     }
 
@@ -60,7 +118,7 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
-        $target = $this->findUserOrFail((int) $params['id']);
+        $target = $this->findManageableUserOrFail((int) $params['id']);
 
         $name = trim((string) ($_POST['name'] ?? ''));
         $email = trim((string) ($_POST['email'] ?? ''));
@@ -83,12 +141,9 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
-        $target = $this->findUserOrFail((int) $params['id']);
+        $target = $this->findManageableUserOrFail((int) $params['id']);
         $role = Role::tryFrom((string) ($_POST['role'] ?? ''));
 
-        if ($target->id === Auth::id()) {
-            $this->respond(false, 'Você não pode alterar seu próprio papel.', '/admin/usuarios');
-        }
         if ($role === null) {
             $this->respond(false, 'Papel inválido.', '/admin/usuarios');
         }
@@ -98,11 +153,28 @@ final class AdminController extends Controller
         $this->respond(true, "Papel de {$target->name} atualizado para {$role->label()}.", '/admin/usuarios');
     }
 
+    public function toggleActive(array $params): void
+    {
+        Auth::requireAdmin();
+
+        $target = $this->findManageableUserOrFail((int) $params['id']);
+
+        try {
+            UserManager::setActive($target, !$target->active);
+            $message = $target->active
+                ? "Conta de {$target->name} desativada."
+                : "Conta de {$target->name} reativada.";
+            $this->respond(true, $message, '/admin/usuarios');
+        } catch (Throwable $e) {
+            $this->respond(false, 'Não foi possível atualizar o status: ' . $e->getMessage(), '/admin/usuarios');
+        }
+    }
+
     public function resetPassword(array $params): void
     {
         Auth::requireAdmin();
 
-        $target = $this->findUserOrFail((int) $params['id']);
+        $target = $this->findManageableUserOrFail((int) $params['id']);
         $newPassword = (string) ($_POST['new_password'] ?? '');
 
         if (strlen($newPassword) < 6) {
@@ -121,17 +193,40 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
-        $target = $this->findUserOrFail((int) $params['id']);
+        $target = $this->findManageableUserOrFail((int) $params['id']);
 
-        if ($target->id === Auth::id()) {
-            $this->respond(false, 'Você não pode excluir a própria conta.', '/admin/usuarios');
+        try {
+            UserManager::softDelete($target);
+            $this->respond(true, "Conta de {$target->name} excluída (dá pra restaurar na lixeira).", '/admin/usuarios');
+        } catch (Throwable $e) {
+            $this->respond(false, 'Não foi possível excluir a conta: ' . $e->getMessage(), '/admin/usuarios');
+        }
+    }
+
+    public function trash(array $params = []): void
+    {
+        Auth::requireAdmin();
+
+        $this->render('admin/trash', [
+            'pageTitle' => 'Lixeira',
+            'users' => UserModel::trashed(),
+        ]);
+    }
+
+    public function restore(array $params): void
+    {
+        Auth::requireAdmin();
+
+        $target = UserModel::findTrashed((int) $params['id']);
+        if ($target === null) {
+            $this->respond(false, 'Usuário não encontrado na lixeira.', '/admin/usuarios/lixeira');
         }
 
         try {
-            UserManager::deleteCompletely($target);
-            $this->respond(true, "Conta de {$target->name} removida.", '/admin/usuarios');
+            UserManager::restore($target);
+            $this->respond(true, "Conta de {$target->name} restaurada.", '/admin/usuarios/lixeira');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível excluir a conta: ' . $e->getMessage(), '/admin/usuarios');
+            $this->respond(false, 'Não foi possível restaurar a conta: ' . $e->getMessage(), '/admin/usuarios/lixeira');
         }
     }
 
@@ -170,12 +265,16 @@ final class AdminController extends Controller
         }
     }
 
-    private function findUserOrFail(int $id): User
+    /** Bloqueia ações sobre a própria conta e sobre outras contas admin (não listadas neste painel). */
+    private function findManageableUserOrFail(int $id): User
     {
         $user = UserModel::find($id);
 
-        if ($user === null) {
+        if ($user === null || $user->role === Role::Admin) {
             $this->respond(false, 'Usuário não encontrado.', '/admin/usuarios');
+        }
+        if ($user->id === Auth::id()) {
+            $this->respond(false, 'Você não pode gerenciar a própria conta por aqui.', '/admin/usuarios');
         }
 
         return $user;

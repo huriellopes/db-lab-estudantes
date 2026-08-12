@@ -47,16 +47,22 @@ $router->get('/professor/alunos', [StudentController::class, 'index']);
 $router->get('/professor/alunos/{id}/editar', [StudentController::class, 'edit']);
 $router->post('/professor/alunos/{id}', [StudentController::class, 'update']);
 $router->post('/professor/alunos/{id}/senha', [StudentController::class, 'resetPassword']);
+$router->post('/professor/alunos/{id}/status', [StudentController::class, 'toggleActive']);
 $router->post('/professor/alunos/{id}/excluir', [StudentController::class, 'destroy']);
 
 // Admin: controle total sobre usuários, papéis e schemas.
 $router->get('/admin', [AdminController::class, 'index']);
 $router->get('/admin/usuarios', [AdminController::class, 'users']);
+$router->get('/admin/usuarios/novo', [AdminController::class, 'create']);
+$router->post('/admin/usuarios', [AdminController::class, 'store']);
+$router->get('/admin/usuarios/lixeira', [AdminController::class, 'trash']);
 $router->get('/admin/usuarios/{id}/editar', [AdminController::class, 'edit']);
 $router->post('/admin/usuarios/{id}', [AdminController::class, 'update']);
 $router->post('/admin/usuarios/{id}/papel', [AdminController::class, 'updateRole']);
+$router->post('/admin/usuarios/{id}/status', [AdminController::class, 'toggleActive']);
 $router->post('/admin/usuarios/{id}/senha', [AdminController::class, 'resetPassword']);
 $router->post('/admin/usuarios/{id}/excluir', [AdminController::class, 'destroy']);
+$router->post('/admin/usuarios/{id}/restaurar', [AdminController::class, 'restore']);
 $router->get('/admin/schemas', [AdminController::class, 'schemas']);
 $router->post('/admin/schemas/excluir', [AdminController::class, 'destroySchema']);
 

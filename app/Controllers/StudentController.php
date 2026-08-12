@@ -87,6 +87,23 @@ final class StudentController extends Controller
         }
     }
 
+    public function toggleActive(array $params): void
+    {
+        Auth::requireProfessorOrAdmin();
+
+        $student = $this->findStudentOrFail((int) $params['id']);
+
+        try {
+            UserManager::setActive($student, !$student->active);
+            $message = $student->active
+                ? "Conta de {$student->name} desativada."
+                : "Conta de {$student->name} reativada.";
+            $this->respond(true, $message, '/professor/alunos');
+        } catch (Throwable $e) {
+            $this->respond(false, 'Não foi possível atualizar o status: ' . $e->getMessage(), '/professor/alunos');
+        }
+    }
+
     public function destroy(array $params): void
     {
         Auth::requireProfessorOrAdmin();
@@ -94,8 +111,8 @@ final class StudentController extends Controller
         $student = $this->findStudentOrFail((int) $params['id']);
 
         try {
-            UserManager::deleteCompletely($student);
-            $this->respond(true, "Conta de {$student->name} removida.", '/professor/alunos');
+            UserManager::softDelete($student);
+            $this->respond(true, "Conta de {$student->name} excluída (um admin pode restaurar na lixeira).", '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, 'Não foi possível excluir a conta: ' . $e->getMessage(), '/professor/alunos');
         }

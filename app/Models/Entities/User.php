@@ -16,8 +16,15 @@ final readonly class User
         public string $passwordHash,
         public Role $role,
         public string $mysqlLogin,
+        public bool $active,
         public DateTimeImmutable $createdAt,
+        public ?DateTimeImmutable $deletedAt,
     ) {
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->deletedAt !== null;
     }
 
     /** @param array<string, mixed> $row Linha crua vinda de um fetch() do PDO. */
@@ -30,7 +37,9 @@ final readonly class User
             passwordHash: (string) $row['password_hash'],
             role: Role::from((string) $row['role']),
             mysqlLogin: (string) $row['mysql_login'],
+            active: (bool) $row['active'],
             createdAt: new DateTimeImmutable((string) $row['created_at']),
+            deletedAt: $row['deleted_at'] !== null ? new DateTimeImmutable((string) $row['deleted_at']) : null,
         );
     }
 }
