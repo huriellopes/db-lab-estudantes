@@ -192,9 +192,8 @@ dinâmicos (`/professor/alunos/{id}/editar`) via regex.
 Manual de auto-ajuda pra quem prefere um cliente de banco na própria máquina (TablePlus,
 DBeaver, MySQL Workbench, DataGrip/PhpStorm, HeidiSQL...) em vez do phpMyAdmin: destaque pro
 link público do phpMyAdmin quando `PMA_URL` está configurada, comando `mysql -h ... -P ...`
-pronto pra copiar, comando de túnel SSH (`ssh -L 3306:127.0.0.1:<porta> usuario@host -N`)
-pra quando o ambiente estiver num servidor remoto, passo a passo por ferramenta (os campos
-são sempre os mesmos depois do túnel aberto: `127.0.0.1:3306`) e uma seção de erros comuns.
+pronto pra copiar (conexão **direta, sem túnel** — o MySQL é público de propósito, ver
+"Produção (Contabo)" abaixo), passo a passo por ferramenta e uma seção de erros comuns.
 Host/porta exibidos vêm de `DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`).
 
 ### Console SQL (`POST /dashboard/sql`)
@@ -258,15 +257,18 @@ localmente) pra promover essa conta.
 ## Produção (Contabo)
 
 Segue o mesmo padrão dos outros projetos no servidor (`/apps/<projeto>/`, Nginx Proxy
-Manager como proxy reverso já existente, banco só em `127.0.0.1` sem exposição pública).
+Manager como proxy reverso já existente pra app/phpMyAdmin).
 
 - **URL**: `https://dblab.217.76.60.113.sslip.io` (domínio `sslip.io` — resolve sozinho pro
   IP do servidor, sem precisar configurar DNS; é o mesmo padrão usado por `bookid-api`,
   `fintrack-admin` etc. nesse Contabo). phpMyAdmin público em
   `https://pma.dblab.217.76.60.113.sslip.io` (mesmo domínio sslip.io, subdomínio próprio).
-- **MySQL nunca é público** — só em `127.0.0.1` no servidor, acesso de fora só via túnel SSH
-  (a própria página `/conectar` da app ensina isso, inclusive pra quem preferir acessar o
-  phpMyAdmin por SGBD local em vez do link público).
+- **MySQL é público** (porta `MYSQL_PORT` no `.env`, `0.0.0.0`) — decisão explícita, pra
+  qualquer aluno/professor conectar direto por um SGBD local sem precisar de túnel SSH (a
+  própria página `/conectar` da app ensina isso). Isolamento entre contas continua
+  garantido pelos `GRANT`s do MySQL (cada login só enxerga os próprios schemas — testado
+  ativamente, ver `SECURITY.md`), mas isso é uma superfície pública de verdade: senha forte
+  em cada conta importa bem mais agora. Trade-off registrado em `SECURITY.md`.
 - **Deploy**: `git push` numa PR de `dev` → `main`; depois que o CI passar, o workflow
   **Deploy** roda `deploy.sh` no servidor via SSH (`git pull` + `docker compose -f
   docker-compose.prod.yml up -d --build`, migrations automáticas no entrypoint). A rede

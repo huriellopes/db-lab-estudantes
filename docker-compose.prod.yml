@@ -2,9 +2,12 @@
 # app e phpMyAdmin são publicados pelo Nginx Proxy Manager já existente, através da rede
 # externa 'proxy' (criada pela stack do NPM) — declarada abaixo, sem precisar de
 # `docker network connect` manual depois do `up`.
-# O MySQL em si nunca é público: só em 127.0.0.1, acesso externo apenas via túnel SSH
-# (a própria app ensina isso em /conectar) — inclusive pra quem for usar o phpMyAdmin
-# via SGBD local em vez do link público.
+#
+# O MySQL é público (0.0.0.0), de propósito, pra dar pra conectar direto por qualquer
+# SGBD local sem precisar de túnel SSH (decisão explícita — ver SECURITY.md, "MySQL
+# público"). TLS disponível (certificado autoassinado que o próprio MySQL já gera) pra
+# quem ligar "usar SSL" no cliente; não é obrigatório porque forçar isso quebraria a
+# conexão interna da própria app sem retrabalho considerável.
 services:
   mysql:
     image: mysql:8.0
@@ -19,9 +22,10 @@ services:
     volumes:
       - dblab-mysql-data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d:ro
-    # Porta própria (13306) pra não colidir com outros bancos do servidor.
+    # Porta própria (13306) pra não colidir com outros bancos do servidor. Pública de
+    # propósito (0.0.0.0) — conexão direta por SGBD local, sem túnel SSH.
     ports:
-      - "127.0.0.1:${MYSQL_PORT}:3306"
+      - "${MYSQL_PORT}:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
