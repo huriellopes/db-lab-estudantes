@@ -19,6 +19,17 @@ use App\Support\Csrf;
 use App\Support\RequestScheme;
 use Dotenv\Dotenv;
 
+// Rede de segurança final: qualquer exceção/erro não capturado por um controller vira uma
+// página 500 normal em vez do stack trace cru do PHP (display_errors já fica Off — ver
+// docker/php-hardening.ini — isso aqui é só pra mostrar algo decente no lugar do branco).
+// O detalhe real do erro vai pro log (stderr, capturado pelo supervisord/`docker logs`),
+// nunca pra resposta.
+set_exception_handler(static function (Throwable $e): void {
+    error_log('Exceção não capturada: ' . $e);
+    http_response_code(500);
+    echo View::render('errors/500');
+});
+
 // Só é usado fora do Docker (ex.: `php -S localhost:8000 -t public`), já que em
 // produção/dev com docker-compose as variáveis já chegam via `environment:`.
 if (file_exists(dirname(__DIR__) . '/.env')) {

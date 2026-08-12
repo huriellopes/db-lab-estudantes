@@ -153,7 +153,7 @@ final class PasswordResetController extends Controller
                 'pageTitle' => 'Redefinir senha',
                 'token' => $token,
                 'valid' => true,
-                'errors' => ['Não foi possível redefinir a senha: ' . $e->getMessage()],
+                'errors' => [$this->genericError('redefinir a senha', $e)],
             ]);
         }
     }

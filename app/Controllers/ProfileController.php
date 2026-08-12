@@ -68,7 +68,7 @@ final class ProfileController extends Controller
             Auth::refreshMysqlPassword($newPassword);
             $this->respond(true, 'Senha atualizada com sucesso.', '/profile');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível atualizar a senha: ' . $e->getMessage(), '/profile');
+            $this->respond(false, $this->genericError('atualizar a senha', $e), '/profile');
         }
     }
 
@@ -105,7 +105,7 @@ final class ProfileController extends Controller
             Auth::refresh(User::find($user->id));
             $this->respond(true, "Login do phpMyAdmin atualizado para \"{$newLogin}\".", '/profile');
         } catch (Throwable $e) {
-            $this->respond(false, 'Não foi possível renomear o login: ' . $e->getMessage(), '/profile');
+            $this->respond(false, $this->genericError('renomear o login', $e), '/profile');
         }
     }
 }
