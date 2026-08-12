@@ -10,6 +10,7 @@ use App\Controllers\ConnectionController;
 use App\Controllers\DashboardController;
 use App\Controllers\ProfileController;
 use App\Controllers\SchemaController;
+use App\Controllers\SqlConsoleController;
 use App\Controllers\StudentController;
 use App\Core\Router;
 use Dotenv\Dotenv;
@@ -34,6 +35,7 @@ $router->post('/logout', [AuthController::class, 'logout']);
 $router->get('/dashboard', [DashboardController::class, 'index']);
 $router->post('/schemas', [SchemaController::class, 'store']);
 $router->post('/schemas/delete', [SchemaController::class, 'destroy']);
+$router->post('/dashboard/sql', [SqlConsoleController::class, 'run']);
 
 $router->get('/profile', [ProfileController::class, 'edit']);
 $router->post('/profile', [ProfileController::class, 'update']);

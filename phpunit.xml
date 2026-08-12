@@ -12,7 +12,11 @@
     <source>
         <include>
             <directory suffix=".php">./app</directory>
-            
+
         </include>
     </source>
+    <php>
+        <!-- Só pra testes (App\Support\Crypto) — não é usada em dev/produção, que têm a própria. -->
+        <env name="APP_KEY" value="dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHQ="/>
+    </php>
 </phpunit>

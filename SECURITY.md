@@ -39,6 +39,25 @@ phpMyAdmin (`RENAME USER`) foi implementada — o nome do database não muda qua
 apenas de `SchemaRecord::findOwned($dbName, $userId)`, que é a fonte de verdade real
 (tabela `schemas_criados`, por `user_id`) e não sofre desse problema.
 
+## Console SQL (`POST /dashboard/sql`) — SQL arbitrário, de propósito
+
+Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão acima (allow-list
++ bind parameter). É seguro pelo desenho da conexão, não por validação de input:
+
+- `App\Core\Database::connectAs()` abre uma conexão PDO **nova**, autenticada com o login e
+  senha MySQL **reais da própria pessoa** — nunca a conexão admin (`appuser`) usada pelo
+  resto da app. Os `GRANT`s que `SchemaProvisioner::createDatabase()` já aplica (por schema,
+  na criação) são a única barreira, e são aplicados pelo MySQL, não pela aplicação: um
+  `USE outro_schema` ou `SELECT * FROM outro_schema.tabela` volta `1044 Access denied`
+  direto do servidor, mesmo que o comando em si seja sintaticamente válido.
+- A senha usada nessa conexão é cacheada (criptografada, `App\Support\Crypto`, libsodium)
+  na sessão no login — nunca em texto puro em disco (ver `README.md`, seção "Console SQL").
+- `App\Support\SqlScriptSplitter` só separa comandos por `;` (respeitando strings/
+  comentários) pra rodar um de cada vez — não interpreta nem sanitiza o conteúdo de cada
+  comando, e isso é intencional: qualquer comando que o login MySQL da pessoa tenha
+  permissão de rodar é permitido, do mesmo jeito que seria via phpMyAdmin ou um cliente
+  MySQL comum.
+
 ## Outras camadas relevantes (fora do escopo estrito de SQL, mas parte da mesma auditoria)
 
 - **XSS**: Twig com `autoescape: 'html'` ligado por padrão (`App\Core\View`) — toda

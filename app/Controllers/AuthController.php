@@ -51,7 +51,7 @@ final class AuthController extends Controller
         } elseif (!$user->active) {
             $errors[] = 'Esta conta está desativada. Fale com um professor ou admin.';
         } else {
-            Auth::login($user);
+            Auth::login($user, $password);
             $this->redirect('/dashboard');
         }
 
