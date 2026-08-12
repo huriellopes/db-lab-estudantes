@@ -273,6 +273,29 @@ agora.
   estiver configurado — só loga e segue (dev/instâncias novas funcionam sem SMTP; o fluxo
   de reset fica inoperante até alguém preencher isso).
 
+## "Manter conectado" (remember-me)
+
+- Checkbox opcional no login. Token de 256 bits (`random_bytes(32)`), guardado no banco só
+  como hash (sha256, `App\Models\RememberToken`) — mesmo padrão do reset de senha. Cookie
+  **separado** do de sessão do PHP (`remember_token`), `HttpOnly` + `SameSite=Lax` sempre,
+  `Secure` quando a requisição chega por HTTPS de verdade — mesmas flags do cookie de
+  sessão (`App\Support\RequestScheme`).
+- Validade de 30 dias (`RememberToken::TTL_DAYS`), mas **rotativo**: toda vez que o cookie é
+  usado pra reabrir sessão sozinho (`Auth::attemptRememberLogin()`, chamado uma vez no
+  bootstrap de `public/index.php`), o token é trocado por um novo — se o cookie vazar,
+  quem roubou só consegue usar até a próxima vez que a pessoa dona da conta abrir o site;
+  depois disso o token roubado já não existe mais.
+- Um token por dispositivo/navegador (ao contrário do reset de senha, que invalida
+  qualquer token anterior) — múltiplas sessões "lembradas" simultâneas são esperadas
+  (celular, notebook do trabalho...). Logout derruba só o token do dispositivo atual.
+- De propósito **não** cacheia a senha MySQL (`Auth::login()` sem `$plainPassword`) quando
+  a sessão é reaberta pelo cookie: quem autenticou foi o cookie, não a pessoa digitando a
+  senha — o console SQL do dashboard continua exigindo um login de verdade pra funcionar
+  (mensagem já existente em `SqlConsoleController` cobre esse caso).
+- Conta desativada entre uma visita e outra: `attemptRememberLogin()` confere `active`
+  antes de reabrir a sessão, então desativar uma conta já barra o cookie dela também, sem
+  precisar revogar o token manualmente.
+
 ## Vazamento de erro (corrigido)
 
 Confirmado na prática (uma exceção de teste, provisória, revertida em seguida): sem

@@ -13,6 +13,7 @@ use App\Controllers\ProfileController;
 use App\Controllers\SchemaController;
 use App\Controllers\SqlConsoleController;
 use App\Controllers\StudentController;
+use App\Core\Auth;
 use App\Core\Router;
 use App\Core\View;
 use App\Support\Csrf;
@@ -48,6 +49,10 @@ session_set_cookie_params([
     'samesite' => 'Lax',
 ]);
 session_start();
+
+// Sem sessão ativa, mas com um cookie "lembrar de mim" válido? Reabre sozinho — ver
+// App\Core\Auth::attemptRememberLogin(). Roda uma vez só, aqui, antes de qualquer rota.
+Auth::attemptRememberLogin();
 
 // Toda requisição POST precisa do token CSRF da própria sessão — via campo _csrf (forms
 // clássicos, ver csrf_field() no Twig) ou header X-CSRF-Token (Axios, ver resources/js/app.js).
