@@ -1,4 +1,5 @@
 {% extends 'layouts/guest.twig' %}
+{% import 'macros/forms.twig' as forms %}
 
 {% block content %}
     <h1 class="mb-1 text-xl font-semibold text-slate-900">Criar conta de aluno</h1>
@@ -33,15 +34,9 @@
             </p>
         </div>
 
-        <div>
-            <label for="password" class="field-label">Senha</label>
-            <input type="password" id="password" name="password" required minlength="6" class="field-input">
-        </div>
+        {{ forms.password_field('password', 'password', 'Senha', 6) }}
 
-        <div>
-            <label for="password_confirm" class="field-label">Confirmar senha</label>
-            <input type="password" id="password_confirm" name="password_confirm" required minlength="6" class="field-input">
-        </div>
+        {{ forms.password_field('password_confirm', 'password_confirm', 'Confirmar senha', 6) }}
 
         <button type="submit" class="btn-primary w-full">Cadastrar</button>
     </form>

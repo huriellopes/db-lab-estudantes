@@ -1,4 +1,5 @@
 {% extends 'layouts/guest.twig' %}
+{% import 'macros/forms.twig' as forms %}
 
 {% block content %}
     <h1 class="mb-1 text-xl font-semibold text-slate-900">Entrar</h1>
@@ -13,10 +14,7 @@
             <label for="identifier" class="field-label">E-mail ou username</label>
             <input type="text" id="identifier" name="identifier" value="{{ old.identifier }}" required autofocus class="field-input">
         </div>
-        <div>
-            <label for="password" class="field-label">Senha</label>
-            <input type="password" id="password" name="password" required class="field-input">
-        </div>
+        {{ forms.password_field('password', 'password', 'Senha') }}
         <button type="submit" class="btn-primary w-full">Entrar</button>
     </form>
 
