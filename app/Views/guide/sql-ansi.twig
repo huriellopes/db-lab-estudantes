@@ -1,0 +1,124 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">📐</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">SQL ANSI</h1>
+            <p class="mt-1 text-sm text-slate-500">O padrão por trás de praticamente todo banco relacional.</p>
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                SQL (<em>Structured Query Language</em>) é a linguagem usada pra conversar com bancos de dados
+                <strong>relacionais</strong> — aqueles organizados em tabelas, com linhas e colunas, tipo uma
+                planilha com regras. "ANSI SQL" é o padrão oficial (ANSI, depois adotado pela ISO) que define
+                como essa linguagem deveria funcionar. Na prática, cada banco (MySQL, PostgreSQL, Oracle, SQL
+                Server...) segue esse padrão só até certo ponto e adiciona seus próprios extras — por isso se fala
+                em "dialetos" de SQL, meio como sotaques de uma mesma língua.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Quatro grupos de comando, cada um com uma sigla própria:
+            </p>
+            <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>DDL</strong> (Data Definition Language) — cria/altera/apaga a estrutura: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ALTER</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DROP</code>.</li>
+                <li><strong>DML</strong> (Data Manipulation Language) — mexe nos dados: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code>.</li>
+                <li><strong>DQL</strong> (Data Query Language) — só consulta: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SELECT</code>.</li>
+                <li><strong>DCL</strong> (Data Control Language) — permissões: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GRANT</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">REVOKE</code> (é literalmente o que o console SQL deste laboratório usa por baixo dos panos).</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Sempre que os dados têm estrutura clara e relacionamentos entre si — cadastro de alunos e
+                matrículas, estoque com produtos e pedidos, financeiro com contas e lançamentos. Se dá pra
+                desenhar as informações como tabelas relacionadas por uma chave (ex.: "cada matrícula pertence a
+                um aluno"), SQL relacional tende a ser a escolha mais natural.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- DDL: cria a tabela
+CREATE TABLE aluno (
+    id    INT PRIMARY KEY AUTO_INCREMENT,
+    nome  VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE
+);
+
+-- DML: insere um registro
+INSERT INTO aluno (nome, email) VALUES ('Ana Silva', 'ana@exemplo.com');
+
+-- DQL: consulta com filtro e ordenação
+SELECT nome, email
+FROM aluno
+WHERE nome LIKE 'A%'
+ORDER BY nome ASC;</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Além dos comandos básicos, o padrão SQL cobre formas de <strong>combinar dados de várias
+                tabelas</strong> (JOINs), <strong>resumir</strong> grandes conjuntos de linhas (agregação) e
+                garantir que várias operações aconteçam <strong>tudo ou nada</strong> (transações) — é aqui que
+                "saber SQL básico" vira "saber modelar e consultar um banco de verdade".
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>JOIN</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INNER</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">LEFT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RIGHT</code>) — junta linhas de tabelas diferentes que se relacionam por uma chave.</li>
+                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> + <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">HAVING</code></strong> — agrupa linhas e filtra grupos (não linhas individuais) com funções como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COUNT</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SUM</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">AVG</code>.</li>
+                <li><strong>Subquery</strong> — uma consulta dentro da outra, pra usar o resultado de uma como filtro/fonte da outra.</li>
+                <li><strong>Transação</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">BEGIN</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COMMIT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROLLBACK</code>) — agrupa vários comandos como uma unidade só: ou todos aplicam, ou nenhum aplica (essencial pra não deixar dado "pela metade" se algo falhar no meio).</li>
+                <li><strong>Índice</strong> — estrutura auxiliar que acelera busca por uma coluna, ao custo de um pouco mais de espaço/escrita mais lenta.</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                JOIN e agregação viram necessários assim que os dados são normalizados (separados em tabelas
+                pra evitar repetição — ex.: "curso" numa tabela, "matrícula" em outra, ligadas por
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso_id</code>). Transação é obrigatória sempre que uma ação de negócio envolve mais de um
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code> que precisam acontecer juntos (ex.: transferência entre contas: debitar
+                de uma e creditar na outra — se só a primeira parte rodar, o dinheiro "some").
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- JOIN + agregação: quantas matrículas por curso
+SELECT c.nome AS curso, COUNT(m.id) AS total_matriculas
+FROM curso c
+LEFT JOIN matricula m ON m.curso_id = c.id
+GROUP BY c.nome
+HAVING COUNT(m.id) > 0
+ORDER BY total_matriculas DESC;
+
+-- Transação: só confirma se as duas operações derem certo
+START TRANSACTION;
+UPDATE conta SET saldo = saldo - 100 WHERE id = 1;
+UPDATE conta SET saldo = saldo + 100 WHERE id = 2;
+COMMIT;</code></pre>
+        </div>
+    </div>
+{% endblock %}

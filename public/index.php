@@ -8,6 +8,7 @@ use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\ConnectionController;
 use App\Controllers\DashboardController;
+use App\Controllers\GuideController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\SchemaController;
@@ -96,6 +97,9 @@ $router->post('/profile/password', [ProfileController::class, 'updatePassword'])
 $router->post('/profile/mysql-login', [ProfileController::class, 'updateMysqlLogin']);
 
 $router->get('/conectar', [ConnectionController::class, 'show']);
+
+$router->get('/guia', [GuideController::class, 'index']);
+$router->get('/guia/{slug}', [GuideController::class, 'show']);
 
 // Professor (e admin): gestão de contas de aluno.
 $router->get('/professor/alunos', [StudentController::class, 'index']);

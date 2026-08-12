@@ -1,0 +1,112 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">⚡</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Redis</h1>
+            <p class="mt-1 text-sm text-slate-500">Banco em memória, chave-valor — cache, filas, sessão.</p>
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Um banco <strong>chave-valor</strong> que guarda tudo <strong>na memória RAM</strong> (com opção
+                de salvar uma cópia em disco de tempos em tempos, ou a cada escrita). Isso o torna extremamente
+                rápido — na casa dos microssegundos — mas com um limite claro: os dados cabem no tanto de RAM
+                que o servidor tem, bem menor que a capacidade de disco de um banco tradicional.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Guardar dado temporário ou que precisa ser lido/escrito muito rápido: cache de resultado caro
+                de calcular, sessão de usuário logado, contador de rate-limit, fila simples de tarefas,
+                ranking/leaderboard. Praticamente sempre usado <strong>ao lado</strong> de um banco relacional
+                (Redis pro que precisa ser rápido e temporário, o relacional pro dado "de verdade" e permanente)
+                — não como substituto dele.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Quando uma informação é acessada com muita frequência e recalculá-la/buscá-la no banco principal
+                toda vez seria caro, ou quando ela naturalmente "expira" sozinha (sessão, código de verificação,
+                trava de rate-limit). Este próprio laboratório faz rate-limiting de login e cache de sessão —
+                mas usando MySQL/PHP puro em vez de Redis, de propósito, pra não precisar de mais uma peça de
+                infraestrutura num projeto desse tamanho (ver <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">App\Services\RateLimiter</code> se quiser comparar
+                as duas abordagens).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># SET/GET básico
+SET sessao:abc123 "usuario_id=42"
+GET sessao:abc123
+
+# EXPIRE: a chave some sozinha depois de 1800 segundos (30 min) — perfeito pra sessão/cache
+EXPIRE sessao:abc123 1800
+
+# INCR: contador atômico, base de qualquer rate-limit
+INCR tentativas_login:200.1.2.3</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Redis não guarda só texto simples — tem <strong>estruturas de dado</strong> nativas: listas,
+                conjuntos (<em>sets</em>), conjuntos ordenados (<em>sorted sets</em>) e hashes (mapa de
+                campo → valor dentro de uma única chave). Cada uma resolve um problema comum de forma direta,
+                sem precisar montar a lógica na aplicação.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>List</strong> — fila simples (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">LPUSH</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RPOP</code>), tipo "processar na ordem que chegou".</li>
+                <li><strong>Sorted set</strong> — cada item tem uma pontuação; consulta por ordem/faixa é O(log n) — a base de praticamente todo leaderboard/ranking em tempo real.</li>
+                <li><strong>Hash</strong> — guarda um objeto inteiro (vários campos) numa chave só, em vez de várias chaves separadas pro mesmo "registro".</li>
+                <li><strong>Pub/Sub</strong> — publica uma mensagem num "canal" e qualquer cliente inscrito recebe na hora — base simples de notificação em tempo real.</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Sorted set pra ranking/leaderboard (nota de prova, pontuação de jogo). Hash quando faz sentido
+                tratar vários campos relacionados como uma unidade só (ex.: perfil de sessão com vários dados).
+                Pub/Sub pra notificação em tempo real simples — pra filas que precisam de garantia de entrega
+                mais forte (reprocessar se falhar, não perder mensagem), o ecossistema Redis tem o Streams, mas
+                aí já é hora de considerar também uma fila dedicada (RabbitMQ, SQS).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># Sorted set: ranking de pontuação por prova
+ZADD ranking:prova42 950 "aluno:1"
+ZADD ranking:prova42 870 "aluno:2"
+
+# Top 10, do maior pro menor
+ZREVRANGE ranking:prova42 0 9 WITHSCORES
+
+# Hash: um "objeto" sessão numa chave só
+HSET sessao:abc123 usuario_id 42 papel "aluno"
+HGET sessao:abc123 papel</code></pre>
+        </div>
+    </div>
+{% endblock %}

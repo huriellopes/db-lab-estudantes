@@ -1,0 +1,125 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🐬</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">MySQL</h1>
+            <p class="mt-1 text-sm text-slate-500">O banco relacional usado neste laboratório.</p>
+        </div>
+    </div>
+
+    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-900">
+        <svg class="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            É exatamente esse banco que você já usa aqui — os schemas que você cria no
+            <a href="/dashboard" class="font-medium underline underline-offset-2">painel</a> e os comandos que roda no
+            console SQL são MySQL de verdade. Os exemplos abaixo funcionam direto lá.
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Um banco de dados relacional <strong>open-source</strong>, criado em 1995, hoje mantido pela
+                Oracle. É um dos bancos mais usados do mundo pra aplicações web — parte do clássico "LAMP"
+                (Linux, Apache, MySQL, PHP), a mesma base deste laboratório.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Guardar e consultar dados estruturados de aplicações — desde um blog pequeno até sistemas com
+                milhões de usuários (WordPress, Wikipedia até um tempo atrás, e uma fração enorme da web usam
+                MySQL ou um "parente" dele, o MariaDB).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Aplicações web em geral, principalmente quando o time já conhece o ecossistema (PHP, Node,
+                Python...), quando simplicidade de operação importa mais que recursos avançados de banco, e em
+                cargas com bastante leitura. Se o projeto precisa de recursos relacionais mais sofisticados
+                (JSON avançado, tipos de dado ricos, extensões geoespaciais robustas), vale comparar com
+                PostgreSQL.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- AUTO_INCREMENT gera o id sozinho a cada INSERT
+CREATE TABLE tarefa (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    titulo    VARCHAR(150) NOT NULL,
+    concluida TINYINT(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
+INSERT INTO tarefa (titulo) VALUES ('Estudar JOIN');
+
+-- LIMIT: sintaxe do MySQL pra paginar resultado (outros bancos usam OFFSET/FETCH)
+SELECT * FROM tarefa ORDER BY id DESC LIMIT 10;</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                MySQL suporta várias <strong>engines de armazenamento</strong> — a mais usada, InnoDB, é
+                transacional (suporta <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COMMIT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROLLBACK</code> e chaves estrangeiras de verdade). Isso é uma
+                particularidade do MySQL: em outros bancos a engine de armazenamento não é algo que você escolhe
+                por tabela.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>Chave estrangeira</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY ... ON DELETE CASCADE</code>) — garante que uma linha só referencia algo que
+                    realmente existe, e decide o que fazer se o "pai" for apagado.</li>
+                <li><strong>Índice composto</strong> — índice sobre mais de uma coluna, útil quando o filtro/JOIN
+                    usa as duas juntas com frequência.</li>
+                <li><strong>Tipo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JSON</code></strong> — coluna que guarda um documento JSON, com funções pra consultar campos
+                    de dentro dele sem precisar de uma tabela separada.</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Chave estrangeira sempre que dois dados têm uma relação de dependência real (aluno → matrícula).
+                Coluna JSON é útil pra um pedaço de dado que varia de formato entre registros (ex.: metadados
+                opcionais) sem forçar todo mundo a ter as mesmas colunas fixas — mas não substitui modelagem
+                relacional pros dados que realmente são estruturados e consultados com frequência.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>CREATE TABLE matricula (
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    aluno_id INT NOT NULL,
+    curso    VARCHAR(100) NOT NULL,
+    detalhes JSON NULL,
+    CONSTRAINT fk_matricula_aluno
+        FOREIGN KEY (aluno_id) REFERENCES aluno(id) ON DELETE CASCADE
+);
+
+-- Consultando um campo de dentro do JSON
+SELECT curso, detalhes->>'$.turno' AS turno
+FROM matricula
+WHERE detalhes->>'$.turno' = 'noite';</code></pre>
+        </div>
+    </div>
+{% endblock %}

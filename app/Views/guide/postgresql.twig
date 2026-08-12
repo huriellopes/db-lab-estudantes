@@ -1,0 +1,109 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🐘</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">PostgreSQL</h1>
+            <p class="mt-1 text-sm text-slate-500">Relacional open-source, forte em conformidade e recursos avançados.</p>
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Outro banco relacional open-source, com décadas de desenvolvimento (nasceu na Universidade da
+                Califórnia em Berkeley). Costuma ser descrito como o mais "correto" com o padrão SQL ANSI entre
+                os bancos populares, e tem fama de ser extensível — dá pra adicionar tipos de dado e até
+                linguagens de programação dentro dele.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                As mesmas coisas que qualquer relacional (guardar/consultar dados estruturados), mas se destaca
+                quando o projeto precisa de consultas complexas, tipos de dado ricos (arrays, JSON de verdade
+                indexável, dados geográficos via extensão PostGIS) e garantias fortes de integridade.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Sistemas com regras de negócio complexas, relatórios/analytics pesados, ou quando o time
+                valoriza rigor e extensibilidade mais do que a familiaridade "padrão" do MySQL. Muito comum em
+                startups modernas e em projetos que crescem e passam a precisar de recursos mais avançados que
+                um relacional básico oferece.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- SERIAL é o "AUTO_INCREMENT" do Postgres
+CREATE TABLE tarefa (
+    id        SERIAL PRIMARY KEY,
+    titulo    VARCHAR(150) NOT NULL,
+    concluida BOOLEAN NOT NULL DEFAULT false
+);
+
+-- RETURNING: devolve a linha inserida sem precisar de um SELECT extra
+INSERT INTO tarefa (titulo) VALUES ('Estudar Postgres')
+RETURNING id, titulo;</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                Recursos que vão além do SQL básico: tipo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ARRAY</code> nativo numa coluna, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JSONB</code>
+                (JSON armazenado de forma binária, indexável — mais rápido de consultar que o JSON "texto" de
+                outros bancos), CTEs (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WITH ... AS</code>, consultas nomeadas que podem ser reaproveitadas dentro da
+                mesma query) e funções de janela (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">OVER</code>) pra cálculos como ranking sem precisar de subquery.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>CTE</strong> — deixa consultas complexas mais legíveis, quebrando em passos nomeados.</li>
+                <li><strong>Window function</strong> — calcula algo "por linha, olhando um grupo ao redor" (ex.: posição no ranking) sem colapsar as linhas como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> faz.</li>
+                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JSONB</code></strong> — guarda dado semiestruturado e ainda consegue indexar/consultar campos de dentro dele com performance boa.</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                CTE quando uma consulta ficaria ilegível como subquery aninhada várias vezes. Window function
+                pra ranking, médias móveis, "linha anterior/próxima" — coisas que precisam de contexto das
+                linhas vizinhas. JSONB quando parte do dado é genuinamente flexível (preferências de usuário,
+                payload de webhook) mas ainda precisa ser filtrável com performance.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- CTE + window function: ranking de alunos por nota, por turma
+WITH notas_turma AS (
+    SELECT aluno_id, turma_id, nota
+    FROM avaliacao
+    WHERE ano = 2026
+)
+SELECT
+    aluno_id,
+    turma_id,
+    nota,
+    RANK() OVER (PARTITION BY turma_id ORDER BY nota DESC) AS posicao
+FROM notas_turma;</code></pre>
+        </div>
+    </div>
+{% endblock %}
