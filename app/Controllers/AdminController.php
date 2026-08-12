@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Controller;
+use App\Models\Entities\SchemaWithOwner;
 use App\Models\Entities\User;
 use App\Models\SchemaRecord;
 use App\Models\User as UserModel;
@@ -16,6 +17,8 @@ use App\Support\AdminStats;
 use App\Support\RegistrationValidator;
 use App\Support\Role;
 use App\Support\SchemaNameBuilder;
+use App\Support\TableFilter;
+use App\Support\TableQuery;
 use Throwable;
 
 /** Painel do super admin: controle total sobre usuários, papéis e schemas do lab inteiro. */
@@ -40,9 +43,25 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
+        $query = TableQuery::fromParams($_GET, ['name', 'email', 'role', 'status', 'created']);
+        $paginator = TableFilter::paginate(
+            UserModel::allManageable(),
+            $query,
+            searchText: static fn (User $u): string => "{$u->name} {$u->email} {$u->mysqlLogin} {$u->role->label()}",
+            sortAccessors: [
+                'name' => static fn (User $u): string => mb_strtolower($u->name),
+                'email' => static fn (User $u): string => mb_strtolower($u->email),
+                'role' => static fn (User $u): string => $u->role->label(),
+                'status' => static fn (User $u): int => $u->active ? 1 : 0,
+                'created' => static fn (User $u): int => $u->createdAt->getTimestamp(),
+            ],
+            perPage: 10,
+        );
+
         $this->render('admin/users', [
             'pageTitle' => 'Usuários',
-            'users' => UserModel::allManageable(),
+            'paginator' => $paginator,
+            'query' => $query,
             'roles' => Role::cases(),
         ]);
     }
@@ -207,9 +226,24 @@ final class AdminController extends Controller
     {
         Auth::requireAdmin();
 
+        $query = TableQuery::fromParams($_GET, ['name', 'email', 'role', 'deleted']);
+        $paginator = TableFilter::paginate(
+            UserModel::trashed(),
+            $query,
+            searchText: static fn (User $u): string => "{$u->name} {$u->email} {$u->mysqlLogin} {$u->role->label()}",
+            sortAccessors: [
+                'name' => static fn (User $u): string => mb_strtolower($u->name),
+                'email' => static fn (User $u): string => mb_strtolower($u->email),
+                'role' => static fn (User $u): string => $u->role->label(),
+                'deleted' => static fn (User $u): int => $u->deletedAt?->getTimestamp() ?? 0,
+            ],
+            perPage: 10,
+        );
+
         $this->render('admin/trash', [
             'pageTitle' => 'Lixeira',
-            'users' => UserModel::trashed(),
+            'paginator' => $paginator,
+            'query' => $query,
         ]);
     }
 
@@ -235,10 +269,26 @@ final class AdminController extends Controller
         Auth::requireAdmin();
 
         $pmaUrl = Config::get('PMA_URL');
+        $allSchemas = SchemaRecord::allWithOwners();
+
+        $query = TableQuery::fromParams($_GET, ['schema', 'owner', 'created']);
+        $paginator = TableFilter::paginate(
+            $allSchemas,
+            $query,
+            searchText: static fn (SchemaWithOwner $s): string => "{$s->dbName} {$s->ownerName} {$s->ownerEmail}",
+            sortAccessors: [
+                'schema' => static fn (SchemaWithOwner $s): string => mb_strtolower($s->dbName),
+                'owner' => static fn (SchemaWithOwner $s): string => mb_strtolower($s->ownerName),
+                'created' => static fn (SchemaWithOwner $s): int => $s->createdAt->getTimestamp(),
+            ],
+            perPage: 10,
+        );
 
         $this->render('admin/schemas', [
             'pageTitle' => 'Todos os schemas',
-            'schemas' => SchemaRecord::allWithOwners(),
+            'paginator' => $paginator,
+            'query' => $query,
+            'totalSchemas' => count($allSchemas),
             'pmaUrl' => $pmaUrl !== null ? rtrim($pmaUrl, '/') : null,
         ]);
     }

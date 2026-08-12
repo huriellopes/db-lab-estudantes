@@ -1,4 +1,5 @@
 {% extends 'layouts/app.twig' %}
+{% import 'macros/table_controls.twig' as tc %}
 
 {% block content %}
     <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -13,25 +14,29 @@
     </div>
 
     <div class="card">
-        {% if users is empty %}
+        {{ tc.search_form('/admin/usuarios', query, 'Buscar por nome, e-mail ou username…') }}
+
+        {% if paginator.total == 0 and query.search == '' %}
             <div class="rounded-xl border border-dashed border-slate-200 py-10 text-center">
                 <p class="text-sm text-slate-500">Nenhum usuário cadastrado ainda.</p>
             </div>
+        {% elseif paginator.items is empty %}
+            {{ tc.empty_search_state('/admin/usuarios', query, 'usuário') }}
         {% else %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead>
                         <tr class="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
-                            <th class="py-2 pr-4 font-medium">Nome</th>
-                            <th class="py-2 pr-4 font-medium">E-mail / username</th>
-                            <th class="py-2 pr-4 font-medium">Papel</th>
-                            <th class="py-2 pr-4 font-medium">Status</th>
-                            <th class="py-2 pr-4 font-medium">Cadastrado em</th>
+                            {{ tc.sort_th('Nome', 'name', '/admin/usuarios', query) }}
+                            {{ tc.sort_th('E-mail / username', 'email', '/admin/usuarios', query) }}
+                            {{ tc.sort_th('Papel', 'role', '/admin/usuarios', query) }}
+                            {{ tc.sort_th('Status', 'status', '/admin/usuarios', query) }}
+                            {{ tc.sort_th('Cadastrado em', 'created', '/admin/usuarios', query) }}
                             <th class="py-2"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        {% for user in users %}
+                        {% for user in paginator.items %}
                             <tr data-row>
                                 <td class="py-3 pr-4 font-medium text-slate-800">{{ user.name }}</td>
                                 <td class="py-3 pr-4 text-slate-500">
@@ -95,6 +100,8 @@
                     </tbody>
                 </table>
             </div>
+
+            {{ tc.pagination('/admin/usuarios', paginator, query) }}
         {% endif %}
     </div>
 {% endblock %}
