@@ -94,7 +94,7 @@
                                 <form
                                     x-data="ajaxForm({
                                         confirmTitle: 'Excluir schema',
-                                        confirmMessage: 'Excluir o schema \'{{ schema.dbName }}\'? Essa ação não pode ser desfeita.',
+                                        confirmMessage: 'Excluir o schema \'{{ schema.dbName|e('js') }}\'? Essa ação não pode ser desfeita.',
                                         confirmLabel: 'Excluir',
                                         removeRow: true,
                                     })"
