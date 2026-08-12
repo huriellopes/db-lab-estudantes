@@ -63,6 +63,8 @@ final class ProfileController extends Controller
 
         try {
             UserManager::resetPassword($user, $newPassword);
+            // Mantém o console SQL funcionando sem exigir novo login.
+            Auth::refreshMysqlPassword($newPassword);
             $this->respond(true, 'Senha atualizada com sucesso.', '/profile');
         } catch (Throwable $e) {
             $this->respond(false, 'Não foi possível atualizar a senha: ' . $e->getMessage(), '/profile');

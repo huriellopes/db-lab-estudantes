@@ -6,8 +6,8 @@
     <div class="mb-8">
         <h1 class="text-2xl font-semibold text-slate-900">Conectar via SGBD local</h1>
         <p class="mt-1 text-sm text-slate-500">
-            Use qualquer cliente de banco na sua máquina (TablePlus, DBeaver, MySQL Workbench, DataGrip,
-            HeidiSQL...) em vez do phpMyAdmin, se preferir.
+            Use qualquer cliente de banco na sua máquina (TablePlus, DBeaver, MySQL Workbench, DataGrip/PhpStorm,
+            HeidiSQL...) em vez do phpMyAdmin, se preferir. O manual abaixo cobre os mais comuns.
         </p>
     </div>
 
@@ -35,6 +35,23 @@
             Quer trocar esse login? Isso é feito em <a href="/profile" class="text-indigo-600 hover:text-indigo-700">Meu perfil</a>.
         </p>
     </div>
+
+    {% if pmaUrl %}
+        <div class="mb-6 flex items-start gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+            <svg class="mt-0.5 h-6 w-6 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="min-w-0 flex-1">
+                <h2 class="text-base font-semibold text-emerald-900">Mais rápido: use o phpMyAdmin</h2>
+                <p class="mt-1 text-sm text-emerald-800">
+                    Não precisa instalar nada nem configurar túnel — abre no navegador com o usuário/senha acima.
+                </p>
+                <a href="{{ pmaUrl }}" target="_blank" rel="noopener" class="btn-primary mt-3 !bg-emerald-600 hover:!bg-emerald-700">
+                    Abrir phpMyAdmin →
+                </a>
+            </div>
+        </div>
+    {% endif %}
 
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         <div class="card h-fit">
@@ -65,6 +82,8 @@
             <p class="mb-4 text-sm text-slate-500">
                 Se esse ambiente estiver num servidor (não na sua máquina) e a porta do MySQL não estiver
                 aberta publicamente — o recomendado por segurança — abra um <strong>túnel SSH</strong> até lá.
+                Depois disso, <strong>qualquer</strong> SGBD conecta do mesmo jeito: em <code class="rounded bg-slate-100 px-1 py-0.5">127.0.0.1:3306</code>,
+                como se o banco fosse local.
             </p>
             <div
                 x-data="copyable('ssh -L 3306:127.0.0.1:{{ externalPort }} usuario@{{ publicHost }} -N')"
@@ -82,9 +101,96 @@
             </div>
             <p class="mt-3 text-xs text-slate-500">
                 Troque <code class="rounded bg-slate-100 px-1 py-0.5">usuario@{{ publicHost }}</code> pelo seu
-                acesso SSH real ao servidor. Com o túnel aberto, conecte o cliente em <code class="rounded bg-slate-100 px-1 py-0.5">127.0.0.1:3306</code>
-                (usuário/senha continuam os mesmos da tabela acima).
+                acesso SSH real ao servidor. Deixe esse comando rodando aberto num terminal enquanto for usar o SGBD
+                — ele não imprime nada, é normal.
             </p>
+        </div>
+    </div>
+
+    <div class="mb-6 card">
+        <h2 class="mb-1 text-base font-semibold text-slate-900">Manual por SGBD</h2>
+        <p class="mb-4 text-sm text-slate-500">
+            Depois do túnel aberto (se estiver num servidor remoto), os campos são sempre os mesmos:
+            <strong>Host <code class="rounded bg-slate-100 px-1 py-0.5">127.0.0.1</code></strong>,
+            <strong>Porta <code class="rounded bg-slate-100 px-1 py-0.5">3306</code></strong>,
+            <strong>Usuário <code class="rounded bg-slate-100 px-1 py-0.5">{{ user.mysqlLogin }}</code></strong> e a
+            sua senha da plataforma — só muda onde cada ferramenta pede isso.
+        </p>
+
+        <div class="space-y-2">
+            <details class="group rounded-lg border border-slate-200 open:border-slate-300">
+                <summary class="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                    TablePlus
+                </summary>
+                <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+                    <ol class="list-inside list-decimal space-y-1">
+                        <li>Create a new connection → <strong>MySQL</strong>.</li>
+                        <li>Preencha <strong>Host</strong>, <strong>Port</strong>, <strong>User</strong> e <strong>Password</strong> com os valores acima.</li>
+                        <li>Clique em <strong>Test</strong> e depois <strong>Connect</strong>.</li>
+                    </ol>
+                </div>
+            </details>
+
+            <details class="group rounded-lg border border-slate-200 open:border-slate-300">
+                <summary class="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                    DBeaver
+                </summary>
+                <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+                    <ol class="list-inside list-decimal space-y-1">
+                        <li><strong>Database → New Database Connection</strong> → escolha <strong>MySQL</strong>.</li>
+                        <li>Na aba <strong>Main</strong>: <strong>Server Host</strong>, <strong>Port</strong>, <strong>Username</strong> e <strong>Password</strong> com os valores acima.</li>
+                        <li><strong>Test Connection</strong> — se pedir pra baixar o driver, aceite.</li>
+                    </ol>
+                </div>
+            </details>
+
+            <details class="group rounded-lg border border-slate-200 open:border-slate-300">
+                <summary class="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                    MySQL Workbench
+                </summary>
+                <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+                    <ol class="list-inside list-decimal space-y-1">
+                        <li><strong>Database → Manage Connections → New</strong>.</li>
+                        <li><strong>Connection Method: Standard (TCP/IP)</strong>. Preencha <strong>Hostname</strong>, <strong>Port</strong> e <strong>Username</strong> acima.</li>
+                        <li><strong>Store in Vault…</strong> pra salvar a senha, depois <strong>Test Connection</strong>.</li>
+                    </ol>
+                </div>
+            </details>
+
+            <details class="group rounded-lg border border-slate-200 open:border-slate-300">
+                <summary class="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                    DataGrip / PhpStorm
+                </summary>
+                <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+                    <ol class="list-inside list-decimal space-y-1">
+                        <li>Aba <strong>Database</strong> → <strong>+</strong> → <strong>Data Source</strong> → <strong>MySQL</strong>.</li>
+                        <li>Aba <strong>General</strong>: <strong>Host</strong>, <strong>Port</strong>, <strong>User</strong> e <strong>Password</strong> com os valores acima.</li>
+                        <li>Se pedir, clique em <strong>Download driver files</strong> (só na primeira vez).</li>
+                        <li><strong>Test Connection</strong> (canto inferior esquerdo) e depois <strong>OK</strong>.</li>
+                    </ol>
+                </div>
+            </details>
+
+            <details class="group rounded-lg border border-slate-200 open:border-slate-300">
+                <summary class="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+                    HeidiSQL
+                </summary>
+                <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+                    <ol class="list-inside list-decimal space-y-1">
+                        <li>Tela inicial → <strong>Nova</strong>, tipo de rede <strong>MariaDB or MySQL (TCP/IP)</strong>.</li>
+                        <li>Preencha <strong>Hostname / IP</strong>, <strong>Usuário</strong>, <strong>Senha</strong> e <strong>Porta</strong> com os valores acima.</li>
+                        <li><strong>Abrir</strong>.</li>
+                    </ol>
+                </div>
+            </details>
+        </div>
+
+        <div class="mt-4 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
+            <strong>Deu erro?</strong>
+            "Connection refused" ou timeout: o túnel SSH não está aberto (ou caiu). "Address already in use" ao
+            abrir o túnel: você já tem um aberto, não precisa abrir outro. "Access denied" mesmo com a senha
+            certa: confira usuário e senha sem espaço extra (tente digitar em vez de colar), ou troque a senha
+            em <a href="/profile" class="font-medium underline">Meu perfil</a> se não lembrar a atual.
         </div>
     </div>
 

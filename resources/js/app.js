@@ -129,6 +129,54 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
+  /**
+   * Console SQL do dashboard (aluno/professor): roda os comandos digitados contra o
+   * próprio schema, via POST /dashboard/sql. Resultado tem forma variável (linhas de
+   * SELECT com colunas dinâmicas, ou só "X linha(s) afetada(s)" pra INSERT/UPDATE/DDL),
+   * por isso é um componente dedicado em vez do ajaxForm genérico.
+   */
+  Alpine.data('sqlConsole', (initialSchema = '') => ({
+    sql: '',
+    schema: initialSchema,
+    loading: false,
+    results: [],
+    summary: null,
+
+    async run() {
+      const sql = this.sql.trim();
+      if (!sql) {
+        Alpine.store('toasts').push('error', 'Digite algum comando SQL.');
+        return;
+      }
+
+      this.loading = true;
+      this.summary = null;
+
+      try {
+        const response = await axios.post(
+          '/dashboard/sql',
+          new URLSearchParams({ sql, schema: this.schema }),
+        );
+        this.results = response.data.results ?? [];
+        this.summary = { ok: true, message: response.data.message };
+        Alpine.store('toasts').push('success', response.data.message);
+      } catch (error) {
+        this.results = error.response?.data?.results ?? [];
+        const message = error.response?.data?.message ?? 'Não foi possível executar o comando.';
+        this.summary = { ok: false, message };
+        Alpine.store('toasts').push('error', message);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    clear() {
+      this.sql = '';
+      this.results = [];
+      this.summary = null;
+    },
+  }));
+
   /** Botão de copiar texto (credenciais, comando de túnel SSH...) com feedback via toast. */
   Alpine.data('copyable', (text) => ({
     copy() {

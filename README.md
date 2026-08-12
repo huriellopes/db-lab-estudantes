@@ -88,13 +88,16 @@ database/
   factories/       # UserFactory (Faker)
 
 app/
-  Controllers/    # Auth, Dashboard, Schema, Profile, Connection, Student (professor), Admin
-  Core/            # Router (com {id} dinâmico), Controller, View (Twig), Vite, Database (PDO),
-                    Migration/Migrator/Console, Seeder, Auth (sessão + papéis), Flash, Config
+  Controllers/    # Auth, Dashboard, Schema, Profile, Connection, SqlConsole, Student (professor), Admin
+  Core/            # Router (com {id} dinâmico), Controller, View (Twig), Vite, Database (PDO,
+                    incl. connectAs() pro console SQL), Migration/Migrator/Console, Seeder,
+                    Auth (sessão + papéis + senha MySQL cacheada), Flash, Config
   Support/         # Lógica pura, sem I/O — o que os testes do Pest cobrem:
                     Role (enum), AuthenticatedUser (com shortName()), AdminStats,
                     FlashType/FlashMessage, MysqlIdentifier, RegistrationValidator,
-                    SchemaNameBuilder, Policy
+                    SchemaNameBuilder, Policy, TableQuery/Paginator/TableFilter (busca/
+                    ordenação/paginação das listagens), Crypto (libsodium, senha MySQL em
+                    cache de sessão), SqlScriptSplitter (console SQL)
   Models/
     Entities/          # DTOs readonly tipados: User, Schema, SchemaWithOwner, StudentSummary
     User.php, SchemaRecord.php  # acesso às tabelas da própria app, devolvem as Entities
@@ -102,7 +105,7 @@ app/
                     (provisionNewUser/resetPassword/rename/setActive/softDelete/restore)
   Views/           # .twig — SEM PHP misturado, só a sintaxe do Twig
     layouts/ (app, guest), auth/, dashboard/, profile/, connection/, professor/students/,
-    admin/, partials/, errors/
+    admin/, partials/, macros/ (forms.twig, table_controls.twig), errors/
 
 public/
   index.php        # front controller — todas as rotas passam por aqui
@@ -125,6 +128,9 @@ mysql/init/          # só o bootstrap de privilégios do appuser (o schema em s
   `readonly` tipados (`App\Models\Entities\*`), construídos via `fromRow()`.
 - A sessão guarda um `App\Support\AuthenticatedUser` `readonly` de verdade (não array) —
   de propósito sem `password_hash`, pra esse hash nem chegar a ficar no arquivo de sessão.
+  A sessão também cacheia, separadamente, a senha MySQL em texto puro (pro console SQL abrir
+  conexão como a própria pessoa) — mas sempre criptografada com `App\Support\Crypto`, nunca
+  em claro (ver seção "Console SQL").
 - Mensagens flash são `FlashType` (enum) + `FlashMessage` (DTO), não strings soltas tipo `'success'`.
 - `App\Core\Router` roteia com `array{0: class-string<Controller>, 1: string}` tipado por PHPDoc.
 
@@ -175,13 +181,37 @@ dinâmicos (`/professor/alunos/{id}/editar`) via regex.
 
 ### Conectar via SGBD local (`/conectar`)
 
-Página de auto-ajuda para quem prefere um cliente de banco na própria máquina (TablePlus,
-DBeaver, MySQL Workbench, DataGrip, HeidiSQL...) em vez do phpMyAdmin: mostra host/porta/
-usuário, um comando `mysql -h ... -P ...` pronto pra copiar, e um comando de túnel SSH
-(`ssh -L 3306:127.0.0.1:<porta> usuario@host -N`) para quando o ambiente estiver num
-servidor remoto sem a porta do MySQL exposta publicamente. Host/porta exibidos vêm de
-`DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`) — troque `DB_PUBLIC_HOST` se
-não estiver rodando localmente.
+Manual de auto-ajuda pra quem prefere um cliente de banco na própria máquina (TablePlus,
+DBeaver, MySQL Workbench, DataGrip/PhpStorm, HeidiSQL...) em vez do phpMyAdmin: destaque pro
+link público do phpMyAdmin quando `PMA_URL` está configurada, comando `mysql -h ... -P ...`
+pronto pra copiar, comando de túnel SSH (`ssh -L 3306:127.0.0.1:<porta> usuario@host -N`)
+pra quando o ambiente estiver num servidor remoto, passo a passo por ferramenta (os campos
+são sempre os mesmos depois do túnel aberto: `127.0.0.1:3306`) e uma seção de erros comuns.
+Host/porta exibidos vêm de `DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`).
+
+### Console SQL (`POST /dashboard/sql`)
+
+Textarea no dashboard do aluno/professor pra rodar comandos SQL direto no navegador, sem
+precisar de nenhum SGBD. Pontos de design:
+
+- **Conecta como a própria pessoa**, não com a conexão admin da app (`Database::connectAs()`,
+  nova conexão PDO por request, não é a singleton usada pelo resto da app) — assim os
+  `GRANT`s que o MySQL já aplica por schema (`SchemaProvisioner::createDatabase()`) barram
+  sozinhos qualquer tentativa de acessar schema de outra pessoa, sem precisar reimplementar
+  esse controle aqui. Testado manualmente: tentar `USE` num schema de outra conta devolve
+  `1044 Access denied` direto do MySQL.
+- **Senha em cache na sessão, criptografada**: como a app só guarda `password_hash` (não dá
+  pra abrir uma conexão MySQL nova com um hash), a senha em texto puro é cacheada na sessão
+  no momento do login — mas nunca em texto puro: `App\Support\Crypto` (libsodium,
+  `sodium_crypto_secretbox`, chave em `APP_KEY`) criptografa antes de guardar. Sessões
+  antigas (de antes dessa feature) não têm o valor cacheado — o console pede pra logar de
+  novo nesse caso, em vez de quebrar.
+- **Múltiplos comandos**: separados por `;`, rodam em sequência numa conexão só, um por vez
+  (`App\Support\SqlScriptSplitter` — respeita `;` dentro de strings/identificadores/
+  comentários, sem ser um parser SQL completo) — para no primeiro erro e relata qual comando
+  falhou.
+- Resultado por comando: linhas + colunas (SELECT, cortado em 300 linhas) ou "N linha(s)
+  afetada(s)" (INSERT/UPDATE/DELETE/DDL).
 
 ## Segurança
 
@@ -193,7 +223,7 @@ coberto (CSRF, rate limiting).
 ## Subindo o ambiente
 
 ```bash
-cp .env.example .env   # ajuste as senhas antes de usar em qualquer lugar não-local
+cp .env.example .env   # ajuste as senhas e gere um APP_KEY antes de usar em qualquer lugar não-local
 docker compose up -d --build
 ```
 
@@ -224,12 +254,16 @@ Manager como proxy reverso já existente, banco só em `127.0.0.1` sem exposiç�
 
 - **URL**: `https://dblab.217.76.60.113.sslip.io` (domínio `sslip.io` — resolve sozinho pro
   IP do servidor, sem precisar configurar DNS; é o mesmo padrão usado por `bookid-api`,
-  `fintrack-admin` etc. nesse Contabo).
-- **MySQL e phpMyAdmin não são públicos** — só em `127.0.0.1` no servidor, acesso de fora
-  só via túnel SSH (a própria página `/conectar` da app já ensina isso).
+  `fintrack-admin` etc. nesse Contabo). phpMyAdmin público em
+  `https://pma.dblab.217.76.60.113.sslip.io` (mesmo domínio sslip.io, subdomínio próprio).
+- **MySQL nunca é público** — só em `127.0.0.1` no servidor, acesso de fora só via túnel SSH
+  (a própria página `/conectar` da app ensina isso, inclusive pra quem preferir acessar o
+  phpMyAdmin por SGBD local em vez do link público).
 - **Deploy**: `git push` numa PR de `dev` → `main`; depois que o CI passar, o workflow
   **Deploy** roda `deploy.sh` no servidor via SSH (`git pull` + `docker compose -f
-  docker-compose.prod.yml up -d --build`, migrations automáticas no entrypoint).
+  docker-compose.prod.yml up -d --build`, migrations automáticas no entrypoint). A rede
+  `proxy` (Nginx Proxy Manager) é declarada como `external: true` no compose — `app` e
+  `phpmyadmin` entram nela sozinhos no `up`, sem `docker network connect` manual.
 - **Chaves de deploy** (geradas dedicadas pra esse projeto, nenhuma reaproveitada):
   - Contabo → GitHub: deploy key só leitura, registrada no repo, guardada em
     `~/.ssh/id_ed25519_db-lab-estudantes` no servidor (com um alias `github.com-db-lab-estudantes`
@@ -238,12 +272,12 @@ Manager como proxy reverso já existente, banco só em `127.0.0.1` sem exposiç�
     `command="/apps/db-lab-estudantes/deploy.sh"` — mesmo que vaze, só executa esse script,
     nada mais. Guardada nos secrets do repo (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
 - **`.env` de produção** fica só no servidor (`/apps/db-lab-estudantes/.env`, nunca no git)
-  — veja `.env.production.example` pro formato.
-- **Passo manual pendente** (fora do escopo do que a automação cobre): registrar o proxy
-  host no Nginx Proxy Manager (domínio acima → container `dblab-app:80`, rede `dblab-net`)
-  e rodar `docker network connect dblab-net proxy` no servidor — isso é feito uma vez, pela
-  UI do NPM (acesse via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`, depois
-  `http://localhost:8181`).
+  — veja `.env.production.example` pro formato (inclui `PMA_URL` e `APP_KEY`).
+- **Passo manual pendente** (fora do escopo do que a automação cobre, feito uma vez pela UI
+  do NPM — acesse via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`, depois
+  `http://localhost:8181`): registrar o proxy host do phpMyAdmin (`pma.dblab.217.76.60.113.sslip.io`
+  → container `dblab-phpmyadmin:80`, com Let's Encrypt), e preencher `PMA_URL`/`APP_KEY` no
+  `.env` real do servidor antes do próximo deploy.
 
 ## Testes (Pest)
 
