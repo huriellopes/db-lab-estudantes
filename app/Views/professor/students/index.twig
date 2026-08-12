@@ -35,7 +35,7 @@
                                 <td class="py-3 pr-4"><span class="badge-slate">{{ student.schemasCount }}</span></td>
                                 <td class="py-3 pr-4">
                                     <form
-                                        x-data="ajaxForm({
+                                        hx-boost="false" x-data="ajaxForm({
                                             confirmTitle: '{{ student.active ? 'Desativar conta' : 'Reativar conta' }}',
                                             confirmMessage: '{{ student.active ? 'Desativar' : 'Reativar' }} a conta de {{ student.name|e('js') }}?{{ student.active ? ' A pessoa não vai conseguir mais logar até reativar.' : '' }}',
                                             confirmLabel: '{{ student.active ? 'Desativar' : 'Reativar' }}',
@@ -54,7 +54,7 @@
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="/professor/alunos/{{ student.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>
                                         <form
-                                            x-data="ajaxForm({
+                                            hx-boost="false" x-data="ajaxForm({
                                                 confirmTitle: 'Excluir aluno',
                                                 confirmMessage: 'Excluir a conta de {{ student.name|e('js') }}? Fica guardada, um admin pode restaurar depois.',
                                                 confirmLabel: 'Excluir',

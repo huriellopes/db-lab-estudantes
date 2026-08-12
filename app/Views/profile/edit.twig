@@ -14,7 +14,7 @@
             <h2 class="mb-4 text-base font-semibold text-slate-900">Dados da conta</h2>
 
             <form
-                x-data="ajaxForm()" @submit.prevent="submit"
+                hx-boost="false" x-data="ajaxForm()" @submit.prevent="submit"
                 method="post" action="/profile" class="space-y-4"
             >
                 {{ csrf_field() }}
@@ -38,7 +38,7 @@
             <p class="mb-4 text-sm text-slate-500">Atualiza também a senha da sua conta MySQL (usada no phpMyAdmin).</p>
 
             <form
-                x-data="ajaxForm({ onSuccess: () => $el.reset() })" @submit.prevent="submit"
+                hx-boost="false" x-data="ajaxForm({ onSuccess: () => $el.reset() })" @submit.prevent="submit"
                 method="post" action="/profile/password" class="space-y-4"
             >
                 {{ csrf_field() }}
@@ -60,7 +60,7 @@
             </p>
 
             <form
-                x-data="ajaxForm({
+                hx-boost="false" x-data="ajaxForm({
                     confirmTitle: 'Renomear login',
                     confirmMessage: (e) => `Renomear seu login MySQL de '{{ user.mysqlLogin|e('js') }}' para '${e.target.querySelector('#mysql_login').value}'? Conexões já salvas em algum SGBD local vão parar de funcionar até você atualizar o usuário lá.`,
                     confirmLabel: 'Renomear',

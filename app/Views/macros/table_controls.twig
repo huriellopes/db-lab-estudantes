@@ -1,8 +1,15 @@
 {# Busca + ordenação + paginação server-side (App\Support\TableQuery/TableFilter/Paginator).
-   Tudo aqui é link/form GET puro — funciona mesmo sem JS, igual o resto da app. #}
+   Tudo aqui é link/form GET puro — funciona mesmo sem JS, igual o resto da app.
 
-{% macro search_form(action, query, placeholder) %}
-    <form method="get" action="{{ action }}" class="relative mb-4 max-w-sm">
+   A busca usa hx-get com debounce (dispara sozinha enquanto digita, sem precisar de Enter
+   nem de recarregar a página) e troca só o container de resultados via hx-select/hx-swap,
+   pra não perder o foco do campo de busca — por isso todo call site precisa envolver a
+   tabela/lista + paginação num <div id="{results_id}">. O form em si fica com
+   hx-boost="false" pra não competir com o hx-get do input (evita 2 requisições no Enter);
+   sem JS, o Enter ainda funciona, é um <form method="get"> de verdade. #}
+
+{% macro search_form(action, query, placeholder, results_id) %}
+    <form hx-boost="false" method="get" action="{{ action }}" class="relative mb-4 max-w-sm">
         {% if query.sort %}<input type="hidden" name="sort" value="{{ query.sort }}">{% endif %}
         {% if query.direction == 'desc' %}<input type="hidden" name="dir" value="desc">{% endif %}
         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -11,6 +18,13 @@
         <input
             type="search" name="q" value="{{ query.search }}" placeholder="{{ placeholder }}"
             class="field-input pl-9"
+            hx-get="{{ action }}"
+            hx-trigger="input changed delay:400ms, search"
+            hx-select="#{{ results_id }}"
+            hx-target="#{{ results_id }}"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            hx-include="closest form"
         >
     </form>
 {% endmacro %}
@@ -35,7 +49,7 @@
 {% macro pagination(action, paginator, query) %}
     {% if paginator.total > 0 %}
         <div class="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <span>{{ paginator.from() }}–{{ paginator.to() }} de {{ paginator.total }}</span>
+            <span>Mostrando {{ paginator.from() }}–{{ paginator.to() }} de {{ paginator.total }} registro{{ paginator.total == 1 ? '' : 's' }}</span>
             {% if paginator.lastPage() > 1 %}
                 <div class="flex items-center gap-2">
                     {% if paginator.hasPrevious() %}

@@ -16,9 +16,9 @@
             <input type="text" id="identifier" name="identifier" value="{{ old.identifier }}" required autofocus class="field-input">
         </div>
         {{ forms.password_field('password', 'password', 'Senha') }}
-        <div class="text-right">
-            <a href="/esqueci-senha" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">Esqueci minha senha</a>
-        </div>
+        {# "Esqueci minha senha" tirado da tela por enquanto (a rota/fluxo continuam
+           existindo em App\Controllers\PasswordResetController — só a exposição na UI
+           foi removida). #}
         <button type="submit" class="btn-primary w-full">Entrar</button>
     </form>
 
