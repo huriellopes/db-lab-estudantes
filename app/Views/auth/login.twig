@@ -10,11 +10,15 @@
     {% endfor %}
 
     <form method="post" action="/login" class="space-y-4">
+        {{ csrf_field() }}
         <div>
             <label for="identifier" class="field-label">E-mail ou username</label>
             <input type="text" id="identifier" name="identifier" value="{{ old.identifier }}" required autofocus class="field-input">
         </div>
         {{ forms.password_field('password', 'password', 'Senha') }}
+        <div class="text-right">
+            <a href="/esqueci-senha" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">Esqueci minha senha</a>
+        </div>
         <button type="submit" class="btn-primary w-full">Entrar</button>
     </form>
 

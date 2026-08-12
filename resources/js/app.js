@@ -2,6 +2,14 @@ import Alpine from 'alpinejs';
 import axios from 'axios';
 
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+// Token CSRF da sessão (ver csrf_token() no Twig, renderizado numa <meta> no <head> dos
+// dois layouts) — mandado em toda requisição Axios, verificado central em public/index.php.
+const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+if (csrfMeta) {
+  axios.defaults.headers.common['X-CSRF-Token'] = csrfMeta.content;
+}
+
 window.axios = axios;
 
 document.addEventListener('alpine:init', () => {
@@ -141,9 +149,27 @@ document.addEventListener('alpine:init', () => {
     loading: false,
     results: [],
     summary: null,
+    hasSelection: false,
+
+    /** Chamado em @select/@mouseup/@keyup/@blur do textarea — só atualiza um boolean pra
+     *  refletir na UI (rótulo do botão, dica abaixo do campo); a leitura de verdade da
+     *  seleção acontece de novo em run(), na hora de montar o payload. */
+    trackSelection() {
+      const textarea = this.$refs.sqlInput;
+      this.hasSelection = !!textarea && textarea.selectionStart !== textarea.selectionEnd;
+    },
+
+    /** Texto selecionado no textarea, ou o conteúdo inteiro se nada estiver selecionado. */
+    scriptToRun() {
+      const textarea = this.$refs.sqlInput;
+      if (textarea && textarea.selectionStart !== textarea.selectionEnd) {
+        return textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+      }
+      return this.sql;
+    },
 
     async run() {
-      const sql = this.sql.trim();
+      const sql = this.scriptToRun().trim();
       if (!sql) {
         Alpine.store('toasts').push('error', 'Digite algum comando SQL.');
         return;
@@ -174,6 +200,7 @@ document.addEventListener('alpine:init', () => {
       this.sql = '';
       this.results = [];
       this.summary = null;
+      this.hasSelection = false;
     },
   }));
 

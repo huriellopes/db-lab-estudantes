@@ -72,8 +72,44 @@ Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão aci
   código de segurança crítico, coberto por testes (`tests/Unit/SchemaNameBuilderTest.php`,
   `tests/Unit/MysqlIdentifierTest.php`).
 
+## Autenticação: proteções contra força bruta e CSRF
+
+- **CSRF**: token por sessão (`App\Support\Csrf`, synchronizer token pattern), verificado
+  de forma centralizada em `public/index.php` pra toda requisição POST — antes de qualquer
+  rota rodar, não precisa repetir em cada controller. Formulários clássicos mandam via
+  campo oculto `_csrf` (`csrf_field()` no Twig); requisições Axios mandam via header
+  `X-CSRF-Token` (lido de uma `<meta>` no `<head>`, setado como header padrão em
+  `resources/js/app.js`). Sem o token certo, a resposta é `419` (JSON pra AJAX, página de
+  erro pro resto).
+- **Rate limiting** em `/login` (por IP **e** por identificador, ver `App\Services\
+  RateLimiter`/`App\Support\RateLimitDecision`) e `/register` (por IP) — guardado no MySQL
+  (tabela `rate_limit_hits`), sem depender de Redis. `App\Support\ClientIp` resolve o IP
+  real via `X-Forwarded-For` (a app fica atrás do Nginx Proxy Manager).
+- **Timing leak corrigido**: login com identificador inexistente agora roda
+  `password_verify()` contra um hash fixo (`AuthController::DUMMY_HASH`) mesmo sem usuário
+  — antes, essa checagem era pulada inteira quando o usuário não existia, e dava pra
+  enumerar contas medindo o tempo de resposta (bcrypt ativo vs. não).
+- **Cookie de sessão**: `HttpOnly` + `SameSite=Lax` sempre, `Secure` quando a requisição
+  chega por HTTPS de verdade (`App\Support\RequestScheme`, via `X-Forwarded-Proto`).
+
+## Redefinição de senha por e-mail (self-service)
+
+- Token de 256 bits (`random_bytes(32)`), guardado no banco só como hash (sha256,
+  `App\Models\PasswordResetToken`) — o texto puro só existe no e-mail enviado. Expira em
+  1h, uso único (`used_at`), e pedir um novo invalida qualquer token anterior da mesma
+  conta automaticamente.
+- Resposta de `/esqueci-senha` é **sempre a mesma mensagem**, exista o e-mail ou não —
+  evita enumeração de contas por aqui (confirmado manualmente: e-mail real e inexistente
+  devolvem o mesmo 200 com o mesmo texto).
+- Rate limit próprio (por IP) além do token em si já ser inadivinhável.
+- `App\Core\Mailer` (SMTP via PHPMailer) não derruba a aplicação se `MAIL_HOST` não
+  estiver configurado — só loga e segue (dev/instâncias novas funcionam sem SMTP; o fluxo
+  de reset fica inoperante até alguém preencher isso).
+
 ## Não coberto por esta auditoria (próximos passos recomendados)
 
-- CSRF: ainda não há token nos formulários (já sinalizado no `README.md`).
-- Rate limiting em `/login` e `/register` (força bruta / enumeração de e-mail).
-- Cabeçalhos de segurança HTTP (CSP, `X-Frame-Options`, etc.) não configurados no Apache.
+- Cabeçalhos de segurança HTTP (CSP, `X-Frame-Options`, etc.) não configurados no nginx.
+- 2FA / MFA — fora de escopo pra esse tamanho de lab, mas vale considerar se crescer.
+- Isolamento entre professores: qualquer professor gerencia qualquer aluno do sistema (sem
+  vínculo turma/professor) — decisão de design, não bug, mas vale confirmar que é
+  intencional se o lab crescer pra múltiplos professores.
