@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use App\Actions\Connection\ShowConnectionAction;
+use App\Actions\Dashboard\ShowDashboardAction;
+use App\Actions\Guide\ShowGuideIndexAction;
+use App\Actions\Guide\ShowGuideTopicAction;
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
-use App\Controllers\ConnectionController;
-use App\Controllers\DashboardController;
 use App\Controllers\ErDiagramController;
-use App\Controllers\GuideController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\SavedQueryController;
@@ -97,7 +98,7 @@ $router->post('/esqueci-senha', [PasswordResetController::class, 'sendResetLink'
 $router->get('/redefinir-senha/{token}', [PasswordResetController::class, 'showReset']);
 $router->post('/redefinir-senha', [PasswordResetController::class, 'resetPassword']);
 
-$router->get('/dashboard', [DashboardController::class, 'index']);
+$router->get('/dashboard', ShowDashboardAction::class);
 $router->post('/schemas', [SchemaController::class, 'store']);
 $router->post('/schemas/delete', [SchemaController::class, 'destroy']);
 $router->post('/dashboard/sql', [SqlConsoleController::class, 'run']);
@@ -114,10 +115,10 @@ $router->post('/profile', [ProfileController::class, 'update']);
 $router->post('/profile/password', [ProfileController::class, 'updatePassword']);
 $router->post('/profile/mysql-login', [ProfileController::class, 'updateMysqlLogin']);
 
-$router->get('/conectar', [ConnectionController::class, 'show']);
+$router->get('/conectar', ShowConnectionAction::class);
 
-$router->get('/guia', [GuideController::class, 'index']);
-$router->get('/guia/{slug}', [GuideController::class, 'show']);
+$router->get('/guia', ShowGuideIndexAction::class);
+$router->get('/guia/{slug}', ShowGuideTopicAction::class);
 
 $router->get('/laboratorio/modelagem', [ErDiagramController::class, 'index']);
 $router->get('/laboratorio/modelagem/{id}', [ErDiagramController::class, 'show']);

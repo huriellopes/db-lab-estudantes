@@ -2,17 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Controllers;
+namespace App\Actions\Connection;
 
+use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Config;
-use App\Core\Controller;
 use App\Models\SchemaRecord;
 
-/** Página de auto-ajuda: como conectar num SGBD local (TablePlus, DBeaver, etc.), com ou sem túnel SSH. */
-final class ConnectionController extends Controller
+/**
+ * Página de auto-ajuda: como conectar num SGBD local (TablePlus, DBeaver, etc.), com ou
+ * sem túnel SSH. GET /conectar.
+ */
+final class ShowConnectionAction extends Action
 {
-    public function show(array $params = []): void
+    public function __invoke(array $params = []): void
     {
         Auth::requireLogin();
 
