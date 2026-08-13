@@ -93,14 +93,19 @@ database/
   factories/       # UserFactory (Faker)
 
 app/
-  Controllers/    # Auth, PasswordReset, Dashboard, Schema, Profile, Connection, SqlConsole,
-                    Student (professor), Admin
-  Core/            # Router (com {id} dinâmico), Controller, View (Twig), Vite, Database (PDO,
-                    incl. connectAs() pro console SQL), Mailer (PHPMailer/SMTP),
-                    Migration/Migrator/Console, Seeder, Auth (sessão + papéis + senha MySQL
-                    cacheada), Flash, Config
+  Actions/         # "Single Action" (ver App\Core\Action, __invoke() só): Dashboard, Connection,
+                    Guide — uma classe por operação, pra recurso que não compartilha estado
+                    entre várias ações relacionadas (ao contrário de um Controller "clássico")
+  Controllers/    # Auth, PasswordReset, Schema, Profile, SqlConsole, SavedQuery, ErDiagram,
+                    Student (professor), Admin — multi-ação, quando várias operações do mesmo
+                    recurso genuinamente compartilham contexto
+  Core/            # Router (com {id} dinâmico, aceita Controller multi-ação OU Action única),
+                    Controller, Action (base de Single Action, estende Controller), View (Twig),
+                    Vite, Database (PDO, incl. connectAs() pro console SQL), Mailer
+                    (PHPMailer/SMTP), Migration/Migrator/Console, Seeder, Auth (sessão + papéis +
+                    senha MySQL cacheada), Flash, Config
   Support/         # Lógica pura, sem I/O — o que os testes do Pest cobrem:
-                    Role (enum), AuthenticatedUser (com shortName()), AdminStats,
+                    Role (enum), AuthenticatedUser (com shortName()), AdminStats, GuideTopics,
                     FlashType/FlashMessage, MysqlIdentifier, RegistrationValidator,
                     SchemaNameBuilder, Policy, TableQuery/Paginator/TableFilter (busca/
                     ordenação/paginação das listagens), Crypto (libsodium, senha MySQL em
@@ -139,6 +144,13 @@ mysql/init/          # só o bootstrap de privilégios do appuser (o schema em s
   A sessão também cacheia, separadamente, a senha MySQL em texto puro (pro console SQL abrir
   conexão como a própria pessoa) — mas sempre criptografada com `App\Support\Crypto`, nunca
   em claro (ver seção "Console SQL").
+- **Single Action** (`App\Core\Action`, `app/Actions/`): rota que aponta pra uma classe só,
+  chamada via `__invoke()` — sem método pra escolher, sem estado compartilhado entre ações
+  diferentes. `App\Core\Router::dispatch()` aceita tanto isso quanto o formato "clássico"
+  `[Controller::class, 'metodo']`; a escolha entre os dois é por recurso: várias operações
+  que genuinamente compartilham contexto (CRUD de um mesmo recurso, ex.: `AdminController`)
+  continuam um Controller multi-ação; uma página isolada (`/dashboard`, `/conectar`, `/guia`)
+  vira uma Action.
 - Mensagens flash são `FlashType` (enum) + `FlashMessage` (DTO), não strings soltas tipo `'success'`.
 - `App\Core\Router` roteia com `array{0: class-string<Controller>, 1: string}` tipado por PHPDoc.
 
