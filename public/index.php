@@ -4,19 +4,56 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use App\Actions\Admin\CreateAdminUserAction;
+use App\Actions\Admin\DestroyAdminSchemaAction;
+use App\Actions\Admin\DestroyAdminUserAction;
+use App\Actions\Admin\EditAdminUserAction;
+use App\Actions\Admin\IndexAdminUsersAction;
+use App\Actions\Admin\ResetAdminUserPasswordAction;
+use App\Actions\Admin\RestoreAdminUserAction;
+use App\Actions\Admin\ShowAdminDashboardAction;
+use App\Actions\Admin\ShowAdminSchemasAction;
+use App\Actions\Admin\StoreAdminUserAction;
+use App\Actions\Admin\ToggleAdminUserActiveAction;
+use App\Actions\Admin\TrashAdminUsersAction;
+use App\Actions\Admin\UpdateAdminUserAction;
+use App\Actions\Admin\UpdateAdminUserRoleAction;
+use App\Actions\Auth\CsrfTokenAction;
+use App\Actions\Auth\LoginAction;
+use App\Actions\Auth\LogoutAction;
+use App\Actions\Auth\RedirectHomeAction;
+use App\Actions\Auth\RegisterAction;
+use App\Actions\Auth\ShowLoginAction;
+use App\Actions\Auth\ShowRegisterAction;
 use App\Actions\Connection\ShowConnectionAction;
 use App\Actions\Dashboard\ShowDashboardAction;
+use App\Actions\ErDiagram\DestroyErDiagramAction;
+use App\Actions\ErDiagram\ShowErDiagramAction;
+use App\Actions\ErDiagram\ShowErDiagramLabAction;
+use App\Actions\ErDiagram\StoreErDiagramAction;
+use App\Actions\ErDiagram\UpdateErDiagramAction;
 use App\Actions\Guide\ShowGuideIndexAction;
 use App\Actions\Guide\ShowGuideTopicAction;
-use App\Controllers\AdminController;
-use App\Controllers\AuthController;
-use App\Controllers\ErDiagramController;
-use App\Controllers\PasswordResetController;
-use App\Controllers\ProfileController;
-use App\Controllers\SavedQueryController;
-use App\Controllers\SchemaController;
-use App\Controllers\SqlConsoleController;
-use App\Controllers\StudentController;
+use App\Actions\PasswordReset\ResetPasswordAction;
+use App\Actions\PasswordReset\SendResetLinkAction;
+use App\Actions\PasswordReset\ShowForgotPasswordAction;
+use App\Actions\PasswordReset\ShowResetPasswordAction;
+use App\Actions\Profile\EditProfileAction;
+use App\Actions\Profile\UpdateMysqlLoginAction;
+use App\Actions\Profile\UpdatePasswordAction;
+use App\Actions\Profile\UpdateProfileAction;
+use App\Actions\SavedQuery\DestroySavedQueryAction;
+use App\Actions\SavedQuery\StoreSavedQueryAction;
+use App\Actions\Schema\DestroySchemaAction;
+use App\Actions\Schema\StoreSchemaAction;
+use App\Actions\SqlConsole\ConfirmMysqlPasswordAction;
+use App\Actions\SqlConsole\RunSqlAction;
+use App\Actions\Student\DestroyStudentAction;
+use App\Actions\Student\EditStudentAction;
+use App\Actions\Student\IndexStudentsAction;
+use App\Actions\Student\ResetStudentPasswordAction;
+use App\Actions\Student\ToggleStudentActiveAction;
+use App\Actions\Student\UpdateStudentAction;
 use App\Core\Auth;
 use App\Core\Router;
 use App\Core\View;
@@ -24,11 +61,11 @@ use App\Support\Csrf;
 use App\Support\RequestScheme;
 use Dotenv\Dotenv;
 
-// Rede de segurança final: qualquer exceção/erro não capturado por um controller vira uma
-// página 500 normal em vez do stack trace cru do PHP (display_errors já fica Off — ver
-// docker/php-hardening.ini — isso aqui é só pra mostrar algo decente no lugar do branco).
-// O detalhe real do erro vai pro log (stderr, capturado pelo supervisord/`docker logs`),
-// nunca pra resposta.
+// Rede de segurança final: qualquer exceção/erro não capturado por uma action/controller
+// vira uma página 500 normal em vez do stack trace cru do PHP (display_errors já fica Off
+// — ver docker/php-hardening.ini — isso aqui é só pra mostrar algo decente no lugar do
+// branco). O detalhe real do erro vai pro log (stderr, capturado pelo supervisord/`docker
+// logs`), nunca pra resposta.
 set_exception_handler(static function (Throwable $e): void {
     error_log('Exceção não capturada: ' . $e);
     http_response_code(500);
@@ -60,7 +97,7 @@ Auth::attemptRememberLogin();
 
 // Toda requisição POST precisa do token CSRF da própria sessão — via campo _csrf (forms
 // clássicos, ver csrf_field() no Twig) ou header X-CSRF-Token (Axios, ver resources/js/app.js).
-// Verificado aqui, antes do roteamento, pra não precisar repetir em cada controller.
+// Verificado aqui, antes do roteamento, pra não precisar repetir em cada action/controller.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submitted = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
 
@@ -87,68 +124,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $router = new Router();
 
-$router->get('/', [AuthController::class, 'redirectHome']);
-$router->get('/login', [AuthController::class, 'showLogin']);
-$router->post('/login', [AuthController::class, 'login']);
-$router->get('/register', [AuthController::class, 'showRegister']);
-$router->post('/register', [AuthController::class, 'register']);
-$router->post('/logout', [AuthController::class, 'logout']);
-$router->get('/esqueci-senha', [PasswordResetController::class, 'showForgot']);
-$router->post('/esqueci-senha', [PasswordResetController::class, 'sendResetLink']);
-$router->get('/redefinir-senha/{token}', [PasswordResetController::class, 'showReset']);
-$router->post('/redefinir-senha', [PasswordResetController::class, 'resetPassword']);
+$router->get('/', RedirectHomeAction::class);
+$router->get('/login', ShowLoginAction::class);
+$router->post('/login', LoginAction::class);
+$router->get('/register', ShowRegisterAction::class);
+$router->post('/register', RegisterAction::class);
+$router->post('/logout', LogoutAction::class);
+$router->get('/esqueci-senha', ShowForgotPasswordAction::class);
+$router->post('/esqueci-senha', SendResetLinkAction::class);
+$router->get('/redefinir-senha/{token}', ShowResetPasswordAction::class);
+$router->post('/redefinir-senha', ResetPasswordAction::class);
 
 $router->get('/dashboard', ShowDashboardAction::class);
-$router->post('/schemas', [SchemaController::class, 'store']);
-$router->post('/schemas/delete', [SchemaController::class, 'destroy']);
-$router->post('/dashboard/sql', [SqlConsoleController::class, 'run']);
-$router->post('/dashboard/sql/confirmar-senha', [SqlConsoleController::class, 'confirmPassword']);
-$router->post('/consultas-salvas', [SavedQueryController::class, 'store']);
-$router->post('/consultas-salvas/excluir', [SavedQueryController::class, 'destroy']);
+$router->post('/schemas', StoreSchemaAction::class);
+$router->post('/schemas/delete', DestroySchemaAction::class);
+$router->post('/dashboard/sql', RunSqlAction::class);
+$router->post('/dashboard/sql/confirmar-senha', ConfirmMysqlPasswordAction::class);
+$router->post('/consultas-salvas', StoreSavedQueryAction::class);
+$router->post('/consultas-salvas/excluir', DestroySavedQueryAction::class);
 
 // Sem login exigido de propósito: o form de login também depende de CSRF, e é
 // exatamente aí que uma aba ficar aberta tempo demais faria mais falta (ver Auth::requireLogin).
-$router->get('/csrf-token', [AuthController::class, 'csrfToken']);
+$router->get('/csrf-token', CsrfTokenAction::class);
 
-$router->get('/profile', [ProfileController::class, 'edit']);
-$router->post('/profile', [ProfileController::class, 'update']);
-$router->post('/profile/password', [ProfileController::class, 'updatePassword']);
-$router->post('/profile/mysql-login', [ProfileController::class, 'updateMysqlLogin']);
+$router->get('/profile', EditProfileAction::class);
+$router->post('/profile', UpdateProfileAction::class);
+$router->post('/profile/password', UpdatePasswordAction::class);
+$router->post('/profile/mysql-login', UpdateMysqlLoginAction::class);
 
 $router->get('/conectar', ShowConnectionAction::class);
 
 $router->get('/guia', ShowGuideIndexAction::class);
 $router->get('/guia/{slug}', ShowGuideTopicAction::class);
 
-$router->get('/laboratorio/modelagem', [ErDiagramController::class, 'index']);
-$router->get('/laboratorio/modelagem/{id}', [ErDiagramController::class, 'show']);
-$router->post('/laboratorio/modelagem', [ErDiagramController::class, 'store']);
-$router->post('/laboratorio/modelagem/{id}', [ErDiagramController::class, 'update']);
-$router->post('/laboratorio/modelagem/{id}/excluir', [ErDiagramController::class, 'destroy']);
+$router->get('/laboratorio/modelagem', ShowErDiagramLabAction::class);
+$router->get('/laboratorio/modelagem/{id}', ShowErDiagramAction::class);
+$router->post('/laboratorio/modelagem', StoreErDiagramAction::class);
+$router->post('/laboratorio/modelagem/{id}', UpdateErDiagramAction::class);
+$router->post('/laboratorio/modelagem/{id}/excluir', DestroyErDiagramAction::class);
 
 // Professor (e admin): gestão de contas de aluno.
-$router->get('/professor/alunos', [StudentController::class, 'index']);
-$router->get('/professor/alunos/{id}/editar', [StudentController::class, 'edit']);
-$router->post('/professor/alunos/{id}', [StudentController::class, 'update']);
-$router->post('/professor/alunos/{id}/senha', [StudentController::class, 'resetPassword']);
-$router->post('/professor/alunos/{id}/status', [StudentController::class, 'toggleActive']);
-$router->post('/professor/alunos/{id}/excluir', [StudentController::class, 'destroy']);
+$router->get('/professor/alunos', IndexStudentsAction::class);
+$router->get('/professor/alunos/{id}/editar', EditStudentAction::class);
+$router->post('/professor/alunos/{id}', UpdateStudentAction::class);
+$router->post('/professor/alunos/{id}/senha', ResetStudentPasswordAction::class);
+$router->post('/professor/alunos/{id}/status', ToggleStudentActiveAction::class);
+$router->post('/professor/alunos/{id}/excluir', DestroyStudentAction::class);
 
 // Admin: controle total sobre usuários, papéis e schemas.
-$router->get('/admin', [AdminController::class, 'index']);
-$router->get('/admin/usuarios', [AdminController::class, 'users']);
-$router->get('/admin/usuarios/novo', [AdminController::class, 'create']);
-$router->post('/admin/usuarios', [AdminController::class, 'store']);
-$router->get('/admin/usuarios/lixeira', [AdminController::class, 'trash']);
-$router->get('/admin/usuarios/{id}/editar', [AdminController::class, 'edit']);
-$router->post('/admin/usuarios/{id}', [AdminController::class, 'update']);
-$router->post('/admin/usuarios/{id}/papel', [AdminController::class, 'updateRole']);
-$router->post('/admin/usuarios/{id}/status', [AdminController::class, 'toggleActive']);
-$router->post('/admin/usuarios/{id}/senha', [AdminController::class, 'resetPassword']);
-$router->post('/admin/usuarios/{id}/excluir', [AdminController::class, 'destroy']);
-$router->post('/admin/usuarios/{id}/restaurar', [AdminController::class, 'restore']);
-$router->get('/admin/schemas', [AdminController::class, 'schemas']);
-$router->post('/admin/schemas/excluir', [AdminController::class, 'destroySchema']);
+$router->get('/admin', ShowAdminDashboardAction::class);
+$router->get('/admin/usuarios', IndexAdminUsersAction::class);
+$router->get('/admin/usuarios/novo', CreateAdminUserAction::class);
+$router->post('/admin/usuarios', StoreAdminUserAction::class);
+$router->get('/admin/usuarios/lixeira', TrashAdminUsersAction::class);
+$router->get('/admin/usuarios/{id}/editar', EditAdminUserAction::class);
+$router->post('/admin/usuarios/{id}', UpdateAdminUserAction::class);
+$router->post('/admin/usuarios/{id}/papel', UpdateAdminUserRoleAction::class);
+$router->post('/admin/usuarios/{id}/status', ToggleAdminUserActiveAction::class);
+$router->post('/admin/usuarios/{id}/senha', ResetAdminUserPasswordAction::class);
+$router->post('/admin/usuarios/{id}/excluir', DestroyAdminUserAction::class);
+$router->post('/admin/usuarios/{id}/restaurar', RestoreAdminUserAction::class);
+$router->get('/admin/schemas', ShowAdminSchemasAction::class);
+$router->post('/admin/schemas/excluir', DestroyAdminSchemaAction::class);
 
 // parse_url() pode devolver null/false para uma REQUEST_URI malformada; com
 // strict_types, isso não pode ser passado direto para o parâmetro string do dispatch().
