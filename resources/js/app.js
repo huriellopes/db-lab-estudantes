@@ -455,6 +455,452 @@ document.addEventListener('alpine:init', () => {
     }),
   );
 
+  /**
+   * Laboratório de modelagem (MER/DER): editor visual de entidades/atributos/relacionamentos
+   * — ver /guia/modelagem-er pra teoria e app/Controllers/ErDiagramController.php pro CRUD.
+   * Sem biblioteca de diagrama nenhuma: entidade é um <div> posicionado por x/y (arrastado via
+   * Pointer Events), relacionamento é uma <line> de SVG entre os centros de duas entidades,
+   * recalculada sozinha porque tudo é reativo (mover a entidade já move a linha).
+   */
+  Alpine.data('erLab', (initialDiagrams = []) => ({
+    entities: [],
+    relationships: [],
+
+    // Sempre a mesma largura pra toda entidade — evita ter que ler getBoundingClientRect()
+    // do DOM (que não é reativo) só pra saber onde uma linha de relacionamento deve terminar.
+    ENTITY_WIDTH: 220,
+    attributeTypes: ['VARCHAR(100)', 'TEXT', 'INT', 'DECIMAL(10,2)', 'DATE', 'DATETIME', 'BOOLEAN'],
+
+    diagrams: initialDiagrams,
+    currentDiagramId: null,
+    title: '',
+    loadingDiagram: false,
+    saving: false,
+
+    draggingId: null,
+    dragOffsetX: 0,
+    dragOffsetY: 0,
+
+    // Modo "conectar": primeiro clique escolhe a entidade de origem (connectFromId), segundo
+    // clique numa entidade diferente cria o relacionamento entre as duas.
+    connecting: false,
+    connectFromId: null,
+
+    showSqlModal: false,
+    generatedSql: '',
+
+    uid(prefix) {
+      return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    },
+
+    entityById(id) {
+      return this.entities.find((e) => e.id === id);
+    },
+
+    // --- Entidades ---
+
+    addEntity() {
+      const index = this.entities.length;
+      this.entities.push({
+        id: this.uid('e'),
+        name: `entidade_${index + 1}`,
+        x: 40 + (index % 3) * 260,
+        y: 40 + Math.floor(index / 3) * 240,
+        attributes: [{ id: this.uid('a'), name: 'id', type: 'INT', pk: true }],
+      });
+    },
+
+    removeEntity(id) {
+      this.entities = this.entities.filter((e) => e.id !== id);
+      // Um relacionamento sem uma das pontas não faz sentido nenhum — some junto.
+      this.relationships = this.relationships.filter((r) => r.fromId !== id && r.toId !== id);
+      if (this.connectFromId === id) {
+        this.connecting = false;
+        this.connectFromId = null;
+      }
+    },
+
+    addAttribute(entity) {
+      entity.attributes.push({ id: this.uid('a'), name: '', type: 'VARCHAR(100)', pk: false });
+    },
+
+    /** Remove um atributo; se era a PK e sobrou pelo menos um outro, promove o primeiro que
+     *  sobrou — uma entidade com atributos nunca fica sem chave primária nenhuma. */
+    removeAttribute(entity, attrId) {
+      const wasPk = entity.attributes.find((a) => a.id === attrId)?.pk === true;
+      entity.attributes = entity.attributes.filter((a) => a.id !== attrId);
+      if (wasPk && entity.attributes.length > 0 && !entity.attributes.some((a) => a.pk)) {
+        entity.attributes[0].pk = true;
+      }
+    },
+
+    /** Só uma PK por entidade — marcar uma desmarca as outras (comportamento de rádio). */
+    setPrimaryKey(entity, attrId) {
+      entity.attributes.forEach((a) => {
+        a.pk = a.id === attrId;
+      });
+    },
+
+    /** Altura aproximada da caixa (cabeçalho + uma linha por atributo + rodapé) — junto com
+     *  ENTITY_WIDTH, é o suficiente pra calcular onde uma linha de relacionamento deve
+     *  começar/terminar sem precisar medir o DOM de verdade. */
+    entityHeight(entity) {
+      return 52 + entity.attributes.length * 32 + 44;
+    },
+
+    // --- Arrastar entidade ---
+
+    /** Ponto do clique/toque relativo ao canvas, já considerando o quanto ele estiver rolado. */
+    canvasPoint(event) {
+      const canvas = this.$refs.canvas;
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left + canvas.scrollLeft,
+        y: event.clientY - rect.top + canvas.scrollTop,
+      };
+    },
+
+    startDrag(entity, event) {
+      if (this.connecting) {
+        this.handleConnectClick(entity.id);
+        return;
+      }
+      // Clique num campo/botão de dentro da caixa (nome, atributo, tipo, PK, excluir) não
+      // deve arrastar — só editar/clicar normalmente. Sobra o resto da caixa (cabeçalho, a
+      // alcinha ⠿, as bordas) como área de arrastar.
+      if (['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(event.target.tagName)) {
+        return;
+      }
+      const point = this.canvasPoint(event);
+      this.draggingId = entity.id;
+      this.dragOffsetX = point.x - entity.x;
+      this.dragOffsetY = point.y - entity.y;
+    },
+
+    onPointerMove(event) {
+      if (!this.draggingId) {
+        return;
+      }
+      const entity = this.entityById(this.draggingId);
+      if (!entity) {
+        return;
+      }
+      const point = this.canvasPoint(event);
+      entity.x = Math.max(0, point.x - this.dragOffsetX);
+      entity.y = Math.max(0, point.y - this.dragOffsetY);
+    },
+
+    onPointerUp() {
+      this.draggingId = null;
+    },
+
+    // --- Relacionamentos ---
+
+    toggleConnectMode() {
+      this.connecting = !this.connecting;
+      this.connectFromId = null;
+    },
+
+    handleConnectClick(entityId) {
+      if (this.connectFromId === null) {
+        this.connectFromId = entityId;
+        return;
+      }
+      if (this.connectFromId === entityId) {
+        this.connectFromId = null;
+        return;
+      }
+      this.relationships.push({
+        id: this.uid('r'),
+        fromId: this.connectFromId,
+        toId: entityId,
+        cardinalityFrom: '1',
+        cardinalityTo: 'N',
+        label: '',
+      });
+      this.connecting = false;
+      this.connectFromId = null;
+    },
+
+    removeRelationship(id) {
+      this.relationships = this.relationships.filter((r) => r.id !== id);
+    },
+
+    toggleCardinality(rel, side) {
+      const key = side === 'from' ? 'cardinalityFrom' : 'cardinalityTo';
+      rel[key] = rel[key] === '1' ? 'N' : '1';
+    },
+
+    // --- Geometria (usada direto nos :x1/:y1/:x2/:y2 do SVG e no posicionamento dos rótulos) ---
+
+    entityCenter(id) {
+      const entity = this.entityById(id);
+      if (!entity) {
+        return { x: 0, y: 0 };
+      }
+      return { x: entity.x + this.ENTITY_WIDTH / 2, y: entity.y + this.entityHeight(entity) / 2 };
+    },
+
+    /** Ponto na linha do relacionamento, a uma fração `t` (0 = origem, 1 = destino) — usado
+     *  pra plantar os badges de cardinalidade perto de cada ponta e o rótulo no meio. */
+    relPointAt(rel, t) {
+      const from = this.entityCenter(rel.fromId);
+      const to = this.entityCenter(rel.toId);
+      return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+    },
+
+    /** Estilo inline de uma <div> fina "deitada" e girada pra parecer uma linha entre os
+     *  centros das duas entidades — a técnica clássica de linha via CSS puro (largura =
+     *  distância entre os pontos, rotação = ângulo entre eles, origem no canto da div). */
+    lineStyle(rel) {
+      const from = this.entityCenter(rel.fromId);
+      const to = this.entityCenter(rel.toId);
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      return `left:${from.x}px; top:${from.y}px; width:${length}px; transform: rotate(${angle}deg);`;
+    },
+
+    // --- Salvar/carregar/excluir diagramas ---
+
+    serialize() {
+      return JSON.stringify({
+        entities: this.entities.map((e) => ({
+          id: e.id,
+          name: e.name,
+          x: e.x,
+          y: e.y,
+          attributes: e.attributes,
+        })),
+        relationships: this.relationships,
+      });
+    },
+
+    async saveDiagram() {
+      const title = this.title.trim();
+      if (!title) {
+        Alpine.store('toasts').push('error', 'Dê um nome pro diagrama antes de salvar.');
+        return;
+      }
+      if (this.entities.length === 0) {
+        Alpine.store('toasts').push('error', 'Adicione ao menos uma entidade antes de salvar.');
+        return;
+      }
+
+      this.saving = true;
+
+      try {
+        const url = this.currentDiagramId
+          ? `/laboratorio/modelagem/${this.currentDiagramId}`
+          : '/laboratorio/modelagem';
+        const response = await axios.post(
+          url,
+          new URLSearchParams({ title, data: this.serialize() }),
+        );
+        this.currentDiagramId = response.data.id ?? this.currentDiagramId;
+        this.diagrams = response.data.diagrams ?? this.diagrams;
+        Alpine.store('toasts').push('success', response.data.message);
+      } catch (error) {
+        const message = error.response?.data?.message ?? 'Não foi possível salvar o diagrama.';
+        Alpine.store('toasts').push('error', message);
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async loadDiagram(diagram) {
+      this.loadingDiagram = true;
+
+      try {
+        const response = await axios.get(`/laboratorio/modelagem/${diagram.id}`);
+        const loaded = response.data.diagram?.data ?? { entities: [], relationships: [] };
+        this.entities = loaded.entities ?? [];
+        this.relationships = loaded.relationships ?? [];
+        this.currentDiagramId = response.data.diagram?.id ?? diagram.id;
+        this.title = response.data.diagram?.title ?? diagram.title;
+        this.connecting = false;
+        this.connectFromId = null;
+        Alpine.store('toasts').push('success', `Diagrama "${this.title}" carregado.`);
+      } catch (error) {
+        const message = error.response?.data?.message ?? 'Não foi possível carregar o diagrama.';
+        Alpine.store('toasts').push('error', message);
+      } finally {
+        this.loadingDiagram = false;
+      }
+    },
+
+    async deleteDiagram(diagram) {
+      const confirmed = await window.confirmAction({
+        title: 'Excluir diagrama',
+        message: `Excluir "${diagram.title}"? Essa ação não pode ser desfeita.`,
+        confirmLabel: 'Excluir',
+      });
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        const response = await axios.post(`/laboratorio/modelagem/${diagram.id}/excluir`);
+        this.diagrams = response.data.diagrams ?? this.diagrams.filter((d) => d.id !== diagram.id);
+        if (this.currentDiagramId === diagram.id) {
+          this.newDiagram();
+        }
+        Alpine.store('toasts').push('success', response.data.message);
+      } catch (error) {
+        const message = error.response?.data?.message ?? 'Não foi possível excluir o diagrama.';
+        Alpine.store('toasts').push('error', message);
+      }
+    },
+
+    newDiagram() {
+      this.entities = [];
+      this.relationships = [];
+      this.currentDiagramId = null;
+      this.title = '';
+      this.connecting = false;
+      this.connectFromId = null;
+    },
+
+    // --- Gerar SQL a partir do diagrama ---
+
+    openSqlPreview() {
+      if (this.entities.length === 0) {
+        Alpine.store('toasts').push('error', 'Adicione ao menos uma entidade primeiro.');
+        return;
+      }
+      this.generatedSql = this.generateSql();
+      this.showSqlModal = true;
+    },
+
+    /**
+     * Traduz o diagrama pra DDL, no mesmo espírito do guia /guia/modelagem-er: cada entidade
+     * vira CREATE TABLE, 1:N/1:1 viram FOREIGN KEY (em ALTER TABLE, separado — assim a ordem
+     * das entidades no diagrama nunca importa, mesmo com referências cruzadas) e N:N vira uma
+     * tabela associativa nova com as duas FKs.
+     */
+    generateSql() {
+      const sanitize = (name) =>
+        (name || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9_]+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'tabela';
+
+      const usedNames = new Set();
+      const tables = this.entities.map((entity) => {
+        let name = sanitize(entity.name);
+        let candidate = name;
+        let suffix = 2;
+        while (usedNames.has(candidate)) {
+          candidate = `${name}_${suffix++}`;
+        }
+        usedNames.add(candidate);
+
+        const columns = entity.attributes.map((attr) => ({
+          name: sanitize(attr.name) || 'coluna',
+          type: attr.type || 'VARCHAR(100)',
+          pk: attr.pk === true,
+        }));
+        const pk = columns.find((c) => c.pk) ?? null;
+
+        return { id: entity.id, name: candidate, columns, pk };
+      });
+      const tableById = Object.fromEntries(tables.map((t) => [t.id, t]));
+
+      const creates = tables.map((t) => {
+        const cols =
+          t.columns.length > 0
+            ? t.columns.map((c) =>
+                c.pk ? `    ${c.name} INT PRIMARY KEY AUTO_INCREMENT` : `    ${c.name} ${c.type}`,
+              )
+            : ['    id INT PRIMARY KEY AUTO_INCREMENT'];
+        return `CREATE TABLE ${t.name} (\n${cols.join(',\n')}\n);`;
+      });
+
+      const junctionTables = [];
+      const foreignKeys = [];
+
+      for (const rel of this.relationships) {
+        const from = tableById[rel.fromId];
+        const to = tableById[rel.toId];
+        if (!from || !to || !from.pk || !to.pk) {
+          continue;
+        }
+
+        const manyFrom = rel.cardinalityFrom === 'N';
+        const manyTo = rel.cardinalityTo === 'N';
+
+        if (manyFrom && manyTo) {
+          const junctionName = `${from.name}_${to.name}`;
+          junctionTables.push(
+            `CREATE TABLE ${junctionName} (\n` +
+              `    ${from.name}_id INT NOT NULL,\n` +
+              `    ${to.name}_id INT NOT NULL,\n` +
+              `    PRIMARY KEY (${from.name}_id, ${to.name}_id),\n` +
+              `    FOREIGN KEY (${from.name}_id) REFERENCES ${from.name}(${from.pk.name}),\n` +
+              `    FOREIGN KEY (${to.name}_id) REFERENCES ${to.name}(${to.pk.name})\n` +
+              `);`,
+          );
+          continue;
+        }
+
+        // 1:1 -> FK do lado "from", com UNIQUE (relação vira só uma linha correspondente do
+        // outro lado). 1:N/N:1 -> FK sempre do lado "N" (o "muitos"), apontando pro lado "1".
+        const oneToOne = !manyFrom && !manyTo;
+        const fkTable = oneToOne || !manyTo ? from : to;
+        const refTable = fkTable === from ? to : from;
+        const fkColumn = `${refTable.name}_id`;
+
+        foreignKeys.push(
+          `ALTER TABLE ${fkTable.name} ADD COLUMN ${fkColumn} INT${oneToOne ? ' UNIQUE' : ''};`,
+        );
+        foreignKeys.push(
+          `ALTER TABLE ${fkTable.name} ADD FOREIGN KEY (${fkColumn}) REFERENCES ${refTable.name}(${refTable.pk.name});`,
+        );
+      }
+
+      const parts = ['-- Tabelas', ...creates];
+      if (junctionTables.length > 0) {
+        parts.push('', '-- Tabelas associativas (relacionamentos N:N)', ...junctionTables);
+      }
+      if (foreignKeys.length > 0) {
+        parts.push('', '-- Chaves estrangeiras (relacionamentos 1:1 e 1:N)', ...foreignKeys);
+      }
+
+      return parts.join('\n\n');
+    },
+
+    copySql() {
+      navigator.clipboard
+        .writeText(this.generatedSql)
+        .then(() =>
+          Alpine.store('toasts').push('success', 'SQL copiado para a área de transferência.'),
+        )
+        .catch(() =>
+          Alpine.store('toasts').push(
+            'error',
+            'Não foi possível copiar. Selecione o texto manualmente.',
+          ),
+        );
+    },
+
+    /** Manda o SQL gerado pro console do dashboard, reaproveitando o mesmo rascunho local que
+     *  o console já recupera sozinho ao carregar (ver `sqlConsole` acima) — sem precisar de
+     *  nenhuma rota nova só pra "entregar" esse texto de uma página pra outra. */
+    openInConsole() {
+      try {
+        localStorage.setItem(
+          'db-lab:sql-console-draft',
+          JSON.stringify({ sql: this.generatedSql, schema: '' }),
+        );
+      } catch (_) {
+        // Sem localStorage, só não pré-preenche — a pessoa cola o SQL copiado manualmente.
+      }
+      window.location.href = '/dashboard';
+    },
+  }));
+
   /** Botão de copiar texto (credenciais, comando de conexão do SGBD...) com feedback via toast. */
   Alpine.data('copyable', (text) => ({
     copy() {

@@ -359,7 +359,10 @@ validação de entrada e o que cada uma expõe.
 
 - `Content-Security-Policy`: `script-src 'self' 'unsafe-eval'` (o `unsafe-eval` é
   necessário — Alpine.js usa `Function()` pra avaliar `x-data`/`@click`/etc., é assim que a
-  biblioteca funciona), `style-src`/`img-src`/`font-src`/`connect-src` só `'self'`,
+  biblioteca funciona), `style-src 'self' 'unsafe-inline'` (o `unsafe-inline` é pelo mesmo
+  motivo, só que pra estilo: o laboratório de modelagem posiciona as entidades arrastáveis
+  via `:style` calculado em JS — sem isso o navegador aceita a mudança no atributo `style`
+  mas recusa aplicá-la visualmente), `img-src`/`font-src`/`connect-src` só `'self'`,
   `object-src 'none'`, `frame-ancestors 'self'`. Ainda bloqueia o principal: script/estilo
   de origem externa e `<script>` injetado via um XSS que porventura apareça.
 - `X-Frame-Options: SAMEORIGIN` (clickjacking), `X-Content-Type-Options: nosniff`,
