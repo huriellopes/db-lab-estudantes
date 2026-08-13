@@ -6,23 +6,32 @@ namespace App\Core;
 
 final class Router
 {
-    /** @var array<string, list<array{pattern:string, params:list<string>, action:array{0:class-string<Controller>,1:string}}>> */
+    /**
+     * Uma rota aceita dois formatos de action:
+     *   - array{0: class-string<Controller>, 1: string} — controller "clássico" multi-ação,
+     *     chamado como (new $classe())->$metodo($params). Ainda o formato certo pra recurso
+     *     com várias operações relacionadas (ex.: AdminController).
+     *   - class-string<Action> — "Single Action": uma classe só, chamada como
+     *     (new $classe())($params), via __invoke() (ver App\Core\Action).
+     *
+     * @var array<string, list<array{pattern:string, params:list<string>, action:array{0:class-string<Controller>,1:string}|class-string<Action>}>>
+     */
     private array $routes = [];
 
-    /** @param array{0:class-string<Controller>,1:string} $action */
-    public function get(string $path, array $action): void
+    /** @param array{0:class-string<Controller>,1:string}|class-string<Action> $action */
+    public function get(string $path, array|string $action): void
     {
         $this->add('GET', $path, $action);
     }
 
-    /** @param array{0:class-string<Controller>,1:string} $action */
-    public function post(string $path, array $action): void
+    /** @param array{0:class-string<Controller>,1:string}|class-string<Action> $action */
+    public function post(string $path, array|string $action): void
     {
         $this->add('POST', $path, $action);
     }
 
-    /** @param array{0:class-string<Controller>,1:string} $action */
-    private function add(string $method, string $path, array $action): void
+    /** @param array{0:class-string<Controller>,1:string}|class-string<Action> $action */
+    private function add(string $method, string $path, array|string $action): void
     {
         preg_match_all('#\{([a-zA-Z_][a-zA-Z0-9_]*)\}#', $path, $matches);
         $pattern = preg_replace('#\{[a-zA-Z_][a-zA-Z0-9_]*\}#', '([^/]+)', $path);
@@ -48,7 +57,14 @@ final class Router
             /** @var array<string,string> $params */
             $params = array_combine($route['params'], $matches);
 
-            [$controllerClass, $methodName] = $route['action'];
+            $action = $route['action'];
+            if (is_string($action)) {
+                (new $action())($params);
+
+                return;
+            }
+
+            [$controllerClass, $methodName] = $action;
             (new $controllerClass())->$methodName($params);
             return;
         }

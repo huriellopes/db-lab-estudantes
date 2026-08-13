@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Controllers;
+namespace App\Actions\Dashboard;
 
+use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Config;
-use App\Core\Controller;
 use App\Models\Entities\SavedQuery as SavedQueryEntity;
 use App\Models\Entities\Schema;
 use App\Models\SavedQuery;
@@ -14,9 +14,10 @@ use App\Models\SchemaRecord;
 use App\Support\TableFilter;
 use App\Support\TableQuery;
 
-final class DashboardController extends Controller
+/** Painel principal (aluno/professor): "Meus schemas" + console SQL. GET /dashboard. */
+final class ShowDashboardAction extends Action
 {
-    public function index(array $params = []): void
+    public function __invoke(array $params = []): void
     {
         Auth::requireLogin();
 

@@ -2,22 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Controllers;
-
-use App\Core\Auth;
-use App\Core\Controller;
+namespace App\Support;
 
 /**
- * Guia de referência sobre SQL/NoSQL — conteúdo estático (fica no próprio Twig de cada
- * tópico, não no banco), pra iniciante/intermediário: o que é, pra que serve, quando usar
- * e exemplo. Cada slug é um template próprio em app/Views/guide/ — validado contra essa
- * lista fixa antes de renderizar, então não tem como virar um path traversal nem um 500
- * por template inexistente.
+ * Lista fixa dos tópicos do guia de referência (ver App\Actions\Guide\*) — conteúdo
+ * estático, cada slug tem um template próprio em app/Views/guide/. Extraída do controller
+ * pra `ShowGuideIndexAction` e `ShowGuideTopicAction` (duas Single Actions, ver
+ * App\Core\Action) compartilharem sem duplicar.
  */
-final class GuideController extends Controller
+final class GuideTopics
 {
     /** @var array<string, array{title: string, summary: string, icon: string}> */
-    private const TOPICS = [
+    public const ALL = [
         'modelagem-er' => [
             'title' => 'Modelagem de dados (MER/DER)',
             'summary' => 'Como desenhar entidades e relacionamentos antes de criar as tabelas.',
@@ -64,33 +60,4 @@ final class GuideController extends Controller
             'icon' => '⚡',
         ],
     ];
-
-    public function index(array $params = []): void
-    {
-        Auth::requireLogin();
-
-        $this->render('guide/index', [
-            'pageTitle' => 'Guia de bancos de dados',
-            'topics' => self::TOPICS,
-        ]);
-    }
-
-    public function show(array $params): void
-    {
-        Auth::requireLogin();
-
-        $slug = (string) ($params['slug'] ?? '');
-        if (!isset(self::TOPICS[$slug])) {
-            http_response_code(404);
-            $this->render('errors/404');
-
-            return;
-        }
-
-        $this->render("guide/{$slug}", [
-            'pageTitle' => self::TOPICS[$slug]['title'] . ' · Guia',
-            'topics' => self::TOPICS,
-            'currentSlug' => $slug,
-        ]);
-    }
 }
