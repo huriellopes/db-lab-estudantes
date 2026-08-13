@@ -50,12 +50,7 @@ final class ShowDashboardAction extends Action
             // Biblioteca de comandos salvos pra alimentar o console SQL (ver Alpine
             // `sqlConsole` em resources/js/app.js) — já serializada no formato que o JS espera.
             'savedQueries' => array_map(
-                static fn (SavedQueryEntity $q): array => [
-                    'id' => $q->id,
-                    'title' => $q->title,
-                    'schema' => $q->schemaName,
-                    'sql' => $q->sqlText,
-                ],
+                static fn (SavedQueryEntity $q): array => $q->toSummaryArray(),
                 SavedQuery::allForUser(Auth::id()),
             ),
         ]);

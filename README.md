@@ -93,24 +93,30 @@ database/
   factories/       # UserFactory (Faker)
 
 app/
-  Actions/         # "Single Action" (ver App\Core\Action, __invoke() só): Dashboard, Connection,
-                    Guide — uma classe por operação, pra recurso que não compartilha estado
-                    entre várias ações relacionadas (ao contrário de um Controller "clássico")
-  Controllers/    # Auth, PasswordReset, Schema, Profile, SqlConsole, SavedQuery, ErDiagram,
-                    Student (professor), Admin — multi-ação, quando várias operações do mesmo
-                    recurso genuinamente compartilham contexto
+  Actions/         # "Single Action" (ver App\Core\Action, __invoke() só) — TODA rota da app
+                    é uma Action hoje: Auth, PasswordReset, Dashboard, Schema, Profile,
+                    Connection, SqlConsole, SavedQuery, ErDiagram, Guide, Student (professor),
+                    Admin. Uma classe por operação; quando várias ações do mesmo recurso
+                    genuinamente compartilham lógica (ex.: achar o usuário-alvo validando
+                    permissão), essa lógica compartilhada vira uma base abstrata só daquele
+                    grupo (App\Actions\Student\StudentAction, App\Actions\Admin\AdminUserAction)
+                    — nunca duplicada entre as Actions concretas.
+  Controllers/    # Vazia hoje (fica pra quando um recurso novo genuinamente precisar de um
+                    Controller multi-ação em vez de várias Actions — ver App\Core\Router,
+                    que aceita os dois formatos)
   Core/            # Router (com {id} dinâmico, aceita Controller multi-ação OU Action única),
-                    Controller, Action (base de Single Action, estende Controller), View (Twig),
-                    Vite, Database (PDO, incl. connectAs() pro console SQL), Mailer
-                    (PHPMailer/SMTP), Migration/Migrator/Console, Seeder, Auth (sessão + papéis +
-                    senha MySQL cacheada), Flash, Config
+                    Controller (render/redirect/respond/json/genericError), Action (base de
+                    Single Action, estende Controller), View (Twig), Vite, Database (PDO,
+                    incl. connectAs() pro console SQL), Mailer (PHPMailer/SMTP),
+                    Migration/Migrator/Console, Seeder, Auth (sessão + papéis + senha MySQL
+                    cacheada), Flash, Config
   Support/         # Lógica pura, sem I/O — o que os testes do Pest cobrem:
                     Role (enum), AuthenticatedUser (com shortName()), AdminStats, GuideTopics,
-                    FlashType/FlashMessage, MysqlIdentifier, RegistrationValidator,
-                    SchemaNameBuilder, Policy, TableQuery/Paginator/TableFilter (busca/
-                    ordenação/paginação das listagens), Crypto (libsodium, senha MySQL em
-                    cache de sessão), SqlScriptSplitter (console SQL), Csrf, RateLimitDecision,
-                    ClientIp, RequestScheme
+                    ErDiagramValidator, FlashType/FlashMessage, MysqlIdentifier,
+                    RegistrationValidator, SchemaNameBuilder, Policy, TableQuery/Paginator/
+                    TableFilter (busca/ordenação/paginação das listagens), Crypto (libsodium,
+                    senha MySQL em cache de sessão), SqlScriptSplitter (console SQL), Csrf,
+                    RateLimitDecision, ClientIp, RequestScheme
   Models/
     Entities/          # DTOs readonly tipados: User, Schema, SchemaWithOwner, StudentSummary
     User.php, SchemaRecord.php  # acesso às tabelas da própria app, devolvem as Entities
@@ -145,14 +151,16 @@ mysql/init/          # só o bootstrap de privilégios do appuser (o schema em s
   conexão como a própria pessoa) — mas sempre criptografada com `App\Support\Crypto`, nunca
   em claro (ver seção "Console SQL").
 - **Single Action** (`App\Core\Action`, `app/Actions/`): rota que aponta pra uma classe só,
-  chamada via `__invoke()` — sem método pra escolher, sem estado compartilhado entre ações
-  diferentes. `App\Core\Router::dispatch()` aceita tanto isso quanto o formato "clássico"
-  `[Controller::class, 'metodo']`; a escolha entre os dois é por recurso: várias operações
-  que genuinamente compartilham contexto (CRUD de um mesmo recurso, ex.: `AdminController`)
-  continuam um Controller multi-ação; uma página isolada (`/dashboard`, `/conectar`, `/guia`)
-  vira uma Action.
+  chamada via `__invoke()` — sem método pra escolher. `App\Core\Router::dispatch()` aceita
+  tanto isso quanto o formato "clássico" `[Controller::class, 'metodo']` (`app/Controllers/`
+  continua existindo, vazia, pra quando um recurso genuinamente precisar de um Controller
+  multi-ação de novo), mas hoje toda rota da app é uma Action. Quando várias Actions do
+  mesmo recurso compartilham lógica de verdade (ex.: achar o usuário-alvo validando
+  permissão em `/admin/usuarios/{id}/...`), essa lógica vira uma base abstrata só daquele
+  grupo — `App\Actions\Admin\AdminUserAction`/`App\Actions\Student\StudentAction` — em vez
+  de duplicada em cada Action concreta ou de forçar de volta um Controller multi-ação.
 - Mensagens flash são `FlashType` (enum) + `FlashMessage` (DTO), não strings soltas tipo `'success'`.
-- `App\Core\Router` roteia com `array{0: class-string<Controller>, 1: string}` tipado por PHPDoc.
+- `App\Core\Router` roteia com o tipo nativo `array{0: class-string<Controller>, 1: string}|class-string<Action>` (union real, não só PHPDoc).
 
 ### Mecanismo de renderização (sem PHP misturado com HTML)
 

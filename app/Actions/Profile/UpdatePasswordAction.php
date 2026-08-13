@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Actions\Profile;
+
+use App\Core\Action;
+use App\Core\Auth;
+use App\Models\User;
+use App\Services\UserManager;
+use Throwable;
+
+/** Troca a senha, tanto na app quanto na conta MySQL real da pessoa. POST /profile/password. */
+final class UpdatePasswordAction extends Action
+{
+    public function __invoke(array $params = []): void
+    {
+        Auth::requireLogin();
+
+        $currentPassword = (string) ($_POST['current_password'] ?? '');
+        $newPassword = (string) ($_POST['new_password'] ?? '');
+        $newPasswordConfirm = (string) ($_POST['new_password_confirm'] ?? '');
+
+        $user = User::find(Auth::id());
+
+        if (!password_verify($currentPassword, $user->passwordHash)) {
+            $this->respond(false, 'Senha atual incorreta.', '/profile');
+        }
+        if (strlen($newPassword) < 6) {
+            $this->respond(false, 'A nova senha deve ter pelo menos 6 caracteres.', '/profile');
+        }
+        if ($newPassword !== $newPasswordConfirm) {
+            $this->respond(false, 'As senhas não conferem.', '/profile');
+        }
+
+        try {
+            UserManager::resetPassword($user, $newPassword);
+            // Mantém o console SQL funcionando sem exigir novo login.
+            Auth::refreshMysqlPassword($newPassword);
+            $this->respond(true, 'Senha atualizada com sucesso.', '/profile');
+        } catch (Throwable $e) {
+            $this->respond(false, $this->genericError('atualizar a senha', $e), '/profile');
+        }
+    }
+}

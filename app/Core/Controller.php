@@ -51,7 +51,7 @@ abstract class Controller
      * toda a app ("Não foi possível {$action}."). Uso: `$this->respond(false,
      * $this->genericError('criar o schema', $e), '/dashboard');`
      *
-     * Exceção deliberada: App\Controllers\SqlConsoleController mostra o erro real do
+     * Exceção deliberada: App\Actions\SqlConsole\RunSqlAction mostra o erro real do
      * MySQL de propósito (é um console SQL — o erro é o produto, ver SECURITY.md).
      */
     protected function genericError(string $action, Throwable $e): string
@@ -59,5 +59,21 @@ abstract class Controller
         error_log(static::class . " — não foi possível {$action}: {$e->getMessage()}");
 
         return "Não foi possível {$action}. Tente de novo em instantes.";
+    }
+
+    /**
+     * JSON puro, sem o fallback pra redirect+flash do respond() — pra endpoint que só
+     * existe pra ser chamado via Axios (nunca por um <form> comum sem JS), como o console
+     * SQL e as bibliotecas de consultas/diagramas salvos. `$extra` entra solto no objeto
+     * (ex.: `['results' => ..., 'schemas' => ...]`), junto de success/message.
+     *
+     * @param array<string, mixed> $extra
+     */
+    protected function json(bool $success, string $message, array $extra = []): never
+    {
+        http_response_code($success ? 200 : 422);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => $success, 'message' => $message] + $extra);
+        exit;
     }
 }
