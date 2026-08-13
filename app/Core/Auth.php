@@ -164,12 +164,32 @@ final class Auth
         return Policy::canManageStudents(self::user());
     }
 
+    /**
+     * Chamada de guarda no início de toda action que exige login. Pra requisição AJAX
+     * (Alpine/Axios, ver X-Requested-With em resources/js/app.js), devolve JSON em vez de
+     * redirecionar: um redirect vira 200 com o HTML da tela de login no corpo assim que o
+     * XHR o segue sozinho, e quem chamou (ex.: o console SQL) acaba tentando ler aquele
+     * HTML como se fosse o JSON de resultado — sem essa distinção, a sessão cair no meio de
+     * um comando dava uma tela em branco/quebrada em vez de um erro explicando o que houve.
+     */
     public static function requireLogin(): void
     {
-        if (!self::check()) {
-            header('Location: /login');
+        if (self::check()) {
+            return;
+        }
+
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Sua sessão expirou. Faça login de novo pra continuar — o que você digitou fica guardado neste navegador.',
+            ]);
             exit;
         }
+
+        header('Location: /login');
+        exit;
     }
 
     public static function requireProfessorOrAdmin(): void

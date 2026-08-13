@@ -1,0 +1,254 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🧩</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Modelagem de dados (MER/DER)</h1>
+            <p class="mt-1 text-sm text-slate-500">Como desenhar entidades e relacionamentos antes de criar as tabelas.</p>
+        </div>
+    </div>
+
+    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            Esta página é sobre o passo <strong>antes</strong> do <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> —
+            planejar no papel (ou numa ferramenta de diagrama) o que vai virar tabela depois. Pra escrever o SQL em si,
+            veja o guia de <a href="/guia/sql-ansi" class="font-medium text-indigo-600 hover:text-indigo-700">SQL ANSI</a>
+            — os exemplos desta página usam o mesmo cenário (aluno, curso, matrícula) pra ficar fácil comparar.
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                <strong>MER</strong> (Modelo Entidade-Relacionamento) é a técnica pra descrever, de forma conceitual e
+                independente de qualquer banco específico, quais "coisas" um sistema precisa guardar (as
+                <strong>entidades</strong> — aluno, curso, produto, pedido...), quais dados cada uma tem (os
+                <strong>atributos</strong> — nome, e-mail, preço...) e como elas se conectam (os
+                <strong>relacionamentos</strong> — "aluno se matricula em curso"). O <strong>DER</strong> (Diagrama de
+                Entidade-Relacionamento) é o desenho desse modelo: caixas para entidades, losangos (ou linhas
+                anotadas, dependendo da notação) para relacionamentos, ligados por linhas com a
+                <strong>cardinalidade</strong> de cada lado.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Pra pensar na estrutura dos dados <strong>antes</strong> de escrever qualquer <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code>,
+                evitando o retrabalho de descobrir no meio do projeto que faltou uma tabela ou que duas entidades
+                deveriam ter sido uma só. Também serve como "linguagem comum" pra discutir o banco com outras
+                pessoas (colega, professor) sem precisar já saber SQL — um DER bem feito, qualquer um lê.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                No começo de qualquer sistema novo que vá guardar dados estruturados, e de novo toda vez que um
+                módulo novo introduzir entidades/relacionamentos que ainda não existiam (ex.: o sistema já tinha
+                "aluno" e "curso", e agora precisa de "professor" ministrando "curso" — vale revisar o DER antes de
+                sair alterando tabela em produção).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Um roteiro que funciona pra maioria dos casos:
+            </p>
+            <ol class="mt-2 list-inside list-decimal space-y-1 text-sm text-slate-600">
+                <li><strong>Liste os substantivos</strong> do que o sistema precisa guardar — cada um vira uma entidade candidata (aluno, curso, matrícula...).</li>
+                <li><strong>Liste os atributos</strong> de cada entidade (nome, e-mail, data...) e marque qual é o identificador único (a futura chave primária).</li>
+                <li><strong>Liste os verbos</strong> que conectam duas entidades — "aluno <em>se matricula em</em> curso" é um relacionamento chamado <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matrícula</code>.</li>
+                <li><strong>Defina a cardinalidade</strong> de cada lado do relacionamento (quantos de um se ligam a quantos do outro — ver o card "Intermediário" abaixo).</li>
+                <li><strong>Desenhe o DER</strong>: uma caixa por entidade, uma linha por relacionamento, cardinalidade escrita em cada ponta.</li>
+            </ol>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <p class="mb-2 text-sm text-slate-600">
+                Duas entidades (ALUNO e MATRÍCULA) ligadas por um relacionamento 1:N — um aluno faz várias matrículas,
+                cada matrícula pertence a um único aluno:
+            </p>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-6">
+                <div class="flex min-w-max items-center justify-center gap-3">
+                    <div class="rounded-lg border-2 border-indigo-300 bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700 shadow-sm">
+                        ALUNO
+                    </div>
+                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
+                        <span class="font-mono">1</span>
+                        <div class="h-px w-16 bg-slate-300"></div>
+                        <span class="mt-0.5 whitespace-nowrap font-medium text-slate-600">faz</span>
+                    </div>
+                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
+                        <div class="h-px w-16 bg-slate-300"></div>
+                        <span class="font-mono">N</span>
+                    </div>
+                    <div class="rounded-lg border-2 border-amber-300 bg-white px-4 py-2 text-center text-sm font-semibold text-amber-700 shadow-sm">
+                        MATRÍCULA
+                    </div>
+                </div>
+            </div>
+            <p class="mt-2 text-xs text-slate-500">
+                Lê-se nas duas direções: "1 aluno faz N matrículas" e, olhando a linha da direita pra esquerda,
+                "N matrículas pertencem a 1 aluno".
+            </p>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                É a hora de sair do desenho e chegar nas tabelas de verdade. Uma <strong>tabela</strong> é a versão
+                física de uma entidade: uma grade de linhas e colunas, onde cada <strong>linha</strong> (ou
+                "registro") é uma ocorrência daquela entidade (um aluno específico) e cada <strong>coluna</strong> é
+                um dos atributos que você já tinha listado no card "Iniciante" (nome, e-mail...). O que muda de um
+                DER pra outro é como as tabelas se conectam entre si — e isso depende da <strong>cardinalidade</strong>
+                de cada relacionamento: <strong>1:1</strong> (um pra um — ex.: uma pessoa tem um único CPF),
+                <strong>1:N</strong> (um pra muitos — um curso tem muitas matrículas) e <strong>N:N</strong> (muitos
+                pra muitos — um aluno se matricula em vários cursos, e um curso tem vários alunos). Bancos
+                relacionais não sabem representar N:N numa tabela só — todo N:N vira uma <strong>tabela
+                associativa</strong> (também chamada de tabela de junção), com uma chave estrangeira pra cada lado.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                As peças que toda tabela relacional usa pra garantir que os dados fiquem íntegros — sem precisar
+                confiar que o código da aplicação sempre vai validar tudo certo:
+            </p>
+            <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li><strong>Chave primária</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">PRIMARY KEY</code>, ou PK) — identifica cada linha de forma única dentro da própria tabela; nunca aceita <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NULL</code>, nunca repete, e uma tabela só tem <strong>uma</strong>. Pode ser um id gerado sozinho (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">AUTO_INCREMENT</code> — "chave substituta"/surrogate) ou combinar mais de uma coluna (<strong>chave composta</strong>, ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">PRIMARY KEY (aluno_id, curso_id)</code>).</li>
+                <li><strong>Chave estrangeira</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY</code>, ou FK) — coluna que aponta pra chave primária de outra tabela; é o que implementa o relacionamento do DER fisicamente, e o banco recusa (erro) qualquer valor que não exista na tabela referenciada.</li>
+                <li><strong>Chave única</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UNIQUE</code>) — parecida com a PK (não deixa repetir), mas uma tabela pode ter <strong>várias</strong>, e (diferente da PK) geralmente aceita <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NULL</code>. Serve pra atributo que já é naturalmente único mas não é o identificador principal da tabela — ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">email</code> do aluno é único, mas quem identifica a linha continua sendo o <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">id</code>.</li>
+                <li><strong>Constraint</strong> (restrição) — qualquer regra que o próprio banco garante linha a linha, sem depender do código: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NOT NULL</code> (coluna obrigatória), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DEFAULT</code> (valor usado quando nada é informado), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CHECK</code> (valida um valor/faixa, ex.: nota entre 0 e 10) e o comportamento de uma FK quando a linha referenciada é apagada (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ON DELETE CASCADE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SET NULL</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RESTRICT</code>). PK, FK e UNIQUE são, cada uma à sua forma, também um tipo de constraint.</li>
+                <li><strong>1:N</strong> na prática — a FK fica do lado "N" (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matricula.aluno_id</code> aponta pra <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno.id</code>).</li>
+                <li><strong>N:N</strong> na prática — precisa de uma tabela nova, só com as duas FKs (às vezes mais colunas próprias, tipo data da matrícula).</li>
+                <li><strong>Entidade fraca</strong> — não faz sentido sozinha, só existe amarrada a outra (ex.: "item de pedido" sem "pedido" não significa nada).</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Cardinalidade: sempre que dois "substantivos" do sistema puderem se relacionar em ambas as direções
+                múltiplas vezes — esse é o sinal de N:N. Se ficar em dúvida, pergunte: "um X pode ter vários Y,
+                <em>e</em> um Y pode ter vários X?" Se sim dos dois lados, é N:N e precisa de tabela associativa; se
+                só um lado for "vários", é 1:N e a FK resolve sozinha, sem tabela extra.
+            </p>
+            <p class="mt-2 text-sm text-slate-600">
+                Constraints: use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NOT NULL</code> em todo atributo que o DER marcou como obrigatório, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UNIQUE</code> pra atributo que precisa ser único mas não é a PK, e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CHECK</code> pra regra de valor que não depende de outra tabela (ex.: preço não pode ser negativo). Pra FK, pense no que faz sentido acontecer se a linha "pai" for apagada: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CASCADE</code> quando o "filho" não existe sem o "pai" (matrícula sem aluno não faz sentido), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SET NULL</code> quando o filho pode continuar órfão (pedido cujo vendedor foi desligado), e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RESTRICT</code> (o padrão) quando apagar o pai com filhos deveria ser um erro, forçando quem apaga a decidir explicitamente.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Traduzindo um DER pra tabelas, na prática: <strong>cada entidade vira uma tabela</strong>, cada
+                <strong>atributo vira uma coluna</strong>, o identificador único vira a <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">PRIMARY KEY</code>,
+                relacionamento <strong>1:N</strong> vira uma <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY</code> na tabela do lado "N", e
+                relacionamento <strong>N:N</strong> vira uma tabela nova. Depois que as tabelas e chaves estão no
+                lugar, revise coluna por coluna: ela é obrigatória (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NOT NULL</code>)? tem um valor
+                padrão razoável (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DEFAULT</code>)? existe alguma regra de valor que o banco pode garantir
+                sozinho (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CHECK</code>)? É exatamente isso que o cenário aluno/curso/matrícula usado no
+                guia de <a href="/guia/sql-ansi" class="font-medium text-indigo-600 hover:text-indigo-700">SQL ANSI</a> representa:
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matricula</code> é a tabela associativa que resolve o N:N entre
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code> e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso</code>.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Exemplo</h3>
+            <p class="mb-2 text-sm text-slate-600">
+                N:N entre ALUNO e CURSO, resolvido pela entidade associativa MATRÍCULA:
+            </p>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-6">
+                <div class="flex min-w-max items-center justify-center gap-3">
+                    <div class="rounded-lg border-2 border-indigo-300 bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700 shadow-sm">
+                        ALUNO
+                    </div>
+                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
+                        <span class="font-mono">1</span>
+                        <div class="h-px w-14 bg-slate-300"></div>
+                    </div>
+                    <div class="rotate-45 rounded border-2 border-emerald-300 bg-white px-5 py-5 text-center shadow-sm">
+                        <span class="-rotate-45 block text-xs font-semibold text-emerald-700">MATRÍCULA</span>
+                    </div>
+                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
+                        <div class="h-px w-14 bg-slate-300"></div>
+                        <span class="font-mono">1</span>
+                    </div>
+                    <div class="rounded-lg border-2 border-amber-300 bg-white px-4 py-2 text-center text-sm font-semibold text-amber-700 shadow-sm">
+                        CURSO
+                    </div>
+                </div>
+                <p class="mt-4 text-center text-xs text-slate-500">
+                    (do ponto de vista de ALUNO e CURSO, cada um se liga a "N" matrículas — por isso ALUNO ↔ CURSO é N:N)
+                </p>
+            </div>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Cada entidade do DER vira uma tabela
+CREATE TABLE aluno (
+    id    INT PRIMARY KEY AUTO_INCREMENT,
+    nome  VARCHAR(100) NOT NULL,
+    -- chave única: não pode repetir entre alunos, mas quem identifica a
+    -- linha continua sendo o "id" — a PK
+    email VARCHAR(150) NOT NULL UNIQUE
+);
+
+CREATE TABLE curso (
+    id       INT PRIMARY KEY AUTO_INCREMENT,
+    nome     VARCHAR(100) NOT NULL,
+    -- DEFAULT: usado quando ninguém informa carga_horaria no INSERT
+    carga_horaria INT NOT NULL DEFAULT 60,
+    -- CHECK: o próprio banco recusa um valor fora da faixa, sem precisar
+    -- validar isso no código da aplicação
+    CHECK (carga_horaria BETWEEN 1 AND 400)
+);
+
+-- A entidade associativa (o losango do N:N) vira uma tabela com duas FKs —
+-- uma pra cada entidade que ela conecta
+CREATE TABLE matricula (
+    id         INT PRIMARY KEY AUTO_INCREMENT,
+    aluno_id   INT NOT NULL,
+    curso_id   INT NOT NULL,
+    nota       DECIMAL(4,2) NULL,
+    criada_em  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- matrícula sem aluno não existe: se o aluno for apagado, apaga a
+    -- matrícula dele junto (CASCADE)
+    FOREIGN KEY (aluno_id) REFERENCES aluno(id) ON DELETE CASCADE,
+    -- apagar um curso com matrículas ativas deveria ser um erro — força
+    -- quem for apagar a decidir antes o que fazer com elas (RESTRICT é o
+    -- padrão da maioria dos bancos, mas fica explícito aqui de propósito)
+    FOREIGN KEY (curso_id) REFERENCES curso(id) ON DELETE RESTRICT,
+    -- evita a mesma pessoa se matriculando duas vezes no mesmo curso —
+    -- repare que é uma UNIQUE de duas colunas juntas, diferente da UNIQUE
+    -- de uma coluna só lá em cima (email)
+    UNIQUE (aluno_id, curso_id),
+    -- nota, se informada, tem que estar entre 0 e 10
+    CHECK (nota IS NULL OR nota BETWEEN 0 AND 10)
+);</code></pre>
+            <p class="mt-3 text-xs text-slate-500">
+                Repare que <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">matricula</code> já tem, ao mesmo tempo, um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">id</code> como PK
+                (chave substituta, mais fácil de referenciar de outro lugar) <em>e</em> a combinação
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">(aluno_id, curso_id)</code> como UNIQUE — uma alternativa igualmente válida seria não ter o
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">id</code> e usar essa combinação diretamente como <strong>chave primária composta</strong>
+                (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono">PRIMARY KEY (aluno_id, curso_id)</code>); a diferença é mais sobre gosto/praticidade do
+                que sobre estar certo ou errado.
+            </p>
+        </div>
+    </div>
+{% endblock %}

@@ -7,7 +7,9 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Controller;
+use App\Models\Entities\SavedQuery as SavedQueryEntity;
 use App\Models\Entities\Schema;
+use App\Models\SavedQuery;
 use App\Models\SchemaRecord;
 use App\Support\TableFilter;
 use App\Support\TableQuery;
@@ -44,6 +46,17 @@ final class DashboardController extends Controller
             // Nulo quando o phpMyAdmin não está exposto publicamente (ex.: produção,
             // onde ele só é acessível via túnel SSH) — a view esconde o link nesse caso.
             'pmaUrl' => $pmaUrl !== null ? rtrim($pmaUrl, '/') : null,
+            // Biblioteca de comandos salvos pra alimentar o console SQL (ver Alpine
+            // `sqlConsole` em resources/js/app.js) — já serializada no formato que o JS espera.
+            'savedQueries' => array_map(
+                static fn (SavedQueryEntity $q): array => [
+                    'id' => $q->id,
+                    'title' => $q->title,
+                    'schema' => $q->schemaName,
+                    'sql' => $q->sqlText,
+                ],
+                SavedQuery::allForUser(Auth::id()),
+            ),
         ]);
     }
 }
