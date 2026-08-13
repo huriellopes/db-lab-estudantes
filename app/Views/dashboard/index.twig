@@ -126,7 +126,7 @@
         <p class="mb-4 text-sm text-slate-500">Rode comandos SQL direto no seu schema, sem precisar de nenhum SGBD.</p>
 
         <div
-            x-data="sqlConsole('{{ schemaNames is empty ? '' : schemaNames[0]|e('js') }}', {{ schemaNames|json_encode }})"
+            x-data="sqlConsole('{{ schemaNames is empty ? '' : schemaNames[0]|e('js') }}', {{ schemaNames|json_encode }}, {{ savedQueries|json_encode }})"
             class="space-y-4"
         >
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -167,7 +167,7 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <button :disabled="loading" @click="run" type="button" class="btn-primary">
                     <svg x-show="!loading" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/>
@@ -176,6 +176,38 @@
                     <span x-show="loading" x-cloak>Executando…</span>
                 </button>
                 <button @click="clear" type="button" class="btn-secondary" :disabled="loading">Limpar</button>
+                <button @click="toggleSaveForm" type="button" class="btn-secondary" :disabled="loading">
+                    <span x-text="showSaveForm ? 'Cancelar' : 'Salvar comando'"></span>
+                </button>
+            </div>
+
+            <div x-show="showSaveForm" x-cloak x-transition class="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center">
+                <input
+                    type="text" x-model="saveTitle" maxlength="80" placeholder="Nome pra essa consulta (ex.: alunos ativos)"
+                    class="field-input flex-1 text-sm" @keydown.enter.prevent="saveQuery"
+                >
+                <button :disabled="savingQuery" @click="saveQuery" type="button" class="btn-primary !px-3 !py-1.5 text-xs">
+                    <span x-show="!savingQuery">Salvar</span>
+                    <span x-show="savingQuery" x-cloak>Salvando…</span>
+                </button>
+            </div>
+
+            <div x-show="savedQueries.length > 0" x-cloak>
+                <h3 class="field-label">Consultas salvas</h3>
+                <ul class="mt-1 max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
+                    <template x-for="query in savedQueries" :key="query.id">
+                        <li class="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                            <button
+                                @click="loadQuery(query)" type="button"
+                                class="min-w-0 flex-1 truncate text-left font-medium text-indigo-600 hover:text-indigo-700"
+                                :title="query.sql"
+                            ><span x-text="query.title"></span></button>
+                            <button @click="deleteQuery(query)" type="button" class="shrink-0 text-xs text-slate-400 hover:text-red-600">
+                                Excluir
+                            </button>
+                        </li>
+                    </template>
+                </ul>
             </div>
 
             <template x-if="summary">

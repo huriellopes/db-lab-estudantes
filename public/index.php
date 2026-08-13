@@ -11,6 +11,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\GuideController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
+use App\Controllers\SavedQueryController;
 use App\Controllers\SchemaController;
 use App\Controllers\SqlConsoleController;
 use App\Controllers\StudentController;
@@ -65,10 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(419);
 
         if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            // Na prática quase ninguém vê essa mensagem: o interceptor Axios (ver
+            // resources/js/app.js) busca um token novo em GET /csrf-token e repete a
+            // requisição sozinho antes de desistir — só chega aqui de novo se a sessão
+            // tiver mesmo caído (não só o token), daí o login de novo é obrigatório.
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => false,
-                'message' => 'Sessão expirada — recarregue a página e tente de novo.',
+                'message' => 'Sessão expirada — tente de novo em instantes.',
             ]);
         } else {
             echo View::render('errors/419');
@@ -95,6 +100,12 @@ $router->get('/dashboard', [DashboardController::class, 'index']);
 $router->post('/schemas', [SchemaController::class, 'store']);
 $router->post('/schemas/delete', [SchemaController::class, 'destroy']);
 $router->post('/dashboard/sql', [SqlConsoleController::class, 'run']);
+$router->post('/consultas-salvas', [SavedQueryController::class, 'store']);
+$router->post('/consultas-salvas/excluir', [SavedQueryController::class, 'destroy']);
+
+// Sem login exigido de propósito: o form de login também depende de CSRF, e é
+// exatamente aí que uma aba ficar aberta tempo demais faria mais falta (ver Auth::requireLogin).
+$router->get('/csrf-token', [AuthController::class, 'csrfToken']);
 
 $router->get('/profile', [ProfileController::class, 'edit']);
 $router->post('/profile', [ProfileController::class, 'update']);
