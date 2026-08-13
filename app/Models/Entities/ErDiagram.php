@@ -31,4 +31,20 @@ final readonly class ErDiagram
             updatedAt: new DateTimeImmutable((string) $row['updated_at']),
         );
     }
+
+    /**
+     * Forma resumida (sem o `data` inteiro) usada nas listas — a página do laboratório
+     * (App\Actions\ErDiagram\ShowErDiagramLabAction) e a resposta de toda ação que
+     * salva/exclui um diagrama devolvem a lista atualizada nesse formato.
+     *
+     * @return array{id: int, title: string, updatedAt: string}
+     */
+    public function toSummaryArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'updatedAt' => $this->updatedAt->format('d/m/Y H:i'),
+        ];
+    }
 }

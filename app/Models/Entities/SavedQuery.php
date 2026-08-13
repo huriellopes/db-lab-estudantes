@@ -30,4 +30,20 @@ final readonly class SavedQuery
             createdAt: new DateTimeImmutable((string) $row['created_at']),
         );
     }
+
+    /**
+     * Forma que o Alpine `sqlConsole` (resources/js/app.js) espera — devolvida pela ação
+     * que carrega o dashboard e por toda ação que salva/exclui uma consulta.
+     *
+     * @return array{id: int, title: string, schema: string|null, sql: string}
+     */
+    public function toSummaryArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'schema' => $this->schemaName,
+            'sql' => $this->sqlText,
+        ];
+    }
 }
