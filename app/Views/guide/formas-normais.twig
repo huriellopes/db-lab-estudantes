@@ -1,0 +1,229 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% include 'partials/guide-topic-nav.twig' %}
+
+    <div class="mb-8 flex items-center gap-3">
+        <span class="text-3xl">🧹</span>
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Formas Normais (1FN, 2FN, 3FN)</h1>
+            <p class="mt-1 text-sm text-slate-500">Como organizar as tabelas pra evitar dado repetido e inconsistente.</p>
+        </div>
+    </div>
+
+    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            Isso aqui é o passo <strong>depois</strong> do DER — você já desenhou entidades e relacionamentos (ver
+            <a href="/guia/modelagem-er" class="font-medium text-indigo-600 hover:text-indigo-700">Modelagem de dados (MER/DER)</a>),
+            já sabe montar o <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> (ver
+            <a href="/guia/sql-ansi" class="font-medium text-indigo-600 hover:text-indigo-700">SQL ANSI</a>) — as formas
+            normais são o teste que você roda nesse resultado pra achar tabela mal desenhada antes que vire um
+            problema de verdade. Os exemplos usam o mesmo cenário aluno/curso/matrícula do resto do guia.
+        </div>
+    </div>
+
+    <div class="card mb-6 space-y-4">
+        <span class="badge-indigo">Iniciante — 1FN e 2FN</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                <strong>Forma normal</strong> é uma regra que uma tabela deveria seguir pra ficar bem desenhada — "1FN",
+                "2FN" e "3FN" são níveis, cada um mais rigoroso que o anterior (pra estar na 2FN, a tabela já precisa
+                estar na 1FN; pra estar na 3FN, já precisa estar na 2FN). São regras sobre <strong>dependência</strong>:
+                o que cada coluna realmente descreve.
+            </p>
+            <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
+                <li>
+                    <strong>1FN (Primeira Forma Normal)</strong> — cada coluna guarda um único valor atômico (nunca uma
+                    lista, nunca "Cálculo I, Física I" numa célula só) e não existe coluna repetida (tipo
+                    <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso1</code>,
+                    <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso2</code>,
+                    <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso3</code>).
+                </li>
+                <li>
+                    <strong>2FN (Segunda Forma Normal)</strong> — além de estar na 1FN, toda coluna que não é chave
+                    precisa depender da <strong>chave primária inteira</strong>, não só de um pedaço dela. Só é um problema
+                    real quando a chave primária é <strong>composta</strong> (mais de uma coluna) — com chave simples
+                    (um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">id</code> só), 2FN já vem de graça.
+                </li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Pra evitar <strong>anomalias</strong> — nome chique pra "o banco deixa um estado que não faz sentido
+                acontecer". Três clássicas: anomalia de <strong>atualização</strong> (o mesmo dado repetido em várias
+                linhas, e uma delas fica desatualizada se você esquecer de mudar todas), de <strong>inserção</strong>
+                (não dá pra cadastrar um curso novo até ter um aluno matriculado nele, porque o nome do curso só existe
+                dentro da linha de matrícula) e de <strong>exclusão</strong> (apagar a última matrícula de um curso
+                apaga junto a única informação que restava sobre esse curso).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Sempre, como uma checagem rápida em cima de cada tabela nova (ou de uma tabela antiga que "cresceu
+                torta") — não é uma etapa isolada que só acontece uma vez. Pergunte, coluna por coluna:
+                "esse valor é atômico?" (1FN) e, se a chave for composta, "essa coluna depende das duas partes da
+                chave, ou só de uma?" (2FN).
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                <strong>1FN</strong> — uma tabela <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code>
+                guardando os cursos numa lista dentro da mesma célula:
+            </p>
+            <div class="mt-2 overflow-x-auto rounded-lg border border-red-100">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-red-100 bg-red-50 text-red-700">
+                            <th class="px-3 py-2 font-medium">id</th>
+                            <th class="px-3 py-2 font-medium">nome</th>
+                            <th class="px-3 py-2 font-medium">cursos</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2">Ana</td><td class="px-3 py-2">Cálculo I, Física I</td></tr>
+                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2">Bruno</td><td class="px-3 py-2">Álgebra Linear</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-sm text-slate-600">
+                "cursos" não é atômico — viola 1FN. A correção é a mesma coisa que uma relação N:N já pede (ver o guia
+                de modelagem): uma linha por matrícula, numa tabela própria.
+            </p>
+            <div class="mt-2 overflow-x-auto rounded-lg border border-emerald-100">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-emerald-100 bg-emerald-50 text-emerald-700">
+                            <th class="px-3 py-2 font-medium">aluno_id</th>
+                            <th class="px-3 py-2 font-medium">curso_id</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2 font-mono">10</td></tr>
+                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2 font-mono">11</td></tr>
+                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2 font-mono">12</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mt-4 text-sm text-slate-600">
+                <strong>2FN</strong> — uma tabela <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matricula</code>
+                com chave composta <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">(aluno_id, curso_id)</code>,
+                guardando também o nome do curso:
+            </p>
+            <div class="mt-2 overflow-x-auto rounded-lg border border-red-100">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-red-100 bg-red-50 text-red-700">
+                            <th class="px-3 py-2 font-medium">aluno_id</th>
+                            <th class="px-3 py-2 font-medium">curso_id</th>
+                            <th class="px-3 py-2 font-medium">nota</th>
+                            <th class="px-3 py-2 font-medium">nome_curso</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">8.5</td><td class="px-3 py-2">Cálculo I</td></tr>
+                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">7.0</td><td class="px-3 py-2">Cálculo I</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-sm text-slate-600">
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">nome_curso</code> depende só de
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso_id</code> — metade da chave, não da
+                chave inteira — <strong>dependência parcial</strong>, viola 2FN (repare que "Cálculo I" já aparece
+                duplicado). A correção: tira o que depende só de uma parte da chave e manda pra tabela dessa parte.
+            </p>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- nome_curso sai de matricula e vira coluna de curso, onde ele realmente pertence
+ALTER TABLE curso ADD COLUMN nome VARCHAR(100) NOT NULL;
+ALTER TABLE matricula DROP COLUMN nome_curso;
+-- matricula fica só com o que depende das DUAS colunas da chave junto: a nota</code></pre>
+        </div>
+    </div>
+
+    <div class="card space-y-4">
+        <span class="badge-amber">Intermediário — 3FN</span>
+
+        <div>
+            <h3 class="field-label">O que é</h3>
+            <p class="text-sm text-slate-600">
+                <strong>3FN (Terceira Forma Normal)</strong> — além de estar na 2FN, nenhuma coluna que não é chave pode
+                depender de <strong>outra coluna que também não é chave</strong>. Esse encadeamento (a chave determina
+                uma coluna comum, e essa coluna comum determina outra) se chama <strong>dependência transitiva</strong>.
+                Existe ainda a <strong>BCNF</strong> (Boyce-Codd), uma versão um pouco mais rigorosa da 3FN — na prática,
+                pra maioria dos casos do dia a dia, tabela em 3FN já resolve; BCNF só muda de verdade em casos raros com
+                mais de uma chave candidata se sobrepondo.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Pra que serve</h3>
+            <p class="text-sm text-slate-600">
+                Mesma motivação da 1FN/2FN — evitar redundância e anomalia — só que pegando um tipo de problema que
+                sobra mesmo depois de resolver as duas primeiras: informação guardada "no lugar errado" porque ela
+                descreve outra coisa, não a entidade da linha em si.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Quando usar</h3>
+            <p class="text-sm text-slate-600">
+                Depois de já garantir 1FN e 2FN, pergunte de cada coluna que não é chave: "esse valor descreve
+                <em>essa</em> linha, ou descreve alguma outra coisa que só está aqui de carona?" Se a resposta for "outra
+                coisa", é dependência transitiva. Na prática: normalize até 3FN quase sempre — só vale considerar abrir
+                mão de parte disso (desnormalizar de propósito) quando performance de leitura for um problema medido de
+                verdade, não uma suposição.
+            </p>
+        </div>
+
+        <div>
+            <h3 class="field-label">Como usar</h3>
+            <p class="text-sm text-slate-600">
+                Uma tabela <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code> já em 2FN (chave
+                simples, sem lista em coluna nenhuma), mas guardando também quem coordena o curso:
+            </p>
+            <div class="mt-2 overflow-x-auto rounded-lg border border-red-100">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-red-100 bg-red-50 text-red-700">
+                            <th class="px-3 py-2 font-medium">id</th>
+                            <th class="px-3 py-2 font-medium">nome</th>
+                            <th class="px-3 py-2 font-medium">curso_id</th>
+                            <th class="px-3 py-2 font-medium">coordenador_curso</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2">Ana</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">Profa. Silva</td></tr>
+                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2">Bruno</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">Profa. Silva</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-sm text-slate-600">
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">coordenador_curso</code> não depende de
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno.id</code> — depende de
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso_id</code>, que por sua vez é só
+                mais uma coluna comum de <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code>
+                (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">id → curso_id → coordenador_curso</code>)
+                — dependência transitiva, viola 3FN. Se a coordenadora do curso trocar, precisa lembrar de atualizar a
+                linha de <strong>todo</strong> aluno matriculado nele.
+            </p>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- coordenador_curso sai de aluno e vira coluna de curso, que é quem ele
+-- realmente descreve — trocar a coordenadora agora é 1 UPDATE, não N
+ALTER TABLE curso ADD COLUMN coordenador VARCHAR(100);
+ALTER TABLE aluno DROP COLUMN coordenador_curso;
+-- pra saber quem coordena o curso de um aluno, agora é um JOIN
+SELECT a.nome, c.coordenador
+FROM aluno a
+JOIN curso c ON c.id = a.curso_id;</code></pre>
+        </div>
+    </div>
+{% endblock %}
