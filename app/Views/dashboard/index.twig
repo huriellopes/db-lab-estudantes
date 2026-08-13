@@ -218,15 +218,40 @@
                 ></div>
             </template>
 
-            <div x-show="needsMysqlPassword" x-cloak x-transition class="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center">
-                <input
-                    type="password" x-model="confirmPasswordValue" placeholder="Sua senha"
-                    class="field-input flex-1 text-sm" @keydown.enter.prevent="confirmMysqlPassword"
+            <div
+                x-show="needsMysqlPassword" x-cloak
+                x-effect="needsMysqlPassword && $nextTick(() => $refs.confirmPasswordInput?.focus())"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+                x-transition.opacity.duration.150ms
+            >
+                <div
+                    x-show="needsMysqlPassword"
+                    x-transition:enter="transition ease-out duration-150"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    @click.outside="cancelMysqlPassword"
+                    @keydown.escape.window="cancelMysqlPassword"
+                    class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
                 >
-                <button :disabled="confirmingPassword" @click="confirmMysqlPassword" type="button" class="btn-primary !px-3 !py-1.5 text-xs">
-                    <span x-show="!confirmingPassword">Confirmar senha</span>
-                    <span x-show="confirmingPassword" x-cloak>Confirmando…</span>
-                </button>
+                    <h2 class="text-base font-semibold text-slate-900">Confirme sua senha</h2>
+                    <p class="mt-2 text-sm text-slate-500">
+                        Por segurança, a senha da sua conta MySQL só fica em cache na sessão quando você digita ela
+                        de verdade num login — entrar com "lembrar de mim" (ou uma sessão bem antiga) não guarda
+                        esse cache. Confirme sua senha aqui pra reabrir a conexão do console; o comando que você
+                        escreveu continua exatamente como estava e roda em seguida sozinho.
+                    </p>
+                    <input
+                        type="password" x-model="confirmPasswordValue" x-ref="confirmPasswordInput" placeholder="Sua senha"
+                        class="field-input mt-4 text-sm" @keydown.enter.prevent="confirmMysqlPassword"
+                    >
+                    <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" @click="cancelMysqlPassword" class="btn-secondary">Cancelar</button>
+                        <button :disabled="confirmingPassword" @click="confirmMysqlPassword" type="button" class="btn-primary">
+                            <span x-show="!confirmingPassword">Confirmar senha</span>
+                            <span x-show="confirmingPassword" x-cloak>Confirmando…</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <template x-for="(result, i) in results" :key="i">

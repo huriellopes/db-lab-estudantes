@@ -360,6 +360,13 @@ document.addEventListener('alpine:init', () => {
         }
       },
 
+      /** Fecha o modal de confirmação de senha sem rodar nada — o comando digitado
+       *  continua no textarea (e no rascunho salvo), só não roda até confirmar de novo. */
+      cancelMysqlPassword() {
+        this.needsMysqlPassword = false;
+        this.confirmPasswordValue = '';
+      },
+
       clear() {
         this.sql = '';
         this.results = [];
