@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\RateLimiter;
 use App\Services\UserManager;
 use App\Support\ClientIp;
+use App\Support\Csrf;
 use App\Support\FlashType;
 use App\Support\RegistrationValidator;
 use App\Support\Role;
@@ -167,5 +168,20 @@ final class AuthController extends Controller
     {
         Auth::logout();
         $this->redirect('/login');
+    }
+
+    /**
+     * Token CSRF atual da sessão, em JSON — chamado pelo interceptor Axios (ver
+     * resources/js/app.js) quando um POST volta 419 (token velho: aba aberta tempo
+     * demais, ou sessão trocada em outra aba). GET não passa pela checagem central de
+     * public/index.php (só POST verifica o token), então dá pra buscar um token válido
+     * sem precisar recarregar a página — Csrf::token() cria um novo na sessão atual se
+     * for a primeira vez, ou devolve o mesmo de sempre caso contrário. Funciona sem estar
+     * logado de propósito: o form de login também depende de CSRF.
+     */
+    public function csrfToken(array $params = []): void
+    {
+        header('Content-Type: application/json');
+        echo json_encode(['token' => Csrf::token()]);
     }
 }

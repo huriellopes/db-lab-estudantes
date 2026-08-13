@@ -18,6 +18,11 @@ final class GuideController extends Controller
 {
     /** @var array<string, array{title: string, summary: string, icon: string}> */
     private const TOPICS = [
+        'modelagem-er' => [
+            'title' => 'Modelagem de dados (MER/DER)',
+            'summary' => 'Como desenhar entidades e relacionamentos antes de criar as tabelas.',
+            'icon' => '🧩',
+        ],
         'sql-ansi' => [
             'title' => 'SQL ANSI',
             'summary' => 'O padrão por trás de praticamente todo banco relacional.',
