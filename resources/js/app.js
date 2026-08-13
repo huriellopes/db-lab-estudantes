@@ -222,6 +222,16 @@ document.addEventListener('alpine:init', () => {
       showSaveForm: false,
       savingQuery: false,
 
+      // A senha MySQL fica em cache (criptografada) na sessão, só pra abrir a conexão do
+      // console sem pedir de novo a cada comando — ver App\Core\Auth::mysqlPassword(). Sem
+      // esse cache (sessão aberta antes da feature existir, ou reaberta sozinha pelo
+      // "lembrar de mim", que de propósito não cacheia senha), run() volta com
+      // needsMysqlPassword: true e a gente pede a senha aqui mesmo, sem precisar de um
+      // logout/login completo.
+      needsMysqlPassword: false,
+      confirmPasswordValue: '',
+      confirmingPassword: false,
+
       // Chave do rascunho no localStorage deste navegador — nada aqui viaja pro servidor,
       // é só uma rede de segurança local (ver persistDraft()) pra nunca perder o que a
       // pessoa digitou só porque a sessão expirou ou a aba foi recarregada sem querer.
@@ -298,6 +308,7 @@ document.addEventListener('alpine:init', () => {
 
         this.loading = true;
         this.summary = null;
+        this.needsMysqlPassword = false;
 
         try {
           const response = await axios.post(
@@ -311,11 +322,41 @@ document.addEventListener('alpine:init', () => {
         } catch (error) {
           this.results = error.response?.data?.results ?? [];
           this.schemas = error.response?.data?.schemas ?? this.schemas;
+          this.needsMysqlPassword = !!error.response?.data?.needsMysqlPassword;
           const message = error.response?.data?.message ?? 'Não foi possível executar o comando.';
           this.summary = { ok: false, message };
           Alpine.store('toasts').push('error', message);
         } finally {
           this.loading = false;
+        }
+      },
+
+      /** Confirma a senha da conta pra recachear a senha MySQL na sessão (ver run() acima)
+       *  e, se der certo, já tenta rodar o comando de novo sozinho — a pessoa não perde o
+       *  fluxo, só confirma a senha e segue. */
+      async confirmMysqlPassword() {
+        const password = this.confirmPasswordValue;
+        if (!password) {
+          Alpine.store('toasts').push('error', 'Digite sua senha.');
+          return;
+        }
+
+        this.confirmingPassword = true;
+
+        try {
+          const response = await axios.post(
+            '/dashboard/sql/confirmar-senha',
+            new URLSearchParams({ password }),
+          );
+          this.confirmPasswordValue = '';
+          this.needsMysqlPassword = false;
+          Alpine.store('toasts').push('success', response.data.message);
+          await this.run();
+        } catch (error) {
+          const message = error.response?.data?.message ?? 'Não foi possível confirmar a senha.';
+          Alpine.store('toasts').push('error', message);
+        } finally {
+          this.confirmingPassword = false;
         }
       },
 

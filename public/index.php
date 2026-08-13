@@ -100,6 +100,7 @@ $router->get('/dashboard', [DashboardController::class, 'index']);
 $router->post('/schemas', [SchemaController::class, 'store']);
 $router->post('/schemas/delete', [SchemaController::class, 'destroy']);
 $router->post('/dashboard/sql', [SqlConsoleController::class, 'run']);
+$router->post('/dashboard/sql/confirmar-senha', [SqlConsoleController::class, 'confirmPassword']);
 $router->post('/consultas-salvas', [SavedQueryController::class, 'store']);
 $router->post('/consultas-salvas/excluir', [SavedQueryController::class, 'destroy']);
 

@@ -9,6 +9,8 @@ use App\Core\Controller;
 use App\Core\Database;
 use App\Models\Entities\Schema;
 use App\Models\SchemaRecord;
+use App\Models\User;
+use App\Services\RateLimiter;
 use App\Support\AuthenticatedUser;
 use App\Support\SchemaNameBuilder;
 use App\Support\SqlScriptSplitter;
@@ -55,7 +57,16 @@ final class SqlConsoleController extends Controller
         $user = Auth::user();
         $password = Auth::mysqlPassword();
         if ($user === null || $password === null) {
-            $this->json(false, 'Sua sessão não tem a senha MySQL em cache — saia e entre de novo pra usar o console SQL.');
+            // needsMysqlPassword: true diz pro front-end (ver Alpine `sqlConsole` em
+            // resources/js/app.js) pra abrir um campo de senha ali mesmo em vez de só
+            // avisar "saia e entre de novo" — confirmPassword() abaixo recacheia a senha
+            // sem precisar de um logout/login completo (que perderia o schema selecionado
+            // e faria a pessoa navegar pra longe do console à toa).
+            $this->json(
+                false,
+                'Sua sessão não tem a senha MySQL em cache. Confirme sua senha abaixo pra continuar.',
+                ['needsMysqlPassword' => true],
+            );
         }
 
         try {
@@ -164,6 +175,37 @@ final class SqlConsoleController extends Controller
             'type' => 'write',
             'affected' => $stmt->rowCount(),
         ];
+    }
+
+    /**
+     * Recacheia a senha MySQL na sessão sem exigir logout/login (ver comentário em run()) —
+     * a pessoa confirma a própria senha da conta aqui mesmo, e Auth::refreshMysqlPassword()
+     * guarda ela criptografada, do mesmo jeito que um login normal guardaria.
+     */
+    public function confirmPassword(array $params = []): void
+    {
+        Auth::requireLogin();
+
+        $password = (string) ($_POST['password'] ?? '');
+
+        // Por usuário (não por IP): quem já tem sessão válida aqui já passou pelo rate
+        // limit do login — isso é só uma segunda trava pra não virar um oráculo de senha
+        // caso a sessão em si tenha vazado.
+        $key = 'sql-console-confirm-password:user:' . Auth::id();
+        $limit = RateLimiter::check($key, maxAttempts: 8, windowSeconds: 300);
+        if (!$limit->allowed) {
+            $wait = (int) ceil($limit->retryAfterSeconds / 60);
+            $this->json(false, "Muitas tentativas. Aguarde {$wait} minuto(s) e tente de novo.");
+        }
+
+        $userRecord = User::find(Auth::id());
+        if ($userRecord === null || !password_verify($password, $userRecord->passwordHash)) {
+            RateLimiter::hit($key);
+            $this->json(false, 'Senha incorreta.');
+        }
+
+        Auth::refreshMysqlPassword($password);
+        $this->json(true, 'Senha confirmada — pode continuar usando o console.');
     }
 
     /** @return list<string> */
