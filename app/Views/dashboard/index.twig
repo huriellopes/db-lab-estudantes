@@ -218,6 +218,17 @@
                 ></div>
             </template>
 
+            <div x-show="needsMysqlPassword" x-cloak x-transition class="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center">
+                <input
+                    type="password" x-model="confirmPasswordValue" placeholder="Sua senha"
+                    class="field-input flex-1 text-sm" @keydown.enter.prevent="confirmMysqlPassword"
+                >
+                <button :disabled="confirmingPassword" @click="confirmMysqlPassword" type="button" class="btn-primary !px-3 !py-1.5 text-xs">
+                    <span x-show="!confirmingPassword">Confirmar senha</span>
+                    <span x-show="confirmingPassword" x-cloak>Confirmando…</span>
+                </button>
+            </div>
+
             <template x-for="(result, i) in results" :key="i">
                 <div class="overflow-hidden rounded-lg border border-slate-200">
                     <div class="border-b border-slate-100 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500" x-text="result.sql"></div>
