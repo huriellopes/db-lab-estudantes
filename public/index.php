@@ -8,6 +8,7 @@ use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\ConnectionController;
 use App\Controllers\DashboardController;
+use App\Controllers\ErDiagramController;
 use App\Controllers\GuideController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
@@ -117,6 +118,12 @@ $router->get('/conectar', [ConnectionController::class, 'show']);
 
 $router->get('/guia', [GuideController::class, 'index']);
 $router->get('/guia/{slug}', [GuideController::class, 'show']);
+
+$router->get('/laboratorio/modelagem', [ErDiagramController::class, 'index']);
+$router->get('/laboratorio/modelagem/{id}', [ErDiagramController::class, 'show']);
+$router->post('/laboratorio/modelagem', [ErDiagramController::class, 'store']);
+$router->post('/laboratorio/modelagem/{id}', [ErDiagramController::class, 'update']);
+$router->post('/laboratorio/modelagem/{id}/excluir', [ErDiagramController::class, 'destroy']);
 
 // Professor (e admin): gestão de contas de aluno.
 $router->get('/professor/alunos', [StudentController::class, 'index']);
