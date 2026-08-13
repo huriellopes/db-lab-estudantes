@@ -23,6 +23,11 @@ final class GuideController extends Controller
             'summary' => 'Como desenhar entidades e relacionamentos antes de criar as tabelas.',
             'icon' => '🧩',
         ],
+        'formas-normais' => [
+            'title' => 'Formas Normais (1FN, 2FN, 3FN)',
+            'summary' => 'Como organizar as tabelas pra evitar dado repetido e inconsistente.',
+            'icon' => '🧹',
+        ],
         'sql-ansi' => [
             'title' => 'SQL ANSI',
             'summary' => 'O padrão por trás de praticamente todo banco relacional.',

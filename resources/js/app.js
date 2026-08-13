@@ -468,8 +468,21 @@ document.addEventListener('alpine:init', () => {
 
     // Sempre a mesma largura pra toda entidade — evita ter que ler getBoundingClientRect()
     // do DOM (que não é reativo) só pra saber onde uma linha de relacionamento deve terminar.
-    ENTITY_WIDTH: 220,
-    attributeTypes: ['VARCHAR(100)', 'TEXT', 'INT', 'DECIMAL(10,2)', 'DATE', 'DATETIME', 'BOOLEAN'],
+    ENTITY_WIDTH: 240,
+    attributeTypes: [
+      'VARCHAR(50)',
+      'VARCHAR(100)',
+      'VARCHAR(255)',
+      'TEXT',
+      'INT',
+      'BIGINT',
+      'DECIMAL(10,2)',
+      'FLOAT',
+      'DATE',
+      'DATETIME',
+      'TIMESTAMP',
+      'BOOLEAN',
+    ],
 
     diagrams: initialDiagrams,
     currentDiagramId: null,
@@ -497,6 +510,25 @@ document.addEventListener('alpine:init', () => {
       return this.entities.find((e) => e.id === id);
     },
 
+    /** Molde de atributo novo — os campos além de name/type/pk só valem pra quem não é PK
+     *  (ver template no Twig: o painel de "mais opções" nem aparece na linha da PK). */
+    blankAttribute(overrides = {}) {
+      return {
+        id: this.uid('a'),
+        name: '',
+        type: 'VARCHAR(100)',
+        pk: false,
+        notNull: false,
+        unique: false,
+        default: '',
+        // id da entidade referenciada, se esse atributo for uma chave estrangeira — '' quando não é.
+        fkEntityId: '',
+        // "mais opções" (not null/único/padrão/FK) começa fechado, expande sob demanda.
+        expanded: false,
+        ...overrides,
+      };
+    },
+
     // --- Entidades ---
 
     addEntity() {
@@ -506,7 +538,7 @@ document.addEventListener('alpine:init', () => {
         name: `entidade_${index + 1}`,
         x: 40 + (index % 3) * 260,
         y: 40 + Math.floor(index / 3) * 240,
-        attributes: [{ id: this.uid('a'), name: 'id', type: 'INT', pk: true }],
+        attributes: [this.blankAttribute({ name: 'id', type: 'INT', pk: true })],
       });
     },
 
@@ -514,6 +546,14 @@ document.addEventListener('alpine:init', () => {
       this.entities = this.entities.filter((e) => e.id !== id);
       // Um relacionamento sem uma das pontas não faz sentido nenhum — some junto.
       this.relationships = this.relationships.filter((r) => r.fromId !== id && r.toId !== id);
+      // E nenhum atributo de outra entidade pode continuar apontando essa como FK.
+      this.entities.forEach((entity) => {
+        entity.attributes.forEach((attr) => {
+          if (attr.fkEntityId === id) {
+            attr.fkEntityId = '';
+          }
+        });
+      });
       if (this.connectFromId === id) {
         this.connecting = false;
         this.connectFromId = null;
@@ -521,7 +561,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     addAttribute(entity) {
-      entity.attributes.push({ id: this.uid('a'), name: '', type: 'VARCHAR(100)', pk: false });
+      entity.attributes.push(this.blankAttribute());
     },
 
     /** Remove um atributo; se era a PK e sobrou pelo menos um outro, promove o primeiro que
@@ -541,11 +581,13 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
-    /** Altura aproximada da caixa (cabeçalho + uma linha por atributo + rodapé) — junto com
-     *  ENTITY_WIDTH, é o suficiente pra calcular onde uma linha de relacionamento deve
-     *  começar/terminar sem precisar medir o DOM de verdade. */
+    /** Altura aproximada da caixa (cabeçalho + uma linha por atributo + rodapé, mais um
+     *  extra pra cada painel de "mais opções" aberto) — junto com ENTITY_WIDTH, é o
+     *  suficiente pra calcular onde uma linha de relacionamento deve começar/terminar sem
+     *  precisar medir o DOM de verdade. */
     entityHeight(entity) {
-      return 52 + entity.attributes.length * 32 + 44;
+      const expandedCount = entity.attributes.filter((a) => a.expanded && !a.pk).length;
+      return 52 + entity.attributes.length * 32 + expandedCount * 88 + 44;
     },
 
     // --- Arrastar entidade ---
@@ -717,6 +759,17 @@ document.addEventListener('alpine:init', () => {
         const loaded = response.data.diagram?.data ?? { entities: [], relationships: [] };
         this.entities = loaded.entities ?? [];
         this.relationships = loaded.relationships ?? [];
+        // Diagrama salvo antes de existir not null/único/padrão/FK por atributo — completa
+        // com os valores padrão pra não carregar `undefined` nos campos.
+        this.entities.forEach((entity) => {
+          entity.attributes.forEach((attr) => {
+            attr.notNull ??= false;
+            attr.unique ??= false;
+            attr.default ??= '';
+            attr.fkEntityId ??= '';
+            attr.expanded ??= false;
+          });
+        });
         this.currentDiagramId = response.data.diagram?.id ?? diagram.id;
         this.title = response.data.diagram?.title ?? diagram.title;
         this.connecting = false;
@@ -801,6 +854,12 @@ document.addEventListener('alpine:init', () => {
           name: sanitize(attr.name) || 'coluna',
           type: attr.type || 'VARCHAR(100)',
           pk: attr.pk === true,
+          // Os quatro só valem pra quem não é PK (a PK já é NOT NULL/única por natureza, e
+          // não faz sentido ela mesma ser uma FK nesta ferramenta) — ver blankAttribute().
+          notNull: attr.pk !== true && attr.notNull === true,
+          unique: attr.pk !== true && attr.unique === true,
+          default: attr.pk !== true ? (attr.default || '').trim() : '',
+          fkEntityId: attr.pk !== true ? attr.fkEntityId || '' : '',
         }));
         const pk = columns.find((c) => c.pk) ?? null;
 
@@ -808,18 +867,56 @@ document.addEventListener('alpine:init', () => {
       });
       const tableById = Object.fromEntries(tables.map((t) => [t.id, t]));
 
+      /** DEFAULT como o valor foi digitado, entre aspas só quando não é número nem uma
+       *  palavra-chave SQL comum (CURRENT_TIMESTAMP, TRUE, FALSE, NULL) — assim
+       *  `nota DEFAULT 0` e `status DEFAULT 'ativo'` saem certos sem a pessoa precisar
+       *  saber a regra de aspas do SQL. */
+      const formatDefault = (value) => {
+        const keywords = ['CURRENT_TIMESTAMP', 'TRUE', 'FALSE', 'NULL'];
+        if (/^-?\d+(\.\d+)?$/.test(value) || keywords.includes(value.toUpperCase())) {
+          return value.toUpperCase() === value ? value : value.toUpperCase();
+        }
+        return `'${value.replace(/'/g, "''")}'`;
+      };
+
       const creates = tables.map((t) => {
         const cols =
           t.columns.length > 0
-            ? t.columns.map((c) =>
-                c.pk ? `    ${c.name} INT PRIMARY KEY AUTO_INCREMENT` : `    ${c.name} ${c.type}`,
-              )
+            ? t.columns.map((c) => {
+                if (c.pk) {
+                  return `    ${c.name} INT PRIMARY KEY AUTO_INCREMENT`;
+                }
+                let line = `    ${c.name} ${c.type}`;
+                if (c.notNull) {
+                  line += ' NOT NULL';
+                }
+                if (c.unique) {
+                  line += ' UNIQUE';
+                }
+                if (c.default) {
+                  line += ` DEFAULT ${formatDefault(c.default)}`;
+                }
+                return line;
+              })
             : ['    id INT PRIMARY KEY AUTO_INCREMENT'];
         return `CREATE TABLE ${t.name} (\n${cols.join(',\n')}\n);`;
       });
 
       const junctionTables = [];
       const foreignKeys = [];
+
+      // FK marcada direto num atributo (independente de relacionamento desenhado) — a
+      // coluna já existe (veio do CREATE TABLE acima), só falta a constraint.
+      for (const t of tables) {
+        for (const c of t.columns) {
+          const refTable = c.fkEntityId ? tableById[c.fkEntityId] : null;
+          if (refTable && refTable.pk) {
+            foreignKeys.push(
+              `ALTER TABLE ${t.name} ADD FOREIGN KEY (${c.name}) REFERENCES ${refTable.name}(${refTable.pk.name});`,
+            );
+          }
+        }
+      }
 
       for (const rel of this.relationships) {
         const from = tableById[rel.fromId];
@@ -865,7 +962,11 @@ document.addEventListener('alpine:init', () => {
         parts.push('', '-- Tabelas associativas (relacionamentos N:N)', ...junctionTables);
       }
       if (foreignKeys.length > 0) {
-        parts.push('', '-- Chaves estrangeiras (relacionamentos 1:1 e 1:N)', ...foreignKeys);
+        parts.push(
+          '',
+          '-- Chaves estrangeiras (atributos FK e relacionamentos 1:1/1:N)',
+          ...foreignKeys,
+        );
       }
 
       return parts.join('\n\n');
