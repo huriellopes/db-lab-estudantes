@@ -24,7 +24,9 @@
                 <strong>Nova entidade</strong> cria uma caixa que você arrasta pra qualquer lugar do quadro.
                 <strong>Relacionamento</strong> entra num modo de "clique em duas entidades" pra ligar uma na
                 outra — clique nos números "1"/"N" perto de cada ponta da linha pra trocar a cardinalidade.
-                Clique na PK de um atributo pra marcar ele como chave primária daquela entidade.
+                Clique na PK de um atributo pra marcar ele como chave primária daquela entidade, ou no "⋯" pra
+                abrir mais opções desse atributo (não nulo, único, valor padrão, ou marcar como chave
+                estrangeira apontando pra outra entidade).
             </div>
         </div>
 
@@ -143,26 +145,59 @@
 
                         <div class="space-y-1 px-2 py-2">
                             <template x-for="attr in entity.attributes" :key="attr.id">
-                                <div class="flex items-center gap-1" @pointerdown.stop>
-                                    <button
-                                        @click="setPrimaryKey(entity, attr.id)" type="button"
-                                        class="shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-bold"
-                                        :class="attr.pk ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'"
-                                        title="Marcar como chave primária"
-                                    >PK</button>
-                                    <input
-                                        type="text" x-model="attr.name" placeholder="atributo"
-                                        class="min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-0"
-                                    >
-                                    <select
-                                        x-show="!attr.pk" x-cloak x-model="attr.type"
-                                        class="shrink-0 border-0 bg-transparent p-0 text-[10px] text-slate-400 focus:outline-none focus:ring-0"
-                                    >
-                                        <template x-for="type in attributeTypes" :key="type">
-                                            <option :value="type" x-text="type"></option>
-                                        </template>
-                                    </select>
-                                    <button @click="removeAttribute(entity, attr.id)" type="button" class="shrink-0 text-slate-300 hover:text-red-600">✕</button>
+                                <div @pointerdown.stop>
+                                    <div class="flex items-center gap-1">
+                                        <button
+                                            @click="setPrimaryKey(entity, attr.id)" type="button"
+                                            class="shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-bold"
+                                            :class="attr.pk ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'"
+                                            title="Marcar como chave primária"
+                                        >PK</button>
+                                        <input
+                                            type="text" x-model="attr.name" placeholder="atributo"
+                                            class="min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-0"
+                                        >
+                                        <select
+                                            x-show="!attr.pk" x-cloak x-model="attr.type"
+                                            class="shrink-0 border-0 bg-transparent p-0 text-[10px] text-slate-400 focus:outline-none focus:ring-0"
+                                        >
+                                            <template x-for="type in attributeTypes" :key="type">
+                                                <option :value="type" x-text="type"></option>
+                                            </template>
+                                        </select>
+                                        <button
+                                            x-show="!attr.pk" x-cloak @click="attr.expanded = !attr.expanded" type="button"
+                                            class="shrink-0" :class="attr.expanded ? 'text-indigo-600' : 'text-slate-300 hover:text-indigo-600'"
+                                            title="Mais opções: não nulo, único, padrão, chave estrangeira"
+                                        >⋯</button>
+                                        <button @click="removeAttribute(entity, attr.id)" type="button" class="shrink-0 text-slate-300 hover:text-red-600">✕</button>
+                                    </div>
+
+                                    <div x-show="attr.expanded && !attr.pk" x-cloak x-transition class="ml-5 mt-1 space-y-1.5 rounded-md bg-slate-50 p-1.5">
+                                        <div class="flex items-center gap-3">
+                                            <label class="flex items-center gap-1 text-[10px] text-slate-600">
+                                                <input type="checkbox" x-model="attr.notNull" class="h-3 w-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400">
+                                                não nulo
+                                            </label>
+                                            <label class="flex items-center gap-1 text-[10px] text-slate-600">
+                                                <input type="checkbox" x-model="attr.unique" class="h-3 w-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400">
+                                                único
+                                            </label>
+                                        </div>
+                                        <input
+                                            type="text" x-model="attr.default" placeholder="valor padrão (opcional)"
+                                            class="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+                                        >
+                                        <select
+                                            x-model="attr.fkEntityId"
+                                            class="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+                                        >
+                                            <option value="">— não é chave estrangeira —</option>
+                                            <template x-for="other in entities" :key="other.id">
+                                                <option :value="other.id" x-text="'FK → ' + (other.name || '(sem nome)')"></option>
+                                            </template>
+                                        </select>
+                                    </div>
                                 </div>
                             </template>
                         </div>
