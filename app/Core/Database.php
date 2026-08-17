@@ -31,6 +31,16 @@ final class Database
                     ],
                 );
             } catch (PDOException $e) {
+                // die()/exit() com uma string sempre sai com status 0 em PHP — em CLI (ex.:
+                // bin/console.php migrate, chamado em loop por docker/app-entrypoint.sh) isso
+                // fazia o comando "ter sucesso" mesmo sem conectar, quebrando o retry: o
+                // entrypoint seguia pro supervisord com o banco fora do ar e nenhuma migration
+                // rodada. exit(1) explícito aqui faz o `until` do entrypoint tentar de novo.
+                if (PHP_SAPI === 'cli') {
+                    fwrite(STDERR, 'Erro ao conectar no banco de dados: ' . $e->getMessage() . PHP_EOL);
+                    exit(1);
+                }
+
                 http_response_code(500);
                 die('Erro ao conectar no banco de dados: ' . $e->getMessage());
             }
