@@ -320,6 +320,19 @@ Cobrem a lógica pura em `App\Support` (sem tocar banco): geração e validaçã
 (inclusive contra injeção), validação de cadastro, validação/montagem de nomes de schema, o
 enum `Role`, `AuthenticatedUser::shortName()`, e as regras de autorização por papel.
 
+## Teste de carga (k6)
+
+```bash
+docker compose up -d --build
+k6 run k6/load-test.js
+```
+
+Simula navegação de visitante (`/login`, `/register`, `/esqueci-senha`) e de usuário logado
+(`/dashboard`, `/guia`, `/laboratorio/modelagem`, `/profile`, `/conectar`) e falha se mais de
+1% das requisições derem erro ou a app ficar lenta demais sob carga (thresholds de p95). Roda
+automaticamente no CI (job `load-test`, depois que a imagem Docker builda) — detalhes,
+variáveis de ambiente e o porquê da sessão ser reaproveitada entre VUs em `k6/README.md`.
+
 ## Padrão de código
 
 ```bash
