@@ -9,7 +9,10 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Models\Entities\Schema;
 use App\Models\SchemaRecord;
+use App\Models\User;
+use App\Services\RateLimiter;
 use App\Support\AuthenticatedUser;
+use App\Support\CappedResult;
 use App\Support\SchemaNameBuilder;
 use App\Support\SqlScriptSplitter;
 use PDO;
@@ -36,9 +39,23 @@ final class RunSqlAction extends Action
     /** Corta o resultado exibido — evita travar o navegador com uma SELECT gigante. */
     private const MAX_ROWS = 300;
 
+    /**
+     * Execuções por usuário por minuto. Folgado pra uso em aula (ninguém digita e roda 60
+     * comandos por minuto à mão), mas barra um script em loop martelando o MySQL
+     * compartilhado pela turma inteira.
+     */
+    private const MAX_RUNS_PER_MINUTE = 60;
+
     public function __invoke(array $params = []): void
     {
         Auth::requireLogin();
+
+        $limitKey = 'sql-console-run:user:' . Auth::id();
+        $limit = RateLimiter::check($limitKey, maxAttempts: self::MAX_RUNS_PER_MINUTE, windowSeconds: 60);
+        if (!$limit->allowed) {
+            $this->json(false, "Muitas execuções seguidas. Aguarde {$limit->retryAfterSeconds}s e tente de novo.");
+        }
+        RateLimiter::hit($limitKey);
 
         $script = (string) ($_POST['sql'] ?? '');
         $schema = trim((string) ($_POST['schema'] ?? ''));
@@ -112,22 +129,28 @@ final class RunSqlAction extends Action
     }
 
     /**
-     * Sincroniza schemas_criados com o MySQL pro prefixo do usuário (ver
+     * Sincroniza schemas_criados com o MySQL pro prefixo de schema do usuário (ver
      * App\Models\SchemaRecord::reconcileForUser) e devolve a lista atualizada — o console
      * roda com a conexão pessoal da própria pessoa, então SHOW DATABASES já só devolve o
      * que ela mesma tem GRANT pra ver (nunca schema alheio nem `schoolapp`).
+     *
+     * O prefixo vem de users.schema_prefix (lido do banco), não do login atual: depois de
+     * renomear o login, os schemas continuam com o prefixo antigo, e usar o login aqui
+     * apagava todos eles de "Meus schemas".
      *
      * @return list<string>
      */
     private function reconcileSchemas(PDO $pdo, AuthenticatedUser $user): array
     {
-        $prefix = $user->mysqlLogin . '__';
+        $record = User::find($user->id);
+        if ($record === null) {
+            return [];
+        }
+        $schemaPrefix = $record->schemaPrefix;
+        $prefix = $schemaPrefix . '__';
 
         try {
-            // Escapa "%"/"_" (wildcard de LIKE) do prefixo antes de acrescentar o "%" de
-            // propósito no fim — sem isso um "_" no meio do login casaria com o prefixo
-            // de outro login também (mesmo problema do GRANT, ver SchemaProvisioner).
-            $likePattern = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $prefix) . '%';
+            $likePattern = SchemaNameBuilder::likePattern($schemaPrefix);
             $stmt = $pdo->query('SHOW DATABASES LIKE ' . $pdo->quote($likePattern));
             $names = $stmt !== false ? array_map(static fn ($name): string => (string) $name, $stmt->fetchAll(PDO::FETCH_COLUMN)) : [];
 
@@ -136,7 +159,7 @@ final class RunSqlAction extends Action
                 static fn (string $name): bool => str_starts_with($name, $prefix) && SchemaNameBuilder::isValidDbName($name),
             ));
 
-            SchemaRecord::reconcileForUser($user->id, $actual);
+            SchemaRecord::reconcileForUser($user->id, $schemaPrefix, $actual);
 
             return $actual;
         } catch (PDOException) {
@@ -156,22 +179,26 @@ final class RunSqlAction extends Action
         }
 
         if ($stmt->columnCount() > 0) {
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Nomes das colunas antes de ler: CappedResult fecha o cursor no fim.
+            $columns = $this->columnNames($stmt);
+            $result = CappedResult::fetch($stmt, self::MAX_ROWS);
 
             return [
                 'sql' => $statement,
                 'type' => 'rows',
-                'columns' => $this->columnNames($stmt),
-                'rows' => array_slice($rows, 0, self::MAX_ROWS),
-                'total' => count($rows),
-                'truncated' => count($rows) > self::MAX_ROWS,
+                'columns' => $columns,
+                'rows' => $result->rows,
+                'truncated' => $result->truncated,
             ];
         }
+
+        $affected = $stmt->rowCount();
+        $stmt->closeCursor();
 
         return [
             'sql' => $statement,
             'type' => 'write',
-            'affected' => $stmt->rowCount(),
+            'affected' => $affected,
         ];
     }
 

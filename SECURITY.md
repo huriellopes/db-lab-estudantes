@@ -178,10 +178,9 @@ antes eram só teóricos:
 - **`@'%'` (qualquer host) agora importa de verdade** — antes um risco só teórico
   (mitigado 100% pela rede), agora é a única barreira de rede que resta. A senha de cada
   conta é a defesa real.
-- **Sem rate limit no nível do MySQL** — o rate limit que existe (`RateLimiter`) é só na
-  aplicação; um ataque de força bruta direto na porta 3306 não passa por ele. O MySQL em
-  si não tem lockout nativo por tentativa errada (só `max_connect_errors`, por host, que
-  não tentei ajustar pra não arriscar bloquear gente legítima atrás de NAT compartilhado).
+- **Força bruta direto na porta 3306** — o `RateLimiter` da app não vê essas tentativas.
+  ~~O MySQL em si não tem lockout nativo~~ (corrigido em 2026-10-07: tem, ver
+  "Endurecimento do MySQL público" abaixo).
 
 **Mitigado**: isolamento entre contas continua garantido pelos `GRANT`s do MySQL (testado
 ativamente, ver acima) — isso nunca dependeu da rede, só de cada conta só ter privilégio
@@ -241,6 +240,42 @@ em nenhuma tela nem resposta de API — só vive no `.env` do servidor —, e o
 "Modelo de dados e acessos ao banco"). Continua sendo o ponto de maior impacto em caso de
 vazamento, é só o host-restriction específico que não foi possível aplicar com segurança
 agora.
+
+## Endurecimento do MySQL público (2026-10-07)
+
+- **Força bruta: plugin `connection_control`** (já vem com o MySQL 8.0; ligado no `command:`
+  dos dois `docker-compose*.yml`). Depois de 5 senhas erradas seguidas pro mesmo usuário
+  vindo do mesmo host, cada tentativa nova espera 1s, 2s, 3s... até 30s. Escolhido no lugar
+  de `FAILED_LOGIN_ATTEMPTS`/`PASSWORD_LOCK_TIME` (existe desde a 8.0.19), que trava a
+  **conta** inteira por no mínimo 1 dia: aí qualquer pessoa travaria o console SQL e o
+  phpMyAdmin de um colega só errando a senha dele de propósito. Limite conhecido: a conta
+  atrasada é contada por usuário+host, e o phpMyAdmin conecta sempre do mesmo host (o
+  container) — quem errar a senha de alguém pelo phpMyAdmin atrasa (até 30s, sem bloquear)
+  o phpMyAdmin dessa pessoa enquanto continuar errando.
+- **`MAX_USER_CONNECTIONS 10`** por conta de aluno/professor (`SchemaProvisioner::MAX_USER_CONNECTIONS`,
+  backfill na migration `2026_10_07_000003`) — uma conta só não esgota o `max_connections`
+  do servidor inteiro.
+- **Console SQL**: `max_execution_time` de 10s por SELECT, leitura unbuffered com teto de
+  300 linhas (`App\Support\CappedResult` — antes era `fetchAll()` e só depois o corte), 60
+  execuções por minuto por usuário. `LOAD DATA LOCAL INFILE` continua desligado (padrão do
+  PDO, testado: erro 3948).
+- **`root@'%'`**: a imagem oficial cria root aceitando qualquer host. `MYSQL_ROOT_HOST=localhost`
+  nos compose resolve **só em volume novo**. Em volume existente (produção), remover na mão,
+  depois de confirmar que `root@localhost` existe (o healthcheck usa o socket local):
+
+  ```sql
+  SELECT user, host FROM mysql.user WHERE user = 'root';  -- precisa listar 'localhost'
+  DROP USER 'root'@'%';
+  ```
+
+  O `appuser` não consegue fazer isso por conta própria (nem alterar o root): root tem
+  `SYSTEM_USER`, e o `CREATE USER` do `appuser` não alcança contas com esse privilégio.
+- **Ainda não aplicado: `REQUIRE SSL` nas contas de aluno.** Forçaria TLS nas conexões
+  externas, mas o console SQL (`Database::connectAs`) e o phpMyAdmin também entram com a
+  conta do aluno, e nenhum dos dois usa TLS hoje. Pra ligar sem quebrar nada: TLS no PDO do
+  console (`Pdo\Mysql::ATTR_SSL_CA` com o `ca.pem` do volume do MySQL), `PMA_SSL=1` no
+  phpMyAdmin, avisar a turma pra marcar "Use SSL" no SGBD local, e só então
+  `ALTER USER ... REQUIRE SSL`.
 
 ## Outros pontos de configuração do MySQL
 

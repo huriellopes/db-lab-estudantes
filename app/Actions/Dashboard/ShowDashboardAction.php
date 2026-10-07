@@ -11,6 +11,7 @@ use App\Models\Entities\SavedQuery as SavedQueryEntity;
 use App\Models\Entities\Schema;
 use App\Models\SavedQuery;
 use App\Models\SchemaRecord;
+use App\Models\User;
 use App\Support\TableFilter;
 use App\Support\TableQuery;
 
@@ -39,6 +40,9 @@ final class ShowDashboardAction extends Action
 
         $this->render('dashboard/index', [
             'pageTitle' => 'Meu painel',
+            // Prefixo dos schemas (users.schema_prefix) — pode ser diferente do login MySQL
+            // atual se a pessoa renomeou o login depois de criar a conta.
+            'schemaPrefix' => User::find(Auth::id())?->schemaPrefix ?? Auth::user()->mysqlLogin,
             'paginator' => $paginator,
             'query' => $query,
             // Lista completa (sem paginação) só dos nomes, pra alimentar o seletor de

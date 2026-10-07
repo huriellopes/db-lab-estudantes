@@ -28,7 +28,7 @@ final class UpdateMysqlLoginAction extends Action
         if (!MysqlIdentifier::isValidCustomLogin($newLogin)) {
             $this->respond(
                 false,
-                'Login inválido. Use 3 a 32 caracteres, começando com uma letra (minúsculas, números e "_").',
+                'Login inválido. Use 3 a 32 caracteres (minúsculas, números e "_"), começando com letra, sem "__" e sem terminar em "_".',
                 '/profile',
             );
         }
@@ -37,8 +37,8 @@ final class UpdateMysqlLoginAction extends Action
             $this->respond(false, 'Esse já é o seu login atual.', '/profile');
         }
 
-        if (User::mysqlLoginExists($newLogin)) {
-            $this->respond(false, 'Esse login já está em uso por outra pessoa.', '/profile');
+        if (User::isLoginTaken($newLogin, exceptUserId: $user->id)) {
+            $this->respond(false, 'Esse login já está em uso (ou ainda nomeia schemas de outra pessoa).', '/profile');
         }
 
         try {

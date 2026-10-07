@@ -6,6 +6,7 @@ namespace App\Actions\Student;
 
 use App\Core\Auth;
 use App\Services\UserManager;
+use App\Support\PasswordPolicy;
 use Throwable;
 
 /** POST /professor/alunos/{id}/senha. */
@@ -18,8 +19,9 @@ final class ResetStudentPasswordAction extends StudentAction
         $student = $this->findStudentOrFail((int) $params['id']);
         $newPassword = (string) ($_POST['new_password'] ?? '');
 
-        if (strlen($newPassword) < 6) {
-            $this->respond(false, 'A nova senha deve ter pelo menos 6 caracteres.', '/professor/alunos');
+        $passwordError = PasswordPolicy::validate($newPassword, $student->mysqlLogin, $student->email);
+        if ($passwordError !== null) {
+            $this->respond(false, $passwordError, '/professor/alunos');
         }
 
         try {

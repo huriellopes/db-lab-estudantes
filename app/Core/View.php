@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Support\Csrf;
+use App\Support\PasswordPolicy;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
@@ -51,6 +52,8 @@ final class View
     private static function registerGlobals(Environment $twig): void
     {
         $twig->addGlobal('app_name', 'DB Lab Estudantes');
+        // minlength dos campos de senha nova — mesma regra do servidor (PasswordPolicy).
+        $twig->addGlobal('password_min_length', PasswordPolicy::MIN_LENGTH);
     }
 
     private static function registerFunctions(Environment $twig): void

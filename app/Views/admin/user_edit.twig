@@ -47,7 +47,7 @@
                 method="post" action="/admin/usuarios/{{ user.id }}/senha" class="space-y-4"
             >
                 {{ csrf_field() }}
-                {{ forms.password_field('new_password', 'new_password', 'Nova senha', 6) }}
+                {{ forms.password_field('new_password', 'new_password', 'Nova senha', password_min_length) }}
                 <button :disabled="loading" type="submit" class="btn-secondary w-full">
                     <span x-show="!loading">Resetar senha</span>
                     <span x-show="loading" x-cloak>Atualizando…</span>
