@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Core\Database;
 use App\Models\Entities\User as UserEntity;
 use App\Support\Role;
+use App\Support\SchemaNameBuilder;
 
 /**
  * Exclusão é sempre soft delete (deleted_at), como o SoftDeletes do Laravel: os métodos
@@ -50,10 +51,27 @@ final class User
         return self::findByEmail($email) !== null;
     }
 
-    public static function mysqlLoginExists(string $mysqlLogin): bool
+    /**
+     * Um login só está livre se não for o login de ninguém, nem o prefixo de schema de
+     * ninguém, nem prefixo de algum database já registrado. O login vira o prefixo dos
+     * schemas de quem o escolhe (GRANT com wildcard `<login>\_\_%`, ver
+     * SchemaProvisioner::createMysqlAccount) — então liberar um login que ainda nomeia
+     * databases de outra pessoa (ex.: ela renomeou o próprio login depois de criá-los)
+     * entregaria esses databases a quem o pegasse.
+     *
+     * $exceptUserId: quem está renomeando o próprio login pode voltar pro login que já
+     * é o seu prefixo (os schemas que ele nomeia são dele mesmo).
+     */
+    public static function isLoginTaken(string $login, ?int $exceptUserId = null): bool
     {
-        $stmt = Database::connection()->prepare('SELECT id FROM users WHERE mysql_login = ?');
-        $stmt->execute([$mysqlLogin]);
+        $stmt = Database::connection()->prepare(
+            'SELECT 1 FROM users WHERE (mysql_login = ? OR schema_prefix = ?) AND id <> ?
+             UNION ALL
+             SELECT 1 FROM schemas_criados WHERE db_name LIKE ? AND user_id <> ?
+             LIMIT 1',
+        );
+        $except = $exceptUserId ?? 0;
+        $stmt->execute([$login, $login, $except, SchemaNameBuilder::likePattern($login), $except]);
 
         return $stmt->fetch() !== false;
     }
@@ -129,6 +147,14 @@ final class User
         return (int) $pdo->lastInsertId();
     }
 
+    /** Login inicial da conta: também fixa o prefixo de schema, que nunca mais muda. */
+    public static function assignInitialLogin(int $id, string $mysqlLogin): void
+    {
+        $stmt = Database::connection()->prepare('UPDATE users SET mysql_login = ?, schema_prefix = ? WHERE id = ?');
+        $stmt->execute([$mysqlLogin, $mysqlLogin, $id]);
+    }
+
+    /** Renomeia só o login — schema_prefix fica como está (ver assignInitialLogin). */
     public static function setMysqlLogin(int $id, string $mysqlLogin): void
     {
         $stmt = Database::connection()->prepare('UPDATE users SET mysql_login = ? WHERE id = ?');

@@ -32,11 +32,12 @@ final class UserManager
         try {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
             $userId = UserModel::create($name, $email, $passwordHash, $role);
-            UserModel::setMysqlLogin($userId, $username);
+            UserModel::assignInitialLogin($userId, $username);
 
             // Cria a conta MySQL real, com a MESMA senha da conta na plataforma — a
-            // pessoa usa esse login/senha para acessar o phpMyAdmin depois.
-            SchemaProvisioner::createMysqlAccount($username, $password);
+            // pessoa usa esse login/senha para acessar o phpMyAdmin depois. O prefixo de
+            // schema nasce igual ao login, mas é fixo a partir daqui (ver assignInitialLogin).
+            SchemaProvisioner::createMysqlAccount($username, $password, schemaPrefix: $username);
 
             return UserModel::find($userId);
         } catch (Throwable $e) {
@@ -66,7 +67,8 @@ final class UserManager
     /**
      * Renomeia o login MySQL da pessoa (usado também no phpMyAdmin e para logar na app).
      * Não renomeia os databases já criados — MySQL não tem um "RENAME DATABASE" seguro,
-     * e os GRANTs continuam válidos porque RENAME USER os preserva.
+     * e os GRANTs continuam válidos porque RENAME USER os preserva. O prefixo de schema
+     * também não muda: schemas novos continuam saindo como "<schema_prefix>__label".
      */
     public static function renameMysqlLogin(User $user, string $newMysqlLogin): void
     {

@@ -26,7 +26,7 @@ return new class extends Migration {
                 continue;
             }
 
-            // Mesmo escape de SchemaProvisioner::ownDatabasesPattern() — "_" é wildcard de
+            // Mesmo escape de SchemaNameBuilder::grantPattern() — "_" é wildcard de
             // 1 caractere em pattern de GRANT mesmo dentro de crases, escapado pra não
             // colidir por coincidência com o prefixo de outro login.
             $pattern = str_replace('_', '\\_', $login . '__') . '%';

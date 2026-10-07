@@ -53,3 +53,19 @@ it('rejects reserved system/app account names', function () {
         ->and(MysqlIdentifier::isValidCustomLogin('appuser'))->toBeFalse()
         ->and(MysqlIdentifier::isValidCustomLogin('admin'))->toBeFalse();
 });
+
+it('rejects a custom login with a double underscore (it would collide with the schema prefix separator)', function () {
+    // "ab" teria GRANT em `ab\_\_%`, que também casa com os schemas de "ab__cd" (ab__cd__x).
+    expect(MysqlIdentifier::isValidCustomLogin('ab__cd'))->toBeFalse()
+        ->and(MysqlIdentifier::isValidCustomLogin('joao__'))->toBeFalse();
+});
+
+it('rejects a custom login ending with an underscore', function () {
+    // "ab_" teria GRANT em `ab\_\_\_%`, que casa com "ab___x" — schema de "ab" com label "_x".
+    expect(MysqlIdentifier::isValidCustomLogin('ana_'))->toBeFalse();
+});
+
+it('never builds a login that would fail the prefix rules', function () {
+    expect(MysqlIdentifier::isValidCustomLogin(MysqlIdentifier::build(7, 'joao.silva@example.com')))->toBeTrue()
+        ->and(MysqlIdentifier::isValidCustomLogin(MysqlIdentifier::build(3, '___@example.com')))->toBeTrue();
+});

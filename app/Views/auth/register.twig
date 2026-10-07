@@ -27,7 +27,7 @@
             <label for="username" class="field-label">Username</label>
             <input
                 type="text" id="username" name="username" value="{{ old.username }}"
-                pattern="[a-z][a-z0-9_]{2,31}" maxlength="32" required class="field-input font-mono"
+                pattern="[a-z](?!.*__)[a-z0-9_]{1,30}[a-z0-9]" maxlength="32" required class="field-input font-mono"
                 placeholder="joaosilva"
             >
             <p class="mt-1.5 text-xs text-slate-500">
