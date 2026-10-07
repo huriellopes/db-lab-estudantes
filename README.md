@@ -401,6 +401,12 @@ Ao escrever exemplo novo, use os partials `partials/guide/code.twig` (com `engin
 sempre uma saída real, nunca digitado à mão. O teste `GuideTemplatesTest` (Pest) garante que
 toda página renderiza e que nenhum resultado ficou `PENDENTE`.
 
+### Antes do push
+
+`composer install` ativa um hook de **pre-push** (`.githooks/pre-push`) que roda, só pro que
+mudou, as mesmas verificações do CI e barra push direto em `main`/`dev` e segredos no diff —
+detalhes e proteções de branch do GitHub no [CONTRIBUTING.md](CONTRIBUTING.md).
+
 O CI (`.github/workflows/ci.yml`) roda em todo PR pra `dev` e `main`:
 
 | Job | O que valida |

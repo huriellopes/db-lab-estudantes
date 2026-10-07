@@ -14,3 +14,6 @@ mysql_data/
 
 # PHP-CS-Fixer
 .php-cs-fixer.cache
+
+# Notas privadas de segurança/infra (pendências, endereços de produção) — nunca versionar
+*.private.md

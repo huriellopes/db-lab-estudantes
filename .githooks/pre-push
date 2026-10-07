@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+#
+# pre-push: roda localmente, antes do push sair da sua máquina, as mesmas verificações que o
+# CI roda depois — só que só as que interessam pro que mudou. Pega o problema em segundos em
+# vez de esperar o CI (e evita o PR vermelho).
+#
+# Instalação (uma vez por clone):   composer hooks:install
+# Pular numa emergência:            git push --no-verify   (ou SKIP_PRE_PUSH=1 git push)
+#
+# O que verifica:
+#   1. Push direto pra main/dev       → bloqueado (as duas só recebem código via PR; o GitHub
+#                                       também barra, mas aqui você descobre antes)
+#   2. Segredos no que vai subir      → .env, chave privada, APP_KEY/senha preenchida
+#   3. PHP mudou                      → php -l nos arquivos, Pest, PHP-CS-Fixer
+#   4. composer.lock mudou            → composer audit
+#   5. JS/CSS mudou                   → Prettier; package-lock mudou → npm audit (só produção)
+
+set -uo pipefail
+
+if [ "${SKIP_PRE_PUSH:-0}" = "1" ]; then
+    echo "pre-push: pulado (SKIP_PRE_PUSH=1)."
+    exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+vermelho() { printf '\033[31m%s\033[0m\n' "$*"; }
+verde() { printf '\033[32m%s\033[0m\n' "$*"; }
+passo() { printf '\033[36m▸ %s\033[0m\n' "$*"; }
+
+ZERO=0000000000000000000000000000000000000000
+falhas=0
+arquivos=""
+adicoes=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # Apagando uma branch remota: nada pra verificar.
+    [ "$local_sha" = "$ZERO" ] && continue
+
+    case "$remote_ref" in
+        refs/heads/main | refs/heads/dev)
+            vermelho "✗ Push direto pra ${remote_ref#refs/heads/} não é permitido."
+            echo "  Crie uma branch (git switch -c feature/minha-mudanca), suba ela e abra um PR."
+            exit 1
+            ;;
+    esac
+
+    # Só o que é novo de verdade: commits que ainda não existem em nenhuma branch remota.
+    # Comparar com a ponta remota desta branch não basta — um merge da dev traria pro diff
+    # código que já está publicado (e já foi verificado) como se fosse novo.
+    novos=$(git rev-list --no-merges "$local_sha" --not --remotes)
+    [ -z "$novos" ] && continue
+    arquivos="$arquivos
+$(git log --no-merges --format= --name-only --diff-filter=ACMR "$local_sha" --not --remotes)"
+    adicoes="$adicoes
+$(git log --no-merges --format= -p "$local_sha" --not --remotes -- . ':(exclude)composer.lock' ':(exclude)package-lock.json' | grep -E '^\+' | grep -Ev '^\+\+\+ ')"
+done
+
+arquivos=$(printf '%s\n' "$arquivos" | sed '/^$/d' | sort -u)
+if [ -z "$arquivos" ]; then
+    exit 0
+fi
+
+mudou() { printf '%s\n' "$arquivos" | grep -Eq "$1"; }
+
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "⚠  Você tem alterações não commitadas: as verificações rodam nos arquivos do disco,"
+    echo "   que podem não ser exatamente o que está subindo."
+fi
+
+# --- 2. Segredos ---------------------------------------------------------------------------
+passo "Procurando segredos no que vai subir"
+if mudou '(^|/)\.env($|\.)' && printf '%s\n' "$arquivos" | grep -E '(^|/)\.env($|\.)' | grep -Evq '\.example$'; then
+    vermelho "✗ Arquivo .env no push:"
+    printf '%s\n' "$arquivos" | grep -E '(^|/)\.env($|\.)' | grep -Ev '\.example$' | sed 's/^/    /'
+    falhas=$((falhas + 1))
+fi
+segredos=$(printf '%s\n' "$adicoes" \
+    | grep -E -- '-----BEGIN [A-Z ]*PRIVATE KEY-----|APP_KEY=base64:[A-Za-z0-9+/=]{20,}|(PASSWORD|SECRET|TOKEN)=[^[:space:]$]{8,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}' \
+    | grep -Ev 'example|exemplo|\$\{|openssl rand' || true)
+if [ -n "$segredos" ]; then
+    vermelho "✗ Parece haver um segredo nas linhas adicionadas:"
+    printf '%s\n' "$segredos" | cut -c1-120 | sed 's/^/    /'
+    echo "  Se for falso positivo, use git push --no-verify."
+    falhas=$((falhas + 1))
+fi
+
+# --- 3/4. PHP ----------------------------------------------------------------------------
+if mudou '\.php$|^composer\.(json|lock)$|^app/Views/.*\.twig$|^phpunit\.xml$|^\.php-cs-fixer\.php$'; then
+    if [ ! -x vendor/bin/pest ]; then
+        vermelho "✗ vendor/ não encontrado — rode composer install pra o hook conseguir testar."
+        exit 1
+    fi
+
+    php_mudados=$(printf '%s\n' "$arquivos" | grep -E '\.php$' || true)
+    if [ -n "$php_mudados" ]; then
+        passo "php -l nos arquivos PHP alterados"
+        while IFS= read -r arquivo; do
+            [ -f "$arquivo" ] || continue
+            if ! saida=$(php -l "$arquivo" 2>&1); then
+                vermelho "✗ $saida"
+                falhas=$((falhas + 1))
+            fi
+        done <<< "$php_mudados"
+    fi
+
+    passo "Testes (Pest)"
+    if ! vendor/bin/pest --compact > /tmp/pre-push-pest.log 2>&1; then
+        vermelho "✗ Testes falharam:"
+        tail -25 /tmp/pre-push-pest.log | sed 's/^/    /'
+        falhas=$((falhas + 1))
+    fi
+
+    passo "Padrão de código (PHP-CS-Fixer)"
+    if ! vendor/bin/php-cs-fixer fix --dry-run --diff > /tmp/pre-push-cs.log 2>&1; then
+        vermelho "✗ Código fora do padrão — rode composer cs:fix:"
+        grep -E '^\s*[0-9]+\)|^---|^\+\+\+' /tmp/pre-push-cs.log | head -15 | sed 's/^/    /'
+        falhas=$((falhas + 1))
+    fi
+
+    if mudou '^composer\.lock$'; then
+        passo "Vulnerabilidades nas dependências PHP (composer audit)"
+        if ! composer audit --locked --no-interaction > /tmp/pre-push-audit.log 2>&1; then
+            vermelho "✗ composer audit encontrou problema:"
+            tail -15 /tmp/pre-push-audit.log | sed 's/^/    /'
+            falhas=$((falhas + 1))
+        fi
+    fi
+fi
+
+# --- 5. JS/CSS ---------------------------------------------------------------------------
+if mudou '^resources/.*\.(js|css)$|^package(-lock)?\.json$|^\.prettierrc'; then
+    if [ ! -d node_modules ]; then
+        vermelho "✗ node_modules/ não encontrado — rode npm ci pra o hook conseguir verificar."
+        exit 1
+    fi
+
+    passo "Formatação JS/CSS (Prettier)"
+    if ! npm run -s format:check > /tmp/pre-push-prettier.log 2>&1; then
+        vermelho "✗ Arquivos fora do padrão — rode npm run format:"
+        grep -E '\[warn\]' /tmp/pre-push-prettier.log | head -10 | sed 's/^/    /'
+        falhas=$((falhas + 1))
+    fi
+
+    if mudou '^package-lock\.json$'; then
+        passo "Vulnerabilidades nas dependências do navegador (npm audit)"
+        if ! npm audit --omit=dev --audit-level=high > /tmp/pre-push-npm-audit.log 2>&1; then
+            vermelho "✗ npm audit encontrou vulnerabilidade alta:"
+            tail -15 /tmp/pre-push-npm-audit.log | sed 's/^/    /'
+            falhas=$((falhas + 1))
+        fi
+    fi
+fi
+
+if [ "$falhas" -gt 0 ]; then
+    echo
+    vermelho "✗ pre-push: $falhas verificação(ões) falharam — push cancelado."
+    echo "  Corrija e tente de novo (ou, numa emergência, git push --no-verify)."
+    exit 1
+fi
+
+verde "✓ pre-push: tudo certo."
+exit 0
