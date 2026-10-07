@@ -111,8 +111,10 @@
   .guia ol {
     @apply list-decimal space-y-1 pl-5 text-sm leading-relaxed;
   }
+  /* No celular a tabela rola dentro do card (max-sm:block + overflow), em vez de empurrar a
+     página inteira pro lado. No desktop continua uma tabela normal, ocupando a largura toda. */
   .guia table {
-    @apply w-full border-collapse overflow-hidden rounded-lg text-left text-sm;
+    @apply w-full border-collapse rounded-lg text-left text-sm max-sm:block max-sm:overflow-x-auto;
   }
   .guia th {
     @apply border-b border-slate-200 bg-slate-50 px-3 py-2 font-medium text-slate-900;

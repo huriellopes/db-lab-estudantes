@@ -187,7 +187,7 @@ db.filmes.find({ generos: "drama" }, { _id: 0, titulo: 1 }).sort({ titulo: 1 })
 {%- endblock %}{% endembed %}
 
                 {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
-// Um documento embutido (elenco) e um array de documentos (avaliações)
+// Um documento embutido (direção) e um array de documentos (avaliações)
 db.filmes.updateOne(
   { _id: 2 },
   {
