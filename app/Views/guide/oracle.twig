@@ -125,9 +125,9 @@ FETCH FIRST 2 ROWS ONLY;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
  NOME          | SALARIO
----------------+------------
- Helena Duarte |      18000
- Igor Pacheco  |      11000
+---------------+---------
+ Helena Duarte |   18000
+ Igor Pacheco  |   11000
 {%- endblock %}{% endembed %}
                 <p>
                     Em código antigo você vai ver <code>WHERE ROWNUM &lt;= 2</code>: era o jeito de limitar linhas antes do
@@ -222,12 +222,12 @@ CONNECT BY PRIOR id = gerente_id
 ORDER SIBLINGS BY nome;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
- NIVEL      | ORGANOGRAMA
-------------+-----------------
-          1 | Helena Duarte
-          2 |   Igor Pacheco
-          3 |     Lara Fontes
-          2 |   Nilo Barros
+ NIVEL | ORGANOGRAMA
+-------+-----------------
+     1 | Helena Duarte
+     2 |   Igor Pacheco
+     3 |     Lara Fontes
+     2 |   Nilo Barros
 {%- endblock %}{% endembed %}
                 <p>O Oracle também aceita a forma padrão, a CTE recursiva (<code>WITH ... UNION ALL</code>), igual nos outros bancos.</p>
             </div>
@@ -244,11 +244,11 @@ GROUP BY d.nome
 ORDER BY d.nome;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
- DEPARTAMENTO | PESSOAS    | EQUIPE
---------------+------------+---------------------------
- Comercial    |          1 | Nilo Barros
- Diretoria    |          1 | Helena Duarte
- Tecnologia   |          2 | Igor Pacheco, Lara Fontes
+ DEPARTAMENTO | PESSOAS | EQUIPE
+--------------+---------+---------------------------
+ Comercial    |       1 | Nilo Barros
+ Diretoria    |       1 | Helena Duarte
+ Tecnologia   |       2 | Igor Pacheco, Lara Fontes
 {%- endblock %}{% endembed %}
             </div>
         </section>

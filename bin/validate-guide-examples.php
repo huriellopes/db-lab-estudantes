@@ -485,14 +485,24 @@ function formatSqlplus(string $text): string
         for ($i++; $i < count($lines) && trim($lines[$i]) !== ''; $i++) {
             $rows[] = $slice($lines[$i]);
         }
-        $widths = [];
         $numeric = [];
+        foreach (array_slice($rows, 1) as $cells) {
+            foreach ($cells as $c => $cell) {
+                $numeric[$c] = ($numeric[$c] ?? true) && preg_match('/^\s*-?[\d.,]+$/', $cell);
+            }
+        }
+        // Número no SQL*Plus vem alinhado à direita (espaços na frente): tira antes de medir.
         foreach ($rows as $r => $cells) {
             foreach ($cells as $c => $cell) {
-                $widths[$c] = max($widths[$c] ?? 0, mb_strlen($cell));
-                if ($r > 0) {
-                    $numeric[$c] = ($numeric[$c] ?? true) && preg_match('/^\s*-?[\d.,]+$/', $cell);
+                if ($r > 0 && ($numeric[$c] ?? false)) {
+                    $rows[$r][$c] = ltrim($cell);
                 }
+            }
+        }
+        $widths = [];
+        foreach ($rows as $cells) {
+            foreach ($cells as $c => $cell) {
+                $widths[$c] = max($widths[$c] ?? 0, mb_strlen($cell));
             }
         }
         foreach ($rows as $r => $cells) {
