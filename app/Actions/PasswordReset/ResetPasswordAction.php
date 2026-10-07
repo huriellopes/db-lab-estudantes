@@ -7,6 +7,7 @@ namespace App\Actions\PasswordReset;
 use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Flash;
+use App\Models\AuditLog;
 use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\UserManager;
@@ -78,6 +79,7 @@ final class ResetPasswordAction extends Action
         try {
             UserManager::resetPassword($user, $password);
 
+            AuditLog::record('auth.password_reset_by_link', 'user', $user->id, [], ['id' => $user->id, 'name' => $user->name]);
             Flash::set(FlashType::Success, 'Senha redefinida com sucesso! Faça login com a senha nova.');
             $this->redirect('/login');
         } catch (Throwable $e) {

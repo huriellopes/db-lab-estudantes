@@ -12,6 +12,7 @@ use App\Models\Entities\Schema;
 use App\Models\SavedQuery;
 use App\Models\SchemaRecord;
 use App\Models\User;
+use App\Services\HealthCheck;
 use App\Support\TableFilter;
 use App\Support\TableQuery;
 
@@ -40,6 +41,8 @@ final class ShowDashboardAction extends Action
 
         $this->render('dashboard/index', [
             'pageTitle' => 'Meu painel',
+            // Status do lab (app/MySQL/phpMyAdmin) — só online/offline, ver partials/health-card.twig.
+            'health' => HealthCheck::all(),
             // Prefixo dos schemas (users.schema_prefix) — pode ser diferente do login MySQL
             // atual se a pessoa renomeou o login depois de criar a conta.
             'schemaPrefix' => User::find(Auth::id())?->schemaPrefix ?? Auth::user()->mysqlLogin,

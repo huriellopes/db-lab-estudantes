@@ -6,6 +6,7 @@ namespace App\Actions\Auth;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\RateLimiter;
 use App\Support\ClientIp;
@@ -50,6 +51,7 @@ final class LoginAction extends Action
             if ($user === null || !$passwordValid) {
                 RateLimiter::hit($ipKey);
                 RateLimiter::hit($idKey);
+                AuditLog::record('auth.login_failed', 'user', $user?->id, ['identificador' => $identifier]);
                 $errors[] = 'E-mail/username ou senha inválidos.';
             } elseif (!$user->active) {
                 RateLimiter::hit($ipKey);
@@ -63,6 +65,7 @@ final class LoginAction extends Action
                     Auth::remember($user->id);
                 }
 
+                AuditLog::record('auth.login', 'user', $user->id);
                 $this->redirect('/dashboard');
             }
         }

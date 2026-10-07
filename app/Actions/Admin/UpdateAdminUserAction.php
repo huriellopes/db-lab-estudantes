@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Admin;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User as UserModel;
 use App\Support\ProfileFields;
 
@@ -31,6 +32,7 @@ final class UpdateAdminUserAction extends AdminUserAction
 
         UserModel::updateAccount($target->id, $name, $email);
 
+        AuditLog::record('user.updated', 'user', $target->id, ['email' => $email]);
         $this->respond(true, 'Usuário atualizado.', '/admin/usuarios');
     }
 }

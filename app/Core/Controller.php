@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Support\ErrorLogger;
 use App\Support\FlashType;
 use Throwable;
 
@@ -57,6 +58,7 @@ abstract class Controller
     protected function genericError(string $action, Throwable $e): string
     {
         error_log(static::class . " — não foi possível {$action}: {$e->getMessage()}");
+        ErrorLogger::exception($e);
 
         return "Não foi possível {$action}. Tente de novo em instantes.";
     }

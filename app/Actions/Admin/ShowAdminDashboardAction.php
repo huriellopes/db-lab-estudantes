@@ -6,12 +6,10 @@ namespace App\Actions\Admin;
 
 use App\Core\Action;
 use App\Core\Auth;
-use App\Models\SchemaRecord;
-use App\Models\User as UserModel;
-use App\Support\AdminStats;
-use App\Support\Role;
+use App\Models\AdminMetrics;
+use App\Services\HealthCheck;
 
-/** Painel do super admin: controle total sobre usuários, papéis e schemas do lab inteiro. GET /admin. */
+/** Painel do super admin: métricas do lab, saúde dos serviços e atalhos de gestão. GET /admin. */
 final class ShowAdminDashboardAction extends Action
 {
     public function __invoke(array $params = []): void
@@ -20,12 +18,8 @@ final class ShowAdminDashboardAction extends Action
 
         $this->render('admin/index', [
             'pageTitle' => 'Administração',
-            'stats' => new AdminStats(
-                alunos: UserModel::countByRole(Role::Aluno),
-                professores: UserModel::countByRole(Role::Professor),
-                admins: UserModel::countByRole(Role::Admin),
-                schemas: SchemaRecord::countAll(),
-            ),
+            'stats' => AdminMetrics::collect(),
+            'health' => HealthCheck::all(),
         ]);
     }
 }

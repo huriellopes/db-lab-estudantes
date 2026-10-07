@@ -6,6 +6,7 @@ namespace App\Actions\Admin;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User as UserModel;
 use App\Services\UserManager;
 use Throwable;
@@ -24,6 +25,7 @@ final class RestoreAdminUserAction extends Action
 
         try {
             UserManager::restore($target);
+            AuditLog::record('user.restored', 'user', $target->id, ['email' => $target->email]);
             $this->respond(true, "Conta de {$target->name} restaurada.", '/admin/usuarios/lixeira');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('restaurar a conta', $e), '/admin/usuarios/lixeira');

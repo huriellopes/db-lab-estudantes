@@ -6,6 +6,7 @@ namespace App\Actions\Profile;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\UserManager;
 use App\Support\PasswordPolicy;
@@ -44,6 +45,7 @@ final class UpdatePasswordAction extends Action
             Auth::keepRememberedDevice($user->id);
             // Mantém o console SQL funcionando sem exigir novo login.
             Auth::refreshMysqlPassword($newPassword);
+            AuditLog::record('profile.password_changed');
             $this->respond(true, 'Senha atualizada com sucesso.', '/profile');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('atualizar a senha', $e), '/profile');

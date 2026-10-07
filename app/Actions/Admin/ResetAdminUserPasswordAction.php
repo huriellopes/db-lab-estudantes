@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Admin;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Services\UserManager;
 use App\Support\PasswordPolicy;
 use Throwable;
@@ -26,6 +27,7 @@ final class ResetAdminUserPasswordAction extends AdminUserAction
 
         try {
             UserManager::resetPassword($target, $newPassword);
+            AuditLog::record('user.password_reset', 'user', $target->id, ['email' => $target->email]);
             $this->respond(true, "Senha de {$target->name} atualizada.", '/admin/usuarios');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('trocar a senha', $e), '/admin/usuarios');

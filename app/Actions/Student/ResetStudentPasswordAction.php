@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Student;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Services\UserManager;
 use App\Support\PasswordPolicy;
 use Throwable;
@@ -26,6 +27,7 @@ final class ResetStudentPasswordAction extends StudentAction
 
         try {
             UserManager::resetPassword($student, $newPassword);
+            AuditLog::record('student.password_reset', 'user', $student->id);
             $this->respond(true, "Senha de {$student->name} atualizada.", '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('trocar a senha', $e), '/professor/alunos');

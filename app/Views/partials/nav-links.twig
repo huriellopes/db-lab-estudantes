@@ -14,6 +14,9 @@
         <a href="/admin" class="{{ linkClass }}">Visão geral</a>
         <a href="/admin/usuarios" class="{{ linkClass }}">Usuários</a>
         <a href="/admin/schemas" class="{{ linkClass }}">Schemas</a>
+        <a href="/admin/auditoria" class="{{ linkClass }}">Auditoria</a>
+        <a href="/admin/logs" class="{{ linkClass }}">Logs de erro</a>
+        <a href="/admin/backups" class="{{ linkClass }}">Backups</a>
     {% else %}
         <div class="relative" x-data="{ open: false }" @click.outside="open = false">
             <button @click="open = !open" type="button" class="flex items-center gap-1 {{ linkClass }}">
@@ -29,6 +32,9 @@
                 <a href="/admin" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Visão geral</a>
                 <a href="/admin/usuarios" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Usuários</a>
                 <a href="/admin/schemas" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Schemas</a>
+                <a href="/admin/auditoria" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Auditoria</a>
+                <a href="/admin/logs" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Logs de erro</a>
+                <a href="/admin/backups" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Backups</a>
             </div>
         </div>
     {% endif %}
