@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Entities\User;
+use App\Models\RememberToken;
 use App\Models\User as UserModel;
 use App\Support\Role;
 use Throwable;
@@ -32,11 +33,12 @@ final class UserManager
         try {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
             $userId = UserModel::create($name, $email, $passwordHash, $role);
-            UserModel::setMysqlLogin($userId, $username);
+            UserModel::assignInitialLogin($userId, $username);
 
             // Cria a conta MySQL real, com a MESMA senha da conta na plataforma — a
-            // pessoa usa esse login/senha para acessar o phpMyAdmin depois.
-            SchemaProvisioner::createMysqlAccount($username, $password);
+            // pessoa usa esse login/senha para acessar o phpMyAdmin depois. O prefixo de
+            // schema nasce igual ao login, mas é fixo a partir daqui (ver assignInitialLogin).
+            SchemaProvisioner::createMysqlAccount($username, $password, schemaPrefix: $username);
 
             return UserModel::find($userId);
         } catch (Throwable $e) {
@@ -56,17 +58,31 @@ final class UserManager
         }
     }
 
-    /** Atualiza a senha tanto na app quanto na conta MySQL real da pessoa. */
+    /**
+     * Atualiza a senha tanto na app quanto na conta MySQL real da pessoa, e derruba todas as
+     * sessões e cookies de "lembrar de mim" já emitidos — quem troca a senha porque
+     * desconfia de vazamento espera que isso tire o invasor de dentro. Quem troca a própria
+     * senha logado continua logado nesta sessão (ver UpdatePasswordAction).
+     */
     public static function resetPassword(User $user, string $newPassword): void
     {
         UserModel::updatePasswordHash($user->id, password_hash($newPassword, PASSWORD_DEFAULT));
         SchemaProvisioner::changeMysqlPassword($user->mysqlLogin, $newPassword);
+        self::revokeAllSessions($user->id);
+    }
+
+    /** Sessões abertas (session_version) e cookies de "lembrar de mim" de todos os dispositivos. */
+    private static function revokeAllSessions(int $userId): void
+    {
+        UserModel::bumpSessionVersion($userId);
+        RememberToken::revokeAllFor($userId);
     }
 
     /**
      * Renomeia o login MySQL da pessoa (usado também no phpMyAdmin e para logar na app).
      * Não renomeia os databases já criados — MySQL não tem um "RENAME DATABASE" seguro,
-     * e os GRANTs continuam válidos porque RENAME USER os preserva.
+     * e os GRANTs continuam válidos porque RENAME USER os preserva. O prefixo de schema
+     * também não muda: schemas novos continuam saindo como "<schema_prefix>__label".
      */
     public static function renameMysqlLogin(User $user, string $newMysqlLogin): void
     {
@@ -83,6 +99,7 @@ final class UserManager
             SchemaProvisioner::unlockMysqlAccount($user->mysqlLogin);
         } else {
             SchemaProvisioner::lockMysqlAccount($user->mysqlLogin);
+            self::revokeAllSessions($user->id);
         }
     }
 
@@ -94,6 +111,7 @@ final class UserManager
     {
         SchemaProvisioner::lockMysqlAccount($user->mysqlLogin);
         UserModel::softDelete($user->id);
+        self::revokeAllSessions($user->id);
     }
 
     /** Desfaz o softDelete: libera o acesso MySQL de novo e limpa deleted_at. */

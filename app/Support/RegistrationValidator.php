@@ -31,7 +31,7 @@ final class RegistrationValidator
             $errors[] = 'Informe um e-mail válido.';
         }
         if (!MysqlIdentifier::isValidCustomLogin($username)) {
-            $errors[] = 'Username inválido. Use 3 a 32 caracteres, começando com uma letra (minúsculas, números e "_").';
+            $errors[] = 'Username inválido. Use 3 a 32 caracteres (minúsculas, números e "_"), começando com letra, sem "__" e sem terminar em "_".';
         }
         $passwordError = PasswordPolicy::validate($password, $username, $email);
         if ($passwordError !== null) {

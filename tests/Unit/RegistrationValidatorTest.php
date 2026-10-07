@@ -43,7 +43,7 @@ it('rejects an invalid username', function () {
     $data = validRegistration(['username' => 'ab']);
 
     expect(RegistrationValidator::validate(...array_values($data)))
-        ->toContain('Username inválido. Use 3 a 32 caracteres, começando com uma letra (minúsculas, números e "_").');
+        ->toContain('Username inválido. Use 3 a 32 caracteres (minúsculas, números e "_"), começando com letra, sem "__" e sem terminar em "_".');
 });
 
 it('rejects a password that fails the password policy', function () {

@@ -31,9 +31,17 @@ final class MysqlIdentifier
      * Valida um login MySQL escolhido livremente pela pessoa (ex.: ao renomear a conta
      * usada no phpMyAdmin): letras minúsculas, números e "_", começando com letra,
      * 3 a 32 caracteres, e fora da lista de nomes reservados.
+     *
+     * Sem "__" e sem "_" no fim: o login vira prefixo de schema ("<login>__label", ver
+     * App\Support\SchemaNameBuilder), e com essas duas regras o primeiro "__" do nome de um
+     * database sempre marca onde o prefixo termina. Sem elas, o GRANT com wildcard de um
+     * login ("ab" → `ab\_\_%`) também alcançaria schemas de outro ("ab__cd" → ab__cd__x).
      */
     public static function isValidCustomLogin(string $login): bool
     {
-        return (bool) preg_match(self::CUSTOM_LOGIN_PATTERN, $login) && !in_array($login, self::RESERVED, true);
+        return (bool) preg_match(self::CUSTOM_LOGIN_PATTERN, $login)
+            && !str_contains($login, '__')
+            && !str_ends_with($login, '_')
+            && !in_array($login, self::RESERVED, true);
     }
 }

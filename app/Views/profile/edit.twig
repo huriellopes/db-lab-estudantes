@@ -56,7 +56,8 @@
             <h2 class="mb-1 text-base font-semibold text-slate-900">Login do phpMyAdmin</h2>
             <p class="mb-4 text-sm text-slate-500">
                 É a mesma conta usada para entrar no MySQL/phpMyAdmin. Renomear <strong>não</strong> muda
-                o nome dos schemas que você já criou — só o login em si (os acessos continuam funcionando).
+                o nome dos schemas — nem os que você já criou, nem o prefixo dos próximos. Só o login em si
+                muda (os acessos continuam funcionando).
             </p>
 
             <form
@@ -74,7 +75,7 @@
                     <label for="mysql_login" class="field-label">Novo login</label>
                     <input
                         type="text" id="mysql_login" name="mysql_login" value="{{ user.mysqlLogin }}"
-                        pattern="[a-z][a-z0-9_]{2,31}" maxlength="32" required class="field-input font-mono"
+                        pattern="[a-z](?!.*__)[a-z0-9_]{1,30}[a-z0-9]" maxlength="32" required class="field-input font-mono"
                     >
                 </div>
                 <button :disabled="loading" type="submit" class="btn-secondary">
