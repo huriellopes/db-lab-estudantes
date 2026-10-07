@@ -40,7 +40,9 @@ const CONTAINERS = [
     'postgres' => ['name' => 'guia-validacao-postgres', 'image' => 'postgres:18', 'env' => ['POSTGRES_PASSWORD=guia']],
     'mssql' => ['name' => 'guia-validacao-mssql', 'image' => 'mcr.microsoft.com/mssql/server:2025-latest', 'env' => ['ACCEPT_EULA=Y', 'MSSQL_SA_PASSWORD=Guia_Validacao_123']],
     'oracle' => ['name' => 'guia-validacao-oracle', 'image' => 'gvenzl/oracle-free:slim', 'env' => ['ORACLE_PASSWORD=guia']],
-    'mongo' => ['name' => 'guia-validacao-mongo', 'image' => 'mongo:8', 'env' => []],
+    // 8.2 e não "8"/"latest": em kernel Linux 6.19+ as outras se recusam a iniciar
+    // (https://jira.mongodb.org/browse/SERVER-121912); a 8.2.12 já tem a correção.
+    'mongo' => ['name' => 'guia-validacao-mongo', 'image' => 'mongo:8.2', 'env' => []],
     'redis' => ['name' => 'guia-validacao-redis', 'image' => 'redis:8', 'env' => []],
 ];
 
@@ -318,6 +320,13 @@ function runCode(string $engine, string $code, bool $asSystem = false): array
     ));
 
     $ok = $exit === 0 && !($engine === 'redis' && preg_match('/^\(error\)/m', $stdout));
+    if ($engine === 'mongo') {
+        // Lendo o script pela entrada padrão, o mongosh age como o shell interativo: imprime o
+        // prompt "guia> " antes de cada resultado e sai com código 0 mesmo quando dá erro.
+        $stdout = (string) preg_replace('/^(guia> ?|\\| ?)+/m', '', $stdout);
+        $stdout = implode("\n", array_filter(explode("\n", $stdout), static fn (string $l): bool => trim($l) !== ''));
+        $ok = $ok && !preg_match('/^(Mongo\w*Error|\w*Error)\b/m', $stdout);
+    }
     if ($engine === 'mysql') {
         $stdout = realignTables($stdout);
     }
