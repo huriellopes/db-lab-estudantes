@@ -10,8 +10,8 @@ function validRegistration(array $overrides = []): array
         'name' => 'Maria Souza',
         'email' => 'maria@example.com',
         'username' => 'mariasouza',
-        'password' => 'segredo123',
-        'passwordConfirm' => 'segredo123',
+        'password' => 'segredo-forte-123',
+        'passwordConfirm' => 'segredo-forte-123',
         'emailExists' => false,
         'usernameExists' => false,
     ], $overrides);
@@ -46,11 +46,18 @@ it('rejects an invalid username', function () {
         ->toContain('Username inválido. Use 3 a 32 caracteres, começando com uma letra (minúsculas, números e "_").');
 });
 
-it('rejects a password shorter than 6 characters', function () {
+it('rejects a password that fails the password policy', function () {
     $data = validRegistration(['password' => '123', 'passwordConfirm' => '123']);
 
     expect(RegistrationValidator::validate(...array_values($data)))
-        ->toContain('A senha deve ter pelo menos 6 caracteres.');
+        ->toContain('A senha deve ter pelo menos 10 caracteres.');
+});
+
+it('rejects a password containing the chosen username', function () {
+    $data = validRegistration(['password' => 'mariasouza!!', 'passwordConfirm' => 'mariasouza!!']);
+
+    expect(RegistrationValidator::validate(...array_values($data)))
+        ->toContain('A senha não pode conter seu username ou e-mail.');
 });
 
 it('rejects mismatched password confirmation', function () {

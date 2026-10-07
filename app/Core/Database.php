@@ -41,8 +41,13 @@ final class Database
                     exit(1);
                 }
 
+                // Na web, o detalhe vai só pro log: a mensagem do PDO entrega host, porta e
+                // usuário do banco (às vezes até o motivo exato da recusa) pra quem estiver
+                // olhando a página — mesma regra do set_exception_handler de public/index.php.
+                error_log('Erro ao conectar no banco de dados: ' . $e->getMessage());
                 http_response_code(500);
-                die('Erro ao conectar no banco de dados: ' . $e->getMessage());
+                echo View::render('errors/500');
+                exit;
             }
         }
 

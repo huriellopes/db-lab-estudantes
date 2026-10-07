@@ -35,9 +35,9 @@
             </p>
         </div>
 
-        {{ forms.password_field('password', 'password', 'Senha', 6) }}
+        {{ forms.password_field('password', 'password', 'Senha', password_min_length) }}
 
-        {{ forms.password_field('password_confirm', 'password_confirm', 'Confirmar senha', 6) }}
+        {{ forms.password_field('password_confirm', 'password_confirm', 'Confirmar senha', password_min_length) }}
 
         <button type="submit" class="btn-primary w-full">Cadastrar</button>
     </form>

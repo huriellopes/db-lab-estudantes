@@ -43,8 +43,8 @@
             >
                 {{ csrf_field() }}
                 {{ forms.password_field('current_password', 'current_password', 'Senha atual') }}
-                {{ forms.password_field('new_password', 'new_password', 'Nova senha', 6) }}
-                {{ forms.password_field('new_password_confirm', 'new_password_confirm', 'Confirmar nova senha', 6) }}
+                {{ forms.password_field('new_password', 'new_password', 'Nova senha', password_min_length) }}
+                {{ forms.password_field('new_password_confirm', 'new_password_confirm', 'Confirmar nova senha', password_min_length) }}
                 <button :disabled="loading" type="submit" class="btn-primary w-full">
                     <span x-show="!loading">Atualizar senha</span>
                     <span x-show="loading" x-cloak>Atualizando…</span>
