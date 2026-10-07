@@ -10,7 +10,7 @@
 # conexão interna da própria app sem retrabalho considerável.
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.46
     container_name: dblab-mysql
     restart: unless-stopped
     # --default-time-zone: fuso do servidor (afeta NOW()/CURRENT_TIMESTAMP e toda coluna
@@ -69,7 +69,7 @@ services:
       - dblab-net
 
   phpmyadmin:
-    image: phpmyadmin:5
+    image: phpmyadmin:5.2.3
     container_name: dblab-phpmyadmin
     restart: unless-stopped
     environment:

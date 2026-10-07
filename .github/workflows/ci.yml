@@ -17,16 +17,16 @@ jobs:
     name: PHP — testes e padrão de código
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.5'
           extensions: pdo, pdo_mysql, mysqli
           coverage: none
 
       - name: Cache do Composer
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
@@ -34,6 +34,11 @@ jobs:
 
       - name: composer install
         run: composer install --no-interaction --no-progress --prefer-dist
+
+      # Falha o CI se alguma dependência PHP do composer.lock tiver vulnerabilidade
+      # conhecida (base de advisories do Packagist/GitHub).
+      - name: Auditoria de dependências (composer audit)
+        run: composer audit --locked
 
       - name: Testes (Pest)
         run: composer test
@@ -49,15 +54,21 @@ jobs:
     name: JS/CSS — build e formatação
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: npm ci
         run: npm ci
+
+      # Só as dependências que vão pro bundle do navegador (Alpine, Axios) — as de build
+      # (Vite, Tailwind, Prettier) não rodam em produção. Foi assim que apareceu o Axios
+      # 1.19.0 com advisories altas (prototype pollution, header injection).
+      - name: Auditoria de dependências (npm audit)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Formatação (Prettier)
         run: npm run format:check
@@ -70,12 +81,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [php, js]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Build da imagem (sem push — só valida que o Dockerfile builda)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
         with:
           context: .
           push: false
@@ -89,7 +100,7 @@ jobs:
     needs: [docker]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Ambiente descartável, só pra esse job — nunca as credenciais reais de dev/produção
       # (essas ficam só no .env local/no servidor, fora do git; ver README.md).
@@ -134,7 +145,7 @@ jobs:
           exit 1
 
       - name: Instala k6
-        uses: grafana/setup-k6-action@v1
+        uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1.2.2
 
       - name: Roda o teste de carga
         run: k6 run k6/load-test.js

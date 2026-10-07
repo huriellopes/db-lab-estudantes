@@ -1,7 +1,24 @@
-# Avaliação de segurança — SQL Injection
+# Avaliação de segurança
 
-Auditoria de toda a superfície de acesso ao MySQL na aplicação (`app/Models`,
-`app/Services`, `app/Controllers`), feita em 2026-08-12.
+Começou como auditoria de SQL injection (2026-08-12) de toda a superfície de acesso ao MySQL
+(`app/Models`, `app/Services`, `app/Actions`) e virou o registro vivo das decisões de
+segurança do projeto. **Última revisão: 2026-10-07.**
+
+## Revisão de 2026-10-07 — o que foi corrigido
+
+Varredura do projeto inteiro (código, Docker, nginx, CI). Cada item tem PR próprio, com
+teste automatizado e/ou E2E no `docker compose` descritos no PR:
+
+| # | Achado | Gravidade | Correção |
+|---|---|---|---|
+| [#51](https://github.com/huriellopes/db-lab-estudantes/pull/51) | Login MySQL liberado num rename podia ser cadastrado por outra pessoa, que herdava (via GRANT com wildcard) os schemas antigos | 🔴 Alta | Prefixo de schema fixo por conta (`users.schema_prefix`); login sem `__`/`_` no fim |
+| [#52](https://github.com/huriellopes/db-lab-estudantes/pull/52) | Rate limit de login/cadastro contornável forjando `X-Forwarded-For` | 🔴 Alta | IP real resolvido no nginx (`real_ip`); `ClientIp` só lê `REMOTE_ADDR` |
+| [#53](https://github.com/huriellopes/db-lab-estudantes/pull/53) | Sessão não sentia desativação/rebaixamento; trocar a senha não derrubava sessões nem "lembrar de mim" | 🔴 Alta | Revalidação por request, `session_version`, timeouts, reset de senha atômico |
+| [#54](https://github.com/huriellopes/db-lab-estudantes/pull/54) | MySQL público sem trava de força bruta, sem limite de conexões, `root@'%'`; console sem limite de memória/tempo | 🔴 Alta | `connection_control`, `MAX_USER_CONNECTIONS`, `MYSQL_ROOT_HOST`, console com teto de linhas/tempo/execuções |
+| [#55](https://github.com/huriellopes/db-lab-estudantes/pull/55) | Senha mínima de 6 caracteres; seeder promovia a admin quem tivesse o e-mail certo; erro de conexão vazava detalhes | 🟠 Média | `PasswordPolicy`, `user:promote-admin` com confirmação, 500 genérico |
+| este PR | Axios com advisories altas no bundle; imagens/actions sem versão fixa; Node 20 (EOL); código gravável pelo PHP | 🟡 Média/baixa | `npm audit fix`, versões fixas + SHA, Dependabot, `composer`/`npm audit` no CI, código só leitura |
+
+Pendências conhecidas estão em "Não coberto por esta auditoria", no fim deste arquivo.
 
 ## Resumo
 
@@ -19,12 +36,13 @@ Auditoria de toda a superfície de acesso ao MySQL na aplicação (`app/Models`,
 
 | Comando | Valor interpolado | Validado por | Onde |
 |---|---|---|---|
-| `CREATE USER` | `$login` | `App\Support\MysqlIdentifier::build()` — gera o login (nunca aceita string livre do usuário) | `AuthController::register()` |
-| `ALTER USER` (senha) | `$login` | Lido de `users.mysql_login`, coluna só escrita por código validado | `UserManager::resetPassword()` |
-| `DROP USER` | `$login` | idem | `AuthController::register()` (rollback), `UserManager::deleteCompletely()` |
-| `RENAME USER` (login do phpMyAdmin) | `$oldLogin`, `$newLogin` | `$oldLogin` idem (coluna já validada); `$newLogin` por `MysqlIdentifier::isValidCustomLogin()` (regex `^[a-z][a-z0-9_]{2,31}$` + lista de nomes reservados) | `ProfileController::updateMysqlLogin()` |
-| `CREATE DATABASE` + `GRANT` | `$dbName` | `SchemaNameBuilder::isValidLabel()` no label do usuário **antes** de montar o nome | `SchemaController::store()` |
-| `DROP DATABASE` | `$dbName` | `SchemaNameBuilder::isValidDbName()` (regex `^[a-z0-9_]{1,64}$`) **+** `SchemaRecord::findOwned()`/`findByName()` (o valor só passa se bater exatamente com um registro que a própria app gravou) | `SchemaController::destroy()`, `AdminController::destroySchema()`, `UserManager::deleteCompletely()` |
+| `CREATE USER` | `$login` | Username escolhido no cadastro, validado por `MysqlIdentifier::isValidCustomLogin()` (regex `^[a-z][a-z0-9_]{2,31}$`, sem `__`, sem `_` no fim, fora da lista de nomes reservados) | `RegisterAction`, `StoreAdminUserAction` (via `UserManager::provisionNewUser()`) |
+| `ALTER USER` (senha, lock/unlock) | `$login` | Lido de `users.mysql_login`, coluna só escrita por código validado | `UserManager::resetPassword()`, `setActive()`, `softDelete()`, `restore()` |
+| `DROP USER` | `$login` | idem | `UserManager::provisionNewUser()` (rollback de cadastro que falhou no meio) |
+| `RENAME USER` (login do phpMyAdmin) | `$oldLogin`, `$newLogin` | `$oldLogin` idem (coluna já validada); `$newLogin` por `MysqlIdentifier::isValidCustomLogin()` | `UpdateMysqlLoginAction` |
+| `CREATE DATABASE` + `GRANT` | `$dbName` | `SchemaNameBuilder::isValidLabel()` no label do usuário **antes** de montar o nome | `StoreSchemaAction` |
+| `GRANT` com wildcard do prefixo | `$schemaPrefix` | `users.schema_prefix` (fixado na criação da conta, mesma validação do login) + todo `_` escapado (`SchemaNameBuilder::grantPattern()`) | `SchemaProvisioner::createMysqlAccount()` |
+| `DROP DATABASE` | `$dbName` | `SchemaNameBuilder::isValidDbName()` (regex `^[a-z0-9_]{1,64}$`) **+** `SchemaRecord::findOwned()`/`findByName()` (o valor só passa se bater exatamente com um registro que a própria app gravou) | `DestroySchemaAction`, `DestroyAdminSchemaAction` |
 
 Padrão usado em todos os casos: **nunca escapar, sempre validar contra uma allow-list de
 caracteres (`[a-z0-9_]`) antes de interpolar**. Senhas usadas em `IDENTIFIED BY` (que
@@ -61,7 +79,7 @@ Essa rota roda **qualquer SQL** que a pessoa digitar — o oposto do padrão aci
   antes): cada conta pessoal ganha, na criação, um `GRANT ... ON `<login>\_\_%`.* ...`
   (mesmo prefixo que `SchemaNameBuilder` já exige nos schemas criados pelo formulário —
   ver "Isolamento do banco da app" acima). Depois de cada execução,
-  `SqlConsoleController::reconcileSchemas()` roda `SHOW DATABASES LIKE` (na conexão pessoal
+  `RunSqlAction::reconcileSchemas()` roda `SHOW DATABASES LIKE` (na conexão pessoal
   — só devolve o que a própria conta enxerga) e sincroniza `schemas_criados` com o que
   existe de fato, então um `CREATE`/`DROP DATABASE` feito assim aparece/some de "Meus
   schemas" sem precisar recarregar nada à parte.
@@ -288,7 +306,7 @@ agora.
   (tabela `rate_limit_hits`), sem depender de Redis. `App\Support\ClientIp` resolve o IP
   real via `X-Forwarded-For` (a app fica atrás do Nginx Proxy Manager).
 - **Timing leak corrigido**: login com identificador inexistente agora roda
-  `password_verify()` contra um hash fixo (`AuthController::DUMMY_HASH`) mesmo sem usuário
+  `password_verify()` contra um hash fixo (`LoginAction::DUMMY_HASH`) mesmo sem usuário
   — antes, essa checagem era pulada inteira quando o usuário não existia, e dava pra
   enumerar contas medindo o tempo de resposta (bcrypt ativo vs. não).
 - **Cookie de sessão**: `HttpOnly` + `SameSite=Lax` sempre, `Secure` quando a requisição
@@ -326,7 +344,7 @@ agora.
 - De propósito **não** cacheia a senha MySQL (`Auth::login()` sem `$plainPassword`) quando
   a sessão é reaberta pelo cookie: quem autenticou foi o cookie, não a pessoa digitando a
   senha — o console SQL do dashboard continua exigindo um login de verdade pra funcionar
-  (mensagem já existente em `SqlConsoleController` cobre esse caso).
+  (mensagem já existente em `RunSqlAction` cobre esse caso).
 - Conta desativada entre uma visita e outra: `attemptRememberLogin()` confere `active`
   antes de reabrir a sessão, então desativar uma conta já barra o cookie dela também, sem
   precisar revogar o token manualmente.
@@ -379,7 +397,7 @@ validação de entrada e o que cada uma expõe.
   martelar o MySQL com queries repetidas num loop automatizado; como cada pessoa só afeta
   o próprio schema/conexão, é mais um risco de recurso próprio que de terceiros, mas é o
   candidato mais razoável a rate limit se isso virar problema na prática.
-- **Isolamento entre professores**: `StudentController::index()` lista **todos** os
+- **Isolamento entre professores**: `IndexStudentsAction` lista **todos** os
   alunos do sistema (`UserModel::all(Role::Aluno)`) pra **qualquer** professor — não existe
   o conceito de turma/vínculo. Decisão de design (já sinalizada antes), não bug — mas
   significa que, se o lab crescer pra vários professores de turmas diferentes, um professor
@@ -460,6 +478,24 @@ serviço externo — nenhum dos dois eu tenho aqui):
 
 ## Não coberto por esta auditoria (próximos passos recomendados)
 
+- **`REQUIRE SSL` nas contas de aluno** — passo a passo em "Endurecimento do MySQL público"
+  (precisa de TLS no console SQL e no phpMyAdmin antes, senão os dois param de funcionar).
+- **phpMyAdmin público** — superfície grande e com histórico de CVEs. Recomendado: Access
+  List no Nginx Proxy Manager (basic auth ou allowlist de IP) na frente do proxy host do
+  `pma.`; a versão da imagem agora é fixa (`phpmyadmin:5.2.3`) e o Dependabot avisa quando
+  sair correção.
+- **CSP com `'unsafe-eval'`** — exigido pelo Alpine.js padrão. Tirar exige migrar pro build
+  CSP do Alpine (`@alpinejs/csp`), que não aceita expressão inline nos atributos (`x-data=
+  "ajaxForm({...})"` etc.) — refatoração de todas as views, por isso ficou de fora.
+- **`appuser` com DML em `*.*`** — inclui o schema `mysql`. Restringir o host do `appuser` à
+  subnet do Docker (avaliado e adiado antes, ver acima) segue sendo o maior ganho por linha
+  alterada agora que o MySQL é público.
+- **Log de auditoria** — troca de papel, reset de senha por admin/professor e DROP de schema
+  pelo admin não deixam rastro além do log do container.
+- **Cadastro aberto + sem verificação de e-mail** — qualquer pessoa ganha uma conta MySQL
+  num servidor público. Convite/código de turma ou allowlist de domínio resolveriam.
+- **MySQL 8.0 saiu de suporte (abril de 2026)** — migrar pra 8.4 LTS (e, junto, de
+  `mysql_native_password` pra `caching_sha2_password`) num PR próprio, com backup antes.
 - 2FA / MFA — fora de escopo pra esse tamanho de lab, mas vale considerar se crescer.
 - `Strict-Transport-Security` (HSTS) não configurado — dá pra habilitar direto no Nginx
   Proxy Manager (toggle "HSTS Enabled" na tela de SSL do proxy host), preferível a
