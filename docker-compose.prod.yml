@@ -10,7 +10,7 @@
 # conexão interna da própria app sem retrabalho considerável.
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.46
     container_name: dblab-mysql
     restart: unless-stopped
     # --default-time-zone: fuso do servidor (afeta NOW()/CURRENT_TIMESTAMP e toda coluna
@@ -19,9 +19,29 @@ services:
     # segue o fuso de verdade (o Brasil não tem horário de verão desde 2019, mas se voltar
     # um dia, esse nome já lida sozinho — testado: a imagem oficial do MySQL já carrega as
     # tabelas de fuso horário sozinha, não precisa de mysql_tzinfo_to_sql manual).
-    command: --default-authentication-plugin=mysql_native_password --default-time-zone=America/Sao_Paulo
+    #
+    # connection_control: depois de 5 senhas erradas seguidas pro mesmo usuário vindo do mesmo
+    # host, cada nova tentativa espera 1s, 2s, 3s... (até 30s). Com a porta pública, é o que
+    # torna força bruta de senha impraticável — sem travar a conta: o aluno legítimo, de
+    # outro IP, não é afetado (FAILED_LOGIN_ATTEMPTS bloquearia a conta inteira por dias, e
+    # aí qualquer um travaria o console/phpMyAdmin de um colega errando a senha dele de
+    # propósito). Tentativas atrasadas: information_schema.connection_control_failed_login_attempts.
+    # "--loose-" é obrigatório: na criação de um volume novo (--initialize) o MySQL ainda não
+    # carregou o plugin, e sem o prefixo aborta com "unknown variable" em vez de só avisar.
+    command: >-
+      --default-authentication-plugin=mysql_native_password
+      --default-time-zone=America/Sao_Paulo
+      --plugin-load-add=connection_control.so
+      --loose-connection-control-failed-connections-threshold=5
+      --loose-connection-control-min-connection-delay=1000
+      --loose-connection-control-max-connection-delay=30000
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Root só via socket/localhost de dentro do container (healthcheck, manutenção com
+      # `docker compose exec`). Sem isso a imagem cria root@'%' — senha de root aberta pra
+      # força bruta na porta pública. Só vale na criação do volume; em volume já existente
+      # ver SECURITY.md ("root@'%'") pra remover na mão.
+      MYSQL_ROOT_HOST: localhost
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
@@ -49,7 +69,7 @@ services:
       - dblab-net
 
   phpmyadmin:
-    image: phpmyadmin:5
+    image: phpmyadmin:5.2.3
     container_name: dblab-phpmyadmin
     restart: unless-stopped
     environment:
@@ -102,7 +122,6 @@ services:
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DB Lab Estudantes}
       MYSQL_EXTERNAL_PORT: ${MYSQL_PORT}
       DB_PUBLIC_HOST: ${DB_PUBLIC_HOST}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
     depends_on:
       mysql:
         condition: service_healthy

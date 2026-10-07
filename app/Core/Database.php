@@ -11,6 +11,9 @@ final class Database
 {
     private static ?PDO $connection = null;
 
+    /** Ver connectAs(): limite de tempo de SELECT no console SQL, em milissegundos. */
+    private const CONSOLE_MAX_EXECUTION_MS = 10_000;
+
     public static function connection(): PDO
     {
         if (self::$connection === null) {
@@ -41,8 +44,13 @@ final class Database
                     exit(1);
                 }
 
+                // Na web, o detalhe vai só pro log: a mensagem do PDO entrega host, porta e
+                // usuário do banco (às vezes até o motivo exato da recusa) pra quem estiver
+                // olhando a página — mesma regra do set_exception_handler de public/index.php.
+                error_log('Erro ao conectar no banco de dados: ' . $e->getMessage());
                 http_response_code(500);
-                die('Erro ao conectar no banco de dados: ' . $e->getMessage());
+                echo View::render('errors/500');
+                exit;
             }
         }
 
@@ -61,7 +69,7 @@ final class Database
         $host = Config::get('DB_HOST', 'mysql');
         $port = Config::get('DB_PORT', '3306');
 
-        return new PDO(
+        $pdo = new PDO(
             "mysql:host={$host};port={$port};charset=utf8mb4",
             $username,
             $password,
@@ -69,7 +77,30 @@ final class Database
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
+                // Unbuffered: o resultado vem do servidor conforme é lido, em vez de inteiro
+                // pra memória do PHP antes do primeiro fetch() — é o que deixa
+                // App\Support\CappedResult parar de verdade no teto de linhas.
+                self::mysqlAttribute('ATTR_USE_BUFFERED_QUERY') => false,
             ],
         );
+
+        // Teto de tempo por SELECT nesta sessão: uma consulta pesada de um aluno (produto
+        // cartesiano, SLEEP...) não segura o worker do PHP-FPM nem o MySQL compartilhado
+        // pela turma. O MySQL aborta com o erro 3024, que o console mostra normalmente.
+        $pdo->exec('SET SESSION max_execution_time = ' . self::CONSOLE_MAX_EXECUTION_MS);
+
+        return $pdo;
+    }
+
+    /**
+     * Constantes específicas do driver MySQL: Pdo\Mysql::ATTR_* a partir do PHP 8.4 (PDO::MYSQL_ATTR_*
+     * é deprecated no 8.5, a imagem Docker de produção), PDO::MYSQL_ATTR_* antes disso (o
+     * composer.json ainda aceita 8.2). O valor é o mesmo nos dois.
+     */
+    private static function mysqlAttribute(string $name): int
+    {
+        $modern = 'Pdo\\Mysql::' . $name;
+
+        return defined($modern) ? constant($modern) : constant('PDO::MYSQL_' . $name);
     }
 }

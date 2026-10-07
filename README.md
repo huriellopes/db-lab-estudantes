@@ -1,68 +1,148 @@
-# DB Lab Estudantes
+<div align="center">
 
-Ambiente de estudos em Docker com **MySQL 8**, **phpMyAdmin** e uma aplicação **PHP 8.5 em
-MVC altamente tipado** (Composer, sem framework), templates em **Twig** (zero PHP misturado
-com HTML), frontend com **Tailwind CSS v4 + Alpine.js + Axios** via **Vite**, migrations/
-seeders/factories no estilo Laravel, e testes unitários com **Pest**.
+# 🧪 DB Lab Estudantes
 
-Alunos se cadastram sozinhos; professores e admins são criados pelo admin. Todo mundo tem
-uma conta MySQL real (username escolhido no cadastro), utilizável também no phpMyAdmin ou
-num SGBD local.
+**Laboratório de banco de dados para turmas: cada aluno ganha uma conta MySQL de verdade,
+cria os próprios schemas e pratica SQL no navegador, no phpMyAdmin ou no SGBD favorito.**
 
-## Papéis
+[![CI](https://github.com/huriellopes/db-lab-estudantes/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/huriellopes/db-lab-estudantes/actions/workflows/ci.yml)
+![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)
+![MySQL 8.0](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
+![Twig](https://img.shields.io/badge/Twig-3-bacf29?logo=symfony&logoColor=black)
+![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Alpine.js](https://img.shields.io/badge/Alpine.js-3-8BC0D0?logo=alpinedotjs&logoColor=black)
+![Pest](https://img.shields.io/badge/testes-Pest-F7A41D)
+![k6](https://img.shields.io/badge/carga-k6-7D64FF?logo=k6&logoColor=white)
+
+[🚀 Começar](#-comece-em-3-passos) ·
+[🔐 Segurança](#-segurança-em-destaque) ·
+[👥 Papéis](#-papéis) ·
+[🏗️ Arquitetura](#️-arquitetura) ·
+[☁️ Produção](#️-produção-contabo) ·
+[🧪 Testes](#-testes)
+
+</div>
+
+---
+
+## ✨ O que tem aqui
+
+| | |
+|---|---|
+| 🗄️ **Conta MySQL real por pessoa** | O username escolhido no cadastro vira login MySQL, usado na app, no phpMyAdmin e em qualquer SGBD local. |
+| 🧱 **Schemas isolados** | Cada um cria os próprios databases (`<prefixo>__nome`) e **só enxerga os seus**. Quem garante é o `GRANT` do MySQL, não a app. |
+| 💻 **Console SQL no navegador** | Roda scripts com vários comandos usando a conta da própria pessoa, com consultas salvas e limites de tempo e memória. |
+| 🧩 **Laboratório de modelagem ER** | Diagramas arrastáveis, salvos por usuário. |
+| 📚 **Guia de estudos** | SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis, formas normais, modelagem ER. |
+| 👩‍🏫 **Gestão de turma** | Professores administram alunos; o admin administra tudo, inclusive a lixeira com restauração. |
+| 🐳 **Mesma imagem em dev e produção** | `php:8.5-fpm` + nginx + supervisord, com migrations automáticas no boot. |
+
+```mermaid
+flowchart LR
+    A[👩‍🎓 Navegador] -->|HTTPS| NPM[Nginx Proxy Manager<br/>TLS]
+    NPM --> NG[nginx do container<br/>real_ip + CSP]
+    NG --> PHP[PHP-FPM 8.5<br/>Actions + Twig]
+    PHP -->|appuser<br/>tabelas da app| DB[(MySQL 8.0)]
+    PHP -->|conta do aluno<br/>console SQL| DB
+    S[🖥️ SGBD local / phpMyAdmin] -->|conta do aluno<br/>connection_control| DB
+```
+
+## 🚀 Comece em 3 passos
+
+```bash
+cp .env.example .env                                   # 1. ajuste as senhas e gere o APP_KEY (ver comentário no arquivo)
+docker compose up -d --build                           # 2. sobe MySQL + phpMyAdmin + app (migrations rodam sozinhas)
+docker compose exec app php bin/console.php user:promote-admin voce@exemplo.com   # 3. depois de se cadastrar em /register
+```
+
+| Serviço | URL |
+|---|---|
+| 🌐 Aplicação | http://localhost:8080 |
+| 🐬 phpMyAdmin | http://localhost:8081 |
+| 🔌 MySQL | `localhost:3307` (com a conta de aluno; ver o aviso abaixo) |
+
+> [!TIP]
+> O passo 3 mostra os dados da conta e pede pra você **digitar o username dela** antes de
+> promover. O cadastro não verifica e-mail: se o username mostrado não for o seu, alguém se
+> cadastrou com o seu e-mail antes. **Não confirme** nesse caso.
+
+> [!NOTE]
+> Em instalação nova, o **root do MySQL só aceita conexão de dentro do container**
+> (`MYSQL_ROOT_HOST=localhost`). Para mexer como root: `docker compose exec mysql mysql -uroot -p`.
+> De fora, conecte com uma conta de aluno ou com o `appuser`.
+
+## 🔐 Segurança em destaque
+
+O projeto passou por uma varredura completa em **2026-10-07**. O registro de cada decisão,
+de cada achado e do que ainda está pendente fica no **[SECURITY.md](SECURITY.md)**.
+
+| Camada | Proteção |
+|---|---|
+| 🧱 Isolamento entre alunos | `GRANT` por prefixo de schema **fixo por conta**. Trocar o login não libera o prefixo antigo pra mais ninguém. |
+| 💉 SQL injection | DML 100% com prepared statements. DDL (que não aceita bind) só com identificadores validados por allow-list. |
+| 🔑 Senhas | bcrypt, mínimo de 10 caracteres, lista de senhas comuns, não pode conter o username nem o e-mail. |
+| 🚦 Força bruta | Rate limit por IP real e por conta na app; no MySQL público, o plugin `connection_control` atrasa as tentativas (até 30s). |
+| 🍪 Sessão | Revalidada a cada request (conta desativada, papel alterado ou senha trocada derrubam na hora). 2h de inatividade e 12h no máximo. `use_strict_mode`, cookies `HttpOnly`/`SameSite`. |
+| 🛡️ Web | CSRF em todo POST, Twig com autoescape, CSP, `X-Frame-Options`, `nosniff`, erros sem detalhe interno. |
+| 🐬 MySQL | `appuser` sem privilégios administrativos, root só local, até 10 conexões por conta, console com teto de tempo, linhas e execuções. |
+| 📦 Cadeia de suprimentos | Imagens e actions com versão fixa (actions por SHA), `composer audit` + `npm audit` no CI, Dependabot. |
+
+> [!WARNING]
+> **O MySQL de produção é público de propósito** (conexão direta por SGBD local, sem túnel
+> SSH). As proteções acima existem por causa disso, mas a senha de cada conta continua sendo
+> a principal defesa. Reforce isso com a turma.
+
+## 👥 Papéis
 
 | Papel | Pode |
 |---|---|
-| **Aluno** | Cadastrar-se (só alunos se autocadastram), logar com e-mail **ou** username, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/username). |
-| **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (soft delete) contas de aluno (`/professor/alunos`). |
-| **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `composer db:seed` + `ADMIN_EMAIL` no `.env` — não listado em `/admin/usuarios` (contas admin não aparecem nessa lista). |
+| 🎓 **Aluno** | Cadastrar-se (só alunos se autocadastram), logar com e-mail **ou** username, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/username). |
+| 👩‍🏫 **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (soft delete) contas de aluno (`/professor/alunos`). |
+| 🛡️ **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `php bin/console.php user:promote-admin <email>`. Não aparece em `/admin/usuarios` (contas admin não entram nessa lista). |
 
-## Como funciona
+## ⚙️ Como funciona
 
-- No cadastro, a pessoa escolhe seu **username** — vira o login MySQL/phpMyAdmin *e* uma
-  forma alternativa de logar na própria app (login aceita e-mail **ou** username).
-- **Esqueceu a senha?** `/esqueci-senha` manda um link por e-mail (válido por 1h, uso
-  único) pra escolher uma senha nova — sem precisar de admin/professor pra resetar.
-  Precisa de SMTP configurado (`MAIL_HOST` etc. no `.env`); sem isso, a app não quebra, só
-  não envia o e-mail (ver `App\Core\Mailer`).
-- No painel (`/dashboard`), a pessoa cria schemas: a aplicação executa `CREATE DATABASE` e
-  concede `GRANT ALL PRIVILEGES` **apenas** naquele schema para a conta MySQL da pessoa.
-- Em "Meu perfil" dá pra trocar o nome, a senha (atualiza app + MySQL juntos) e o username/
-  login do phpMyAdmin (`RENAME USER` real — preserva os acessos aos schemas já criados).
-- **Ativar/desativar** (professor sobre alunos, admin sobre todo mundo): bloqueia o login na
-  app *e* o acesso MySQL/phpMyAdmin (`ALTER USER ... ACCOUNT LOCK`), sem apagar nada —
-  reversível a qualquer momento.
-- **Excluir é soft delete**, como o `SoftDeletes` do Laravel: marca `deleted_at`, bloqueia o
+- No cadastro, a pessoa escolhe seu **username**. Ele vira o login MySQL/phpMyAdmin *e* uma
+  forma alternativa de entrar na própria app (o login aceita e-mail **ou** username).
+- **Esqueceu a senha?** `/esqueci-senha` manda um link por e-mail (válido por 1h, uso único)
+  pra escolher uma senha nova, sem depender de admin ou professor. Precisa de SMTP
+  configurado (`MAIL_HOST` etc. no `.env`); sem isso a app não quebra, só não envia o e-mail
+  (ver `App\Core\Mailer`). Trocar a senha por qualquer caminho **derruba as outras sessões**
+  e os "manter conectado" de todos os dispositivos.
+- No painel (`/dashboard`), a pessoa cria schemas `<prefixo>__nome`: a app executa
+  `CREATE DATABASE` e concede `GRANT ALL PRIVILEGES` **só** naquele schema, pra conta MySQL
+  da pessoa. Pelo console SQL também dá pra rodar `CREATE DATABASE <prefixo>__algo;` direto.
+- Em "Meu perfil" dá pra trocar o nome, a senha (app e MySQL juntos) e o username/login do
+  phpMyAdmin (`RENAME USER` de verdade). O **prefixo dos schemas não muda** no rename: os
+  schemas novos continuam com o prefixo da criação da conta, e o login antigo fica reservado.
+- **Ativar/desativar** (professor sobre alunos, admin sobre todo mundo) bloqueia o login na
+  app *e* o acesso MySQL/phpMyAdmin (`ALTER USER ... ACCOUNT LOCK`) sem apagar nada. É
+  reversível a qualquer momento, e quem estava logado sai na hora.
+- **Excluir é soft delete**, como o `SoftDeletes` do Laravel: marca `deleted_at` e bloqueia o
   acesso MySQL, mas **não apaga** a linha, os databases nem a conta MySQL da pessoa. O admin
   vê e restaura contas excluídas em `/admin/usuarios/lixeira`.
 
-## Migrations, seeders e factories (estilo Laravel)
+## 🗃️ Migrations, seeders e factories (estilo Laravel)
 
 ```bash
 composer migrate            # roda as migrations pendentes (também roda sozinho ao subir o container)
 composer migrate:status      # lista o que já rodou
 composer migrate:rollback     # desfaz o último lote
-composer db:seed               # roda database/seeders/DatabaseSeeder (promove ADMIN_EMAIL a admin)
+composer db:seed               # roda database/seeders/DatabaseSeeder (hoje sem seeders padrão)
+php bin/console.php user:promote-admin <email>   # promove uma conta existente a admin (pede confirmação)
 ```
 
 - `database/migrations/*.php`: cada arquivo devolve uma classe anônima `extends
-  App\Core\Migration` com `up()`/`down()` — igual ao estilo de migration do Laravel 8+.
-  `App\Core\Migrator` roda as pendentes e registra em uma tabela `migrations` (com `batch`,
+  App\Core\Migration` com `up()`/`down()`, igual ao estilo de migration do Laravel 8+.
+  `App\Core\Migrator` roda as pendentes e registra numa tabela `migrations` (com `batch`,
   pra dar pra reverter o último lote).
-- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada; hoje só chama
-  `AdminUserSeeder`, que promove `ADMIN_EMAIL` (do `.env`) a admin se a conta já existir —
-  idempotente, seguro rodar de novo.
+- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada; hoje sem seeders padrão.
 - `database/factories/UserFactory.php`: no estilo das factories do Laravel, com
-  [`fakerphp/faker`](https://fakerphp.org/) (`require-dev` — só disponível localmente, não
-  na imagem Docker de produção). `create()`/`createMany()` usam
-  `App\Services\UserManager::provisionNewUser()`, o mesmo método usado no cadastro real e
-  na criação de usuário pelo admin — então o resultado é um usuário "de verdade" (linha na
-  app + conta MySQL), útil para popular um ambiente local de testes.
-- O `Dockerfile`/`docker/app-entrypoint.sh` rodam `migrate` automaticamente toda vez que o
-  container da app sobe, antes de iniciar o Apache — não precisa rodar nada na mão num
-  `docker compose up` normal.
+  [`fakerphp/faker`](https://fakerphp.org/) (`require-dev`, só disponível localmente, não
+  na imagem de produção).
 
-## Arquitetura
+## 🏗️ Arquitetura
 
 ```
 composer.json            # autoload PSR-4 (App\, Database\Seeders\, Database\Factories\)
@@ -80,16 +160,17 @@ docker/
 .github/workflows/
   ci.yml                    # testes, padrão de código, build (toda branch/PR pra dev e main)
   deploy.yml                 # SSH no Contabo + deploy.sh (só depois do CI passar na main)
-bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed)
+.github/dependabot.yml       # PRs automáticos de atualização (composer, npm, imagens, actions)
+bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed, user:promote-admin)
 phpunit.xml, tests/          # Pest
 .php-cs-fixer.php             # padrão de código PHP (PSR-12 + regras extra)
 .prettierrc.json                # padrão de código JS/CSS
 .editorconfig
-SECURITY.md                       # avaliação de SQL injection e como é mitigada
+SECURITY.md                       # decisões de segurança, achados corrigidos e pendências
 
 database/
   migrations/    # classes anônimas com up()/down() — fonte da verdade do schema
-  seeders/        # DatabaseSeeder, AdminUserSeeder
+  seeders/        # DatabaseSeeder
   factories/       # UserFactory (Faker)
 
 app/
@@ -116,7 +197,8 @@ app/
                     RegistrationValidator, SchemaNameBuilder, Policy, TableQuery/Paginator/
                     TableFilter (busca/ordenação/paginação das listagens), Crypto (libsodium,
                     senha MySQL em cache de sessão), SqlScriptSplitter (console SQL), Csrf,
-                    RateLimitDecision, ClientIp, RequestScheme
+                    RateLimitDecision, ClientIp, RequestScheme, PasswordPolicy, SessionTimeout,
+                    CappedResult (teto de linhas do console SQL)
   Models/
     Entities/          # DTOs readonly tipados: User, Schema, SchemaWithOwner, StudentSummary
     User.php, SchemaRecord.php  # acesso às tabelas da própria app, devolvem as Entities
@@ -231,50 +313,38 @@ precisar de nenhum SGBD. Pontos de design:
   pra abrir uma conexão MySQL nova com um hash), a senha em texto puro é cacheada na sessão
   no momento do login — mas nunca em texto puro: `App\Support\Crypto` (libsodium,
   `sodium_crypto_secretbox`, chave em `APP_KEY`) criptografa antes de guardar. Sessões
-  antigas (de antes dessa feature) não têm o valor cacheado — o console pede pra logar de
-  novo nesse caso, em vez de quebrar.
+  sem o valor cacheado (ex.: reaberta pelo "manter conectado") fazem o console pedir a
+  senha ali mesmo (`ConfirmMysqlPasswordAction`), sem precisar sair e entrar de novo.
 - **Múltiplos comandos**: separados por `;`, rodam em sequência numa conexão só, um por vez
   (`App\Support\SqlScriptSplitter` — respeita `;` dentro de strings/identificadores/
   comentários, sem ser um parser SQL completo) — para no primeiro erro e relata qual comando
   falhou.
 - Resultado por comando: linhas + colunas (SELECT, cortado em 300 linhas) ou "N linha(s)
   afetada(s)" (INSERT/UPDATE/DELETE/DDL).
+- **Limites de recurso** (o MySQL é compartilhado pela turma inteira): leitura *unbuffered*
+  que para de verdade no teto de linhas (`App\Support\CappedResult`), `max_execution_time`
+  de 10s por SELECT, 60 execuções por minuto por usuário e no máximo 10 conexões
+  simultâneas por conta MySQL.
 
-## Segurança
+## 🐳 Subindo o ambiente (detalhes)
 
-Veja **[SECURITY.md](SECURITY.md)** para a avaliação completa de SQL injection: onde estão
-os pontos de risco real (comandos DDL do MySQL, que não aceitam identificador como bind
-parameter), como cada um é validado antes de ser interpolado, e o que ainda não está
-coberto (CSRF, rate limiting).
+O `Dockerfile` faz tudo dentro do build, sem precisar rodar `composer install`/`npm install`
+na sua máquina:
 
-## Subindo o ambiente
+1. um stage instala as dependências PHP (sem as de dev: Pest, PHP-CS-Fixer e Faker ficam só
+   no ambiente local);
+2. outro roda `npm ci` + `npm run build` (Tailwind v4 + Alpine + Axios via Vite);
+3. a imagem final é `php:8.5-fpm` + `nginx` + `supervisord` (gerenciando os dois processos)
+   + os artefatos prontos, com o **código só leitura** pro PHP (só `storage/` é gravável).
 
-```bash
-cp .env.example .env   # ajuste as senhas e gere um APP_KEY antes de usar em qualquer lugar não-local
-docker compose up -d --build
-```
+No boot do container, o `docker/app-entrypoint.sh` roda as migrations pendentes antes de
+subir o supervisord. **Essa é a mesma imagem usada em produção**: dev e prod só diferem em
+`.env`, rede e exposição de porta, nunca no software rodando dentro.
 
-O `Dockerfile` faz tudo dentro do build — não precisa rodar `composer install`/`npm install`
-na sua máquina: um stage instala as dependências PHP (sem as de dev — Pest/PHP-CS-Fixer/
-Faker ficam só local), outro roda `npm run build` (Tailwind v4 + Alpine + Axios via Vite), e
-a imagem final é `php:8.5-fpm` + `nginx` + `supervisord` (gerenciando os dois processos) +
-os artefatos prontos. No boot do container, o `docker/app-entrypoint.sh` roda as migrations
-pendentes antes de subir o supervisord. **Essa é a mesma imagem usada em produção** — dev e
-prod só diferem em `.env`/rede/exposição de porta, nunca no software rodando dentro.
+Todas as versões são fixas (imagens no `Dockerfile`/`docker-compose*.yml`, actions por SHA),
+e o Dependabot abre PR contra a `dev` quando sai versão nova.
 
-Serviços (portas padrão, configuráveis no `.env`):
-
-| Serviço     | URL                          |
-|-------------|-------------------------------|
-| Aplicação   | http://localhost:8080         |
-| phpMyAdmin  | http://localhost:8081         |
-| MySQL       | localhost:3307 (root: ver `.env`) |
-
-Depois de se cadastrar como o e-mail que você quer que seja admin, defina `ADMIN_EMAIL` no
-`.env` e rode `docker compose exec app php bin/console.php db:seed` (ou `composer db:seed`
-localmente) pra promover essa conta.
-
-## Produção (Contabo)
+## ☁️ Produção (Contabo)
 
 Segue o mesmo padrão dos outros projetos no servidor (`/apps/<projeto>/`, Nginx Proxy
 Manager como proxy reverso já existente pra app/phpMyAdmin).
@@ -309,18 +379,41 @@ Manager como proxy reverso já existente pra app/phpMyAdmin).
   depois `http://localhost:8181` — não é algo que a automação de deploy cobre, é feito uma vez
   na mão quando um novo proxy host precisa ser criado.
 
-## Testes (Pest)
+> [!IMPORTANT]
+> **Checklist manual depois do deploy da revisão de segurança de 2026-10-07** (o que a
+> automação não faz sozinha):
+> 1. Remover o root aberto no volume existente do MySQL (o `MYSQL_ROOT_HOST=localhost` só
+>    vale em volume novo):
+>    `SELECT user, host FROM mysql.user WHERE user = 'root';` (precisa listar `localhost`) e
+>    depois `DROP USER 'root'@'%';`
+> 2. Rodar as queries de auditoria da descrição do [PR #51](https://github.com/huriellopes/db-lab-estudantes/pull/51)
+>    pra conferir se alguma conta foi afetada pela falha de isolamento antes da correção.
+> 3. Ligar **HSTS** e uma **Access List** (basic auth/allowlist) no proxy host do
+>    phpMyAdmin, no Nginx Proxy Manager.
+
+## 🧪 Testes
 
 ```bash
 composer install       # inclui as dependências de dev (Pest, PHP-CS-Fixer, Faker)
 composer test           # ou: ./vendor/bin/pest
 ```
 
-Cobrem a lógica pura em `App\Support` (sem tocar banco): geração e validação de username
-(inclusive contra injeção), validação de cadastro, validação/montagem de nomes de schema, o
-enum `Role`, `AuthenticatedUser::shortName()`, e as regras de autorização por papel.
+Cobrem a lógica pura em `App\Support` (sem tocar o banco): geração e validação de username
+(inclusive contra injeção e colisão de prefixo), política de senha, validação de cadastro,
+nomes e patterns de schema (`GRANT`/`LIKE`), expiração de sessão, teto de linhas do console
+(SQLite em memória), IP do cliente, CSRF, paginação/filtros, o enum `Role`,
+`AuthenticatedUser::shortName()` e as regras de autorização por papel.
 
-## Teste de carga (k6)
+O CI (`.github/workflows/ci.yml`) roda em todo PR pra `dev` e `main`:
+
+| Job | O que valida |
+|---|---|
+| 🐘 PHP | `composer audit`, Pest, PHP-CS-Fixer, `php -l` em tudo |
+| 🎨 JS/CSS | `npm audit` (dependências do bundle), Prettier, build do Vite |
+| 🐳 Docker | a imagem de produção builda |
+| 📈 k6 | sobe MySQL + app do zero e roda o teste de carga |
+
+## 📈 Teste de carga (k6)
 
 ```bash
 docker compose up -d --build
@@ -333,7 +426,7 @@ Simula navegação de visitante (`/login`, `/register`, `/esqueci-senha`) e de u
 automaticamente no CI (job `load-test`, depois que a imagem Docker builda) — detalhes,
 variáveis de ambiente e o porquê da sessão ser reaproveitada entre VUs em `k6/README.md`.
 
-## Padrão de código
+## 🎨 Padrão de código
 
 ```bash
 composer cs             # verifica (dry-run) — PHP, PSR-12 via PHP-CS-Fixer
@@ -344,7 +437,7 @@ npm run format             # aplica
 
 `.editorconfig` cobre o resto (indentação, fim de linha, charset) pra qualquer editor.
 
-## Desenvolvendo localmente sem Docker (opcional)
+## 💻 Desenvolvendo localmente sem Docker (opcional)
 
 ```bash
 composer install
@@ -357,26 +450,23 @@ o MySQL do docker-compose — ex. `DB_HOST=127.0.0.1`, `DB_PORT=3307`) — é li
 via `vlucas/phpdotenv`. Rode `php bin/console.php migrate` na primeira vez. Para usar o Vite
 em modo dev (hot-reload) em vez do build estático, defina `VITE_DEV_SERVER_URL=http://localhost:5173`.
 
-## Avisos importantes (leia antes de usar fora do seu computador)
+## ⚠️ Avisos importantes
 
-- O usuário `appuser` recebe `ALL PRIVILEGES ON *.* WITH GRANT OPTION` (praticamente root)
-  para poder criar databases e contas dinamicamente. Aceitável **apenas** para um ambiente
-  de estudos isolado, rodando localmente. **Não exponha essas portas na internet como está.**
-  Detalhes de como isso é mitigado: [SECURITY.md](SECURITY.md).
-- Trocar o valor de `MYSQL_USER` no `.env` exige atualizar também o nome fixo usado em
-  `mysql/init/01-grants.sql`.
+> [!CAUTION]
+> Trocar o valor de `MYSQL_USER` no `.env` exige atualizar também o nome fixo usado em
+> `mysql/init/01-grants.sql`.
+
 - Nenhuma operação de `CREATE`/`DROP DATABASE`/`CREATE`/`ALTER`/`RENAME`/`DROP USER` roda
-  dentro de uma transação PDO — são comandos DDL e o MySQL faz commit implícito neles, o que
+  dentro de uma transação PDO. São comandos DDL, o MySQL faz commit implícito neles, e isso
   quebraria `beginTransaction()`/`commit()`. Veja o aviso em `App\Services\SchemaProvisioner`.
-- Renomear o username **não** renomeia os databases já criados (MySQL não tem um "RENAME
-  DATABASE" seguro) — só o identificador de login. Os acessos continuam funcionando porque
-  `RENAME USER` preserva os `GRANT`s.
-- Soft delete apaga só o *acesso* (bloqueia login na app e no MySQL) — os databases da
-  pessoa continuam ocupando espaço até alguém excluir os schemas dela manualmente ou (fora
-  do escopo atual) implementar uma exclusão definitiva a partir da lixeira.
-- Sessão guarda o papel/status do usuário no momento do login: se um admin muda o papel ou
-  desativa alguém que já está logado em outra aba/sessão, essa sessão só sente a mudança na
-  próxima ação que precisar reconsultar o banco (ex. próximo login).
-- Não há CSRF token nos formulários — bom próximo passo antes de um uso mais sério.
-- Os limites de CPU/memória por serviço no `docker-compose.yml` seguem a convenção já usada
-  neste computador para evitar sobrecarga da máquina; ajuste conforme necessário.
+- Renomear o username **não** renomeia os databases já criados (o MySQL não tem um "RENAME
+  DATABASE" seguro), só o login. Os acessos continuam funcionando porque `RENAME USER`
+  preserva os `GRANT`s, e o prefixo dos schemas fica o mesmo.
+- Soft delete apaga só o *acesso* (bloqueia o login na app e no MySQL). Os databases da pessoa
+  continuam ocupando espaço até alguém excluir os schemas dela manualmente ou (fora do escopo
+  atual) existir uma exclusão definitiva a partir da lixeira.
+- O `appuser` tem privilégios amplos `ON *.*` (sem nenhum administrativo, ver `SECURITY.md`)
+  pra conseguir criar databases e contas dinamicamente. A validação de identificadores em
+  `App\Support` é código de segurança crítico, coberto por testes.
+- Os limites de CPU/memória por serviço no `docker-compose.yml` seguem a convenção usada
+  nesta máquina pra evitar sobrecarga; ajuste conforme necessário.

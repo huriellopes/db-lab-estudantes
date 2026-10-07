@@ -34,7 +34,7 @@ final class StoreAdminUserAction extends Action
             $password,
             $passwordConfirm,
             UserModel::emailExists($email),
-            UserModel::mysqlLoginExists($username),
+            UserModel::isLoginTaken($username),
         );
 
         $role = Role::tryFrom($roleInput);

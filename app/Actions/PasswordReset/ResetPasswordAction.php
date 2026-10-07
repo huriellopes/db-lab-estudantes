@@ -11,6 +11,7 @@ use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\UserManager;
 use App\Support\FlashType;
+use App\Support\PasswordPolicy;
 use Throwable;
 
 /** POST /redefinir-senha. */
@@ -39,8 +40,10 @@ final class ResetPasswordAction extends Action
         }
 
         $errors = [];
-        if (strlen($password) < 6) {
-            $errors[] = 'A senha deve ter pelo menos 6 caracteres.';
+        $owner = User::find($record->userId);
+        $passwordError = PasswordPolicy::validate($password, $owner?->mysqlLogin ?? '', $owner?->email ?? '');
+        if ($passwordError !== null) {
+            $errors[] = $passwordError;
         }
         if ($password !== $passwordConfirm) {
             $errors[] = 'As senhas não conferem.';
@@ -58,12 +61,15 @@ final class ResetPasswordAction extends Action
         }
 
         $user = User::find($record->userId);
-        if ($user === null) {
+        // Conta desativada depois do pedido do link: o "esqueci minha senha" não pode virar
+        // um jeito de reativar acesso (SendResetLinkAction já não envia pra conta inativa).
+        // consume() antes de trocar a senha: só uma requisição por link chega até aqui.
+        if ($user === null || !$user->active || !PasswordResetToken::consume($record->id)) {
             $this->render('auth/reset_password', [
                 'pageTitle' => 'Redefinir senha',
                 'token' => $token,
                 'valid' => false,
-                'errors' => ['Conta não encontrada.'],
+                'errors' => ['Esse link expirou ou já foi usado. Peça um novo.'],
             ]);
 
             return;
@@ -71,16 +77,17 @@ final class ResetPasswordAction extends Action
 
         try {
             UserManager::resetPassword($user, $password);
-            PasswordResetToken::markUsed($record->id);
 
             Flash::set(FlashType::Success, 'Senha redefinida com sucesso! Faça login com a senha nova.');
             $this->redirect('/login');
         } catch (Throwable $e) {
+            // O link já foi consumido acima — mostra como inválido pra pessoa pedir outro
+            // (raro: só acontece se o banco/MySQL falhar no meio da troca).
             $this->render('auth/reset_password', [
                 'pageTitle' => 'Redefinir senha',
                 'token' => $token,
-                'valid' => true,
-                'errors' => [$this->genericError('redefinir a senha', $e)],
+                'valid' => false,
+                'errors' => [$this->genericError('redefinir a senha', $e) . ' Peça um novo link.'],
             ]);
         }
     }

@@ -49,9 +49,20 @@ final class PasswordResetToken
         return $entity->isValid(new DateTimeImmutable()) ? $entity : null;
     }
 
-    public static function markUsed(int $id): void
+    /**
+     * Marca o token como usado SÓ se ninguém usou antes e ele ainda não expirou, num UPDATE
+     * atômico — true se esta chamada foi quem "ganhou". Antes era findValid() + markUsed()
+     * em dois passos: dois POSTs simultâneos com o mesmo link passavam os dois pelo
+     * findValid() e redefiniam a senha duas vezes.
+     */
+    public static function consume(int $id): bool
     {
-        Database::connection()->prepare('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ?')->execute([$id]);
+        $stmt = Database::connection()->prepare(
+            'UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ? AND used_at IS NULL AND expires_at > NOW()',
+        );
+        $stmt->execute([$id]);
+
+        return $stmt->rowCount() === 1;
     }
 
     private static function hash(string $plainToken): string

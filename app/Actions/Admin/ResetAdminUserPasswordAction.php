@@ -6,6 +6,7 @@ namespace App\Actions\Admin;
 
 use App\Core\Auth;
 use App\Services\UserManager;
+use App\Support\PasswordPolicy;
 use Throwable;
 
 /** POST /admin/usuarios/{id}/senha. */
@@ -18,8 +19,9 @@ final class ResetAdminUserPasswordAction extends AdminUserAction
         $target = $this->findManageableUserOrFail((int) $params['id']);
         $newPassword = (string) ($_POST['new_password'] ?? '');
 
-        if (strlen($newPassword) < 6) {
-            $this->respond(false, 'A nova senha deve ter pelo menos 6 caracteres.', '/admin/usuarios');
+        $passwordError = PasswordPolicy::validate($newPassword, $target->mysqlLogin, $target->email);
+        if ($passwordError !== null) {
+            $this->respond(false, $passwordError, '/admin/usuarios');
         }
 
         try {

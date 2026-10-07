@@ -1,0 +1,31 @@
+# Abre PR (contra a dev) quando sai versão nova de dependência ou de imagem/action fixada —
+# com versão fixa em todo lugar (Dockerfile, docker-compose*.yml, workflows por SHA), é isso
+# que impede as versões de envelhecerem caladas. Correções de segurança chegam fora do
+# agendamento semanal, assim que o advisory é publicado.
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker-compose
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
