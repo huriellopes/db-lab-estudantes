@@ -30,12 +30,23 @@ use PDOException;
  */
 final class SchemaProvisioner
 {
+    /**
+     * Conexões simultâneas por conta de aluno/professor. Cobre com folga o uso normal
+     * (phpMyAdmin + console SQL + um SGBD local, que costuma abrir 2–3 conexões), mas impede
+     * uma conta só, com a porta do MySQL pública, de esgotar o max_connections do servidor
+     * inteiro — e com isso derrubar a app e a turma toda.
+     */
+    public const MAX_USER_CONNECTIONS = 10;
+
     public static function createMysqlAccount(string $login, string $password): void
     {
         $pdo = Database::connection();
         $quotedPassword = $pdo->quote($password);
 
-        $pdo->exec("CREATE USER IF NOT EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}");
+        $pdo->exec(
+            "CREATE USER IF NOT EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}"
+            . ' WITH MAX_USER_CONNECTIONS ' . self::MAX_USER_CONNECTIONS,
+        );
 
         // Escopo idêntico ao prefixo que a app já valida/usa pros schemas "oficiais" (ver
         // App\Support\SchemaNameBuilder) — deixa a própria conta MySQL do aluno rodar

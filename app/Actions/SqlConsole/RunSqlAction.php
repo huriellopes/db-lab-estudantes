@@ -9,7 +9,9 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Models\Entities\Schema;
 use App\Models\SchemaRecord;
+use App\Services\RateLimiter;
 use App\Support\AuthenticatedUser;
+use App\Support\CappedResult;
 use App\Support\SchemaNameBuilder;
 use App\Support\SqlScriptSplitter;
 use PDO;
@@ -36,9 +38,23 @@ final class RunSqlAction extends Action
     /** Corta o resultado exibido — evita travar o navegador com uma SELECT gigante. */
     private const MAX_ROWS = 300;
 
+    /**
+     * Execuções por usuário por minuto. Folgado pra uso em aula (ninguém digita e roda 60
+     * comandos por minuto à mão), mas barra um script em loop martelando o MySQL
+     * compartilhado pela turma inteira.
+     */
+    private const MAX_RUNS_PER_MINUTE = 60;
+
     public function __invoke(array $params = []): void
     {
         Auth::requireLogin();
+
+        $limitKey = 'sql-console-run:user:' . Auth::id();
+        $limit = RateLimiter::check($limitKey, maxAttempts: self::MAX_RUNS_PER_MINUTE, windowSeconds: 60);
+        if (!$limit->allowed) {
+            $this->json(false, "Muitas execuções seguidas. Aguarde {$limit->retryAfterSeconds}s e tente de novo.");
+        }
+        RateLimiter::hit($limitKey);
 
         $script = (string) ($_POST['sql'] ?? '');
         $schema = trim((string) ($_POST['schema'] ?? ''));
@@ -156,22 +172,26 @@ final class RunSqlAction extends Action
         }
 
         if ($stmt->columnCount() > 0) {
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Nomes das colunas antes de ler: CappedResult fecha o cursor no fim.
+            $columns = $this->columnNames($stmt);
+            $result = CappedResult::fetch($stmt, self::MAX_ROWS);
 
             return [
                 'sql' => $statement,
                 'type' => 'rows',
-                'columns' => $this->columnNames($stmt),
-                'rows' => array_slice($rows, 0, self::MAX_ROWS),
-                'total' => count($rows),
-                'truncated' => count($rows) > self::MAX_ROWS,
+                'columns' => $columns,
+                'rows' => $result->rows,
+                'truncated' => $result->truncated,
             ];
         }
+
+        $affected = $stmt->rowCount();
+        $stmt->closeCursor();
 
         return [
             'sql' => $statement,
             'type' => 'write',
-            'affected' => $stmt->rowCount(),
+            'affected' => $affected,
         ];
     }
 
