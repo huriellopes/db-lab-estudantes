@@ -82,6 +82,15 @@ foreach ($pages as $page) {
     $reset = [];
     $fills = [];
 
+    // "<palavra" cru dentro de <pre><code> vira tag HTML no navegador e o texto some da página
+    // (ex.: o <temporary> de um EXPLAIN). Precisa estar escrito como &lt;.
+    foreach ($blocks as $block) {
+        if (preg_match('/<[a-zA-Z\/!]/', $block['raw'])) {
+            $failures++;
+            echo sprintf("  linha %-4d FALHOU — '<' sem escape no bloco (use &lt;)\n", $block['line']);
+        }
+    }
+
     foreach ($blocks as $i => $block) {
         if ($block['type'] !== 'code' || $block['skip'] || $block['engine'] === 'text') {
             continue;
@@ -176,12 +185,14 @@ function parseBlocks(string $twig): array
     $blocks = [];
     foreach ($matches as $m) {
         $params = $m[2][0] ?? '';
-        $content = html_entity_decode($m[3][0], ENT_QUOTES | ENT_HTML5);
+        $raw = $m[3][0];
+        $content = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5);
         $line = substr_count(substr($twig, 0, $m[0][1]), "\n") + 1;
         if ($m[1][0] === 'code') {
             preg_match("/engine: '([a-z]+)'/", $params, $engine);
             $blocks[] = [
                 'type' => 'code',
+                'raw' => $raw,
                 'engine' => $engine[1] ?? 'text',
                 'code' => $content,
                 'skip' => str_contains($params, 'skip: true'),
@@ -191,6 +202,7 @@ function parseBlocks(string $twig): array
         } else {
             $blocks[] = [
                 'type' => 'output',
+                'raw' => $raw,
                 'text' => $content,
                 'compare' => !str_contains($params, 'compare: false'),
                 'line' => $line,
@@ -301,8 +313,71 @@ function runCode(string $engine, string $code, bool $asSystem = false): array
     ));
 
     $ok = $exit === 0 && !($engine === 'redis' && preg_match('/^\(error\)/m', $stdout));
+    if ($engine === 'mysql') {
+        $stdout = realignTables($stdout);
+    }
 
     return [$ok, trim($stdout . ($stderr !== '' ? "\n" . $stderr : ''))];
+}
+
+/**
+ * O cliente mysql do container mede a largura das colunas em bytes, então "Disponível" (11
+ * bytes, 10 letras) fica com um espaço sobrando e a tabela desalinha. Aqui as tabelas do
+ * --table são remontadas contando caracteres; coluna numérica continua alinhada à direita,
+ * como o próprio mysql faz.
+ */
+function realignTables(string $text): string
+{
+    $lines = explode("\n", $text);
+    $out = [];
+    $table = [];
+    $flush = static function () use (&$table, &$out): void {
+        if ($table === []) {
+            return;
+        }
+        $rows = [];
+        foreach ($table as $line) {
+            $rows[] = str_starts_with($line, '+') ? null : array_slice(explode('|', $line), 1, -1);
+        }
+        $widths = [];
+        $rightAligned = [];
+        foreach ($rows as $cells) {
+            foreach ($cells ?? [] as $i => $cell) {
+                $widths[$i] = max($widths[$i] ?? 0, mb_strlen(trim($cell)));
+                // Célula com espaço à esquerda e conteúdo encostado na direita = coluna numérica.
+                if (preg_match('/^ {2,}\S/', $cell) && str_ends_with($cell, ' ') && !str_ends_with($cell, '  ')) {
+                    $rightAligned[$i] = true;
+                }
+            }
+        }
+        $border = '+' . implode('+', array_map(static fn (int $w): string => str_repeat('-', $w + 2), $widths)) . '+';
+        foreach ($rows as $cells) {
+            if ($cells === null) {
+                $out[] = $border;
+                continue;
+            }
+            $parts = [];
+            foreach ($cells as $i => $cell) {
+                $value = trim($cell);
+                $pad = str_repeat(' ', $widths[$i] - mb_strlen($value));
+                $parts[] = ' ' . (isset($rightAligned[$i]) ? $pad . $value : $value . $pad) . ' ';
+            }
+            $out[] = '|' . implode('|', $parts) . '|';
+        }
+        $table = [];
+    };
+
+    foreach ($lines as $line) {
+        if (str_starts_with($line, '+-') || (str_starts_with($line, '|') && str_ends_with(rtrim($line), '|'))) {
+            $table[] = rtrim($line);
+            continue;
+        }
+        $flush();
+        $out[] = $line;
+    }
+    $flush();
+
+    return implode("\n", $out);
 }
 
 /** Compara ignorando espaços repetidos e linhas em branco — o que importa é o conteúdo. */

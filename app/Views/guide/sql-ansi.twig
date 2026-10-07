@@ -284,11 +284,11 @@ VALUES (6, 'Fábio Nunes', 'fabio@exemplo.com', 'Paulista', '2000-05-25');
 SELECT id, nome, cidade FROM aluno WHERE id = 6;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-+----+--------------+----------+
-| id | nome         | cidade   |
-+----+--------------+----------+
-|  6 | Fábio Nunes  | Paulista |
-+----+--------------+----------+
++----+-------------+----------+
+| id | nome        | cidade   |
++----+-------------+----------+
+|  6 | Fábio Nunes | Paulista |
++----+-------------+----------+
 {%- endblock %}{% endembed %}
 
                 <p><code>UPDATE</code> altera linhas que já existem. <code>SET</code> diz o que mudar e <code>WHERE</code> diz <em>em quem</em>:</p>
@@ -300,11 +300,11 @@ WHERE id = 6;
 SELECT id, nome, cidade FROM aluno WHERE id = 6;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-+----+--------------+--------+
-| id | nome         | cidade |
-+----+--------------+--------+
-|  6 | Fábio Nunes  | Recife |
-+----+--------------+--------+
++----+-------------+--------+
+| id | nome        | cidade |
++----+-------------+--------+
+|  6 | Fábio Nunes | Recife |
++----+-------------+--------+
 {%- endblock %}{% endembed %}
 
                 <p><code>DELETE</code> apaga linhas:</p>
@@ -447,7 +447,7 @@ ORDER BY curso_id;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
 +----------+------------+---------+
-| curso_id | matriculas | media   |
+| curso_id | matriculas |   media |
 +----------+------------+---------+
 |        1 |          3 | 7.66667 |
 |        2 |          1 | 8.00000 |
@@ -646,16 +646,16 @@ JOIN aluno a ON a.id = m.aluno_id
 ORDER BY m.id;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-+------------+------+---------------+
-| nome       | nota | situacao      |
-+------------+------+---------------+
-| Ana Souza  |  9.5 | Aprovado      |
-| Ana Souza  |  8.0 | Aprovado      |
-| Bruno Lima |  6.5 | Recuperação   |
-| Carla Dias | NULL | Sem nota      |
-| Elisa Melo |  7.0 | Aprovado      |
-| Elisa Melo |  5.5 | Recuperação   |
-+------------+------+---------------+
++------------+------+-------------+
+| nome       | nota | situacao    |
++------------+------+-------------+
+| Ana Souza  |  9.5 | Aprovado    |
+| Ana Souza  |  8.0 | Aprovado    |
+| Bruno Lima |  6.5 | Recuperação |
+| Carla Dias | NULL | Sem nota    |
+| Elisa Melo |  7.0 | Aprovado    |
+| Elisa Melo |  5.5 | Recuperação |
++------------+------+-------------+
 {%- endblock %}{% endembed %}
             </div>
 
@@ -871,15 +871,15 @@ WITH RECURSIVE arvore AS (
 SELECT nivel, caminho FROM arvore ORDER BY caminho;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-+-------+---------------------------------------------+
-| nivel | caminho                                     |
-+-------+---------------------------------------------+
-|     0 | Tecnologia                                  |
-|     1 | Tecnologia &gt; Infraestrutura                 |
-|     1 | Tecnologia &gt; Programação                    |
-|     2 | Tecnologia &gt; Programação &gt; Banco de Dados   |
-|     2 | Tecnologia &gt; Programação &gt; Python           |
-+-------+---------------------------------------------+
++-------+-------------------------------------------+
+| nivel | caminho                                   |
++-------+-------------------------------------------+
+|     0 | Tecnologia                                |
+|     1 | Tecnologia &gt; Infraestrutura               |
+|     1 | Tecnologia &gt; Programação                  |
+|     2 | Tecnologia &gt; Programação &gt; Banco de Dados |
+|     2 | Tecnologia &gt; Programação &gt; Python         |
++-------+-------------------------------------------+
 {%- endblock %}{% endembed %}
             </div>
 
@@ -1065,15 +1065,15 @@ WITH RECURSIVE numeros AS (
 SELECT n FROM numeros;
 {%- endblock %}{% endembed %}
                     {% embed 'partials/guide/output.twig' %}{% block out -%}
-+------+
-| n    |
-+------+
-|    1 |
-|    2 |
-|    3 |
-|    4 |
-|    5 |
-+------+
++---+
+| n |
++---+
+| 1 |
+| 2 |
+| 3 |
+| 4 |
+| 5 |
++---+
 {%- endblock %}{% endembed %}
                 </details>
             </div>
