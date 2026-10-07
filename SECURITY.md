@@ -252,6 +252,11 @@ agora.
   atrasada é contada por usuário+host, e o phpMyAdmin conecta sempre do mesmo host (o
   container) — quem errar a senha de alguém pelo phpMyAdmin atrasa (até 30s, sem bloquear)
   o phpMyAdmin dessa pessoa enquanto continuar errando.
+- **`log-bin-trust-function-creators=1`**: com o binary log ligado (padrão do MySQL 8), só
+  contas com `SUPER` criam `TRIGGER`/`FUNCTION` (erro 1419), então nenhum aluno conseguia
+  praticar triggers. A trava protege replicação baseada em comandos (`binlog_format=STATEMENT`);
+  aqui o formato é `ROW` e não há réplica. O trigger roda com as permissões do próprio aluno
+  (`DEFINER` = ele mesmo, sem `SET_USER_ID`), só nos schemas dele — não abre acesso a nada novo.
 - **`MAX_USER_CONNECTIONS 10`** por conta de aluno/professor (`SchemaProvisioner::MAX_USER_CONNECTIONS`,
   backfill na migration `2026_10_07_000003`) — uma conta só não esgota o `max_connections`
   do servidor inteiro.

@@ -1,166 +1,541 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🐘</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">PostgreSQL</h1>
-            <p class="mt-1 text-sm text-slate-500">Relacional open-source, forte em conformidade e recursos avançados.</p>
-        </div>
+    <div class="guia mb-6">
+        <p>
+            O <strong>PostgreSQL</strong> (ou "Postgres") é um banco relacional <strong>open source</strong> nascido na
+            Universidade de Berkeley nos anos 1980. Ele é conhecido por seguir o padrão SQL de perto, por ser muito
+            confiável e por ter recursos que outros bancos não têm: tipos de dados ricos (JSONB, arrays, intervalos),
+            extensões (como PostGIS, pra mapas, e pgvector, pra IA) e um planejador de consultas muito esperto.
+        </p>
+        <table>
+            <thead><tr><th>Versão</th><th>Situação (2026)</th></tr></thead>
+            <tbody>
+                <tr><td>18</td><td>Versão atual (lançada em setembro de 2025). Uma versão nova sai todo ano e recebe correções por 5 anos.</td></tr>
+            </tbody>
+        </table>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'E aqui no laboratório?'} %}{% block body %}
+            <p>
+                O laboratório usa MySQL, então os exemplos desta página não rodam no console. Pra praticar, você pode
+                instalar o PostgreSQL ou usar um container Docker:
+                <code>docker run -e POSTGRES_PASSWORD=senha -p 5432:5432 postgres:18</code>, e conectar com o
+                <code>psql</code>, DBeaver ou pgAdmin. Os resultados mostrados aqui são saídas reais do PostgreSQL 18.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="card mb-6">
-        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
-        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 5432 (a do MySQL é 3306).</p>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <h3 class="field-label">Linha de comando</h3>
-                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>psql -h HOST -p 5432 -U USUARIO -d SCHEMA</code></pre>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
+
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Conectando e se localizando</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'Terminal'} %}{% block code -%}
+psql -h ENDERECO -p 5432 -U USUARIO -d BANCO
+{%- endblock %}{% endembed %}
+                <p>Dentro do <code>psql</code>, os comandos que começam com barra invertida são atalhos dele (não são SQL):</p>
+                <table>
+                    <thead><tr><th>Comando</th><th>Faz</th><th>Equivalente no MySQL</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>\l</code></td><td>lista os bancos</td><td><code>SHOW DATABASES</code></td></tr>
+                        <tr><td><code>\c banco</code></td><td>conecta em outro banco</td><td><code>USE banco</code></td></tr>
+                        <tr><td><code>\dt</code></td><td>lista as tabelas</td><td><code>SHOW TABLES</code></td></tr>
+                        <tr><td><code>\d tabela</code></td><td>mostra as colunas</td><td><code>DESCRIBE tabela</code></td></tr>
+                        <tr><td><code>\q</code></td><td>sai</td><td><code>exit</code></td></tr>
+                    </tbody>
+                </table>
             </div>
-            <div>
-                <h3 class="field-label">Ferramentas GUI comuns</h3>
-                <p class="text-sm text-slate-600">pgAdmin, DBeaver, TablePlus, DataGrip.</p>
-            </div>
-        </div>
-        <div class="mt-4">
-            <h3 class="field-label">Via código (driver PDO do PHP)</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
-    "pgsql:host=HOST;port=5432;dbname=SCHEMA",
-    "USUARIO",
-    "SENHA"
-);</code></pre>
-        </div>
-    </div>
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Outro banco relacional open-source, com décadas de desenvolvimento (nasceu na Universidade da
-                Califórnia em Berkeley). Costuma ser descrito como o mais "correto" com o padrão SQL ANSI entre
-                os bancos populares, e tem fama de ser extensível — dá pra adicionar tipos de dado e até
-                linguagens de programação dentro dele.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                As mesmas coisas que qualquer relacional (guardar/consultar dados estruturados), mas se destaca
-                quando o projeto precisa de consultas complexas, tipos de dado ricos (arrays, JSON de verdade
-                indexável, dados geográficos via extensão PostGIS) e garantias fortes de integridade.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Sistemas com regras de negócio complexas, relatórios/analytics pesados, ou quando o time
-                valoriza rigor e extensibilidade mais do que a familiaridade "padrão" do MySQL. Muito comum em
-                startups modernas e em projetos que crescem e passam a precisar de recursos mais avançados que
-                um relacional básico oferece.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Diferente do MySQL, o Postgres organiza databases dentro de um servidor e <em>schemas</em> dentro
-                de cada database (por padrão, tudo cai no schema <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">public</code>) — então "schema" no Postgres não é
-                sinônimo de "database" como no MySQL. Pra listar o que existe: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">\l</code> (databases) e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">\dt</code>
-                (tabelas) são atalhos do <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">psql</code>.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- SERIAL é o "AUTO_INCREMENT" do Postgres
-CREATE TABLE tarefa (
-    id        SERIAL PRIMARY KEY,
-    titulo    VARCHAR(150) NOT NULL,
-    concluida BOOLEAN NOT NULL DEFAULT false
+            <div class="card guia">
+                <h2>2. Criando as tabelas de exemplo</h2>
+                <p>
+                    Repare em duas coisas do Postgres: o id usa <code>GENERATED ALWAYS AS IDENTITY</code> (a forma padrão SQL
+                    do "auto incremento") e existe um tipo <code>BOOLEAN</code> de verdade, com <code>true</code> e
+                    <code>false</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres', titulo: 'PostgreSQL — dados de exemplo'} %}{% block code -%}
+CREATE TABLE autor (
+    id   INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome TEXT NOT NULL
 );
 
--- RETURNING: devolve a linha inserida sem precisar de um SELECT extra
-INSERT INTO tarefa (titulo) VALUES ('Estudar Postgres')
-RETURNING id, titulo;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Atalhos do psql (não são SQL, só funcionam no terminal do psql)
-\l          -- lista os databases
-\dt         -- lista as tabelas do schema atual
-\d tarefa   -- mostra a estrutura da tabela tarefa</code></pre>
-        </div>
+CREATE TABLE post (
+    id          INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    autor_id    INT NOT NULL REFERENCES autor (id),
+    titulo      TEXT NOT NULL,
+    publicado   BOOLEAN NOT NULL DEFAULT false,
+    visualizacoes INT NOT NULL DEFAULT 0,
+    criado_em   DATE NOT NULL
+);
+
+INSERT INTO autor (nome) VALUES ('Lia Ramos'), ('Otávio Prado');
+
+INSERT INTO post (autor_id, titulo, publicado, visualizacoes, criado_em) VALUES
+    (1, 'Começando com SQL',     true,  1200, '2026-08-01'),
+    (1, 'JOIN sem medo',         true,  860,  '2026-08-15'),
+    (2, 'Postgres x MySQL',      true,  2300, '2026-09-02'),
+    (2, 'Rascunho: índices',     false, 0,    '2026-09-20');
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Consultas: quase igual ao que você já sabe</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT titulo, visualizacoes
+FROM post
+WHERE publicado
+ORDER BY visualizacoes DESC;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       | visualizacoes 
+-------------------+---------------
+ Postgres x MySQL  |          2300
+ Começando com SQL |          1200
+ JOIN sem medo     |           860
+(3 rows)
+{%- endblock %}{% endembed %}
+                <p>
+                    <code>WHERE publicado</code> funciona sozinho porque a coluna já é verdadeiro/falso. O <code>psql</code>
+                    mostra no fim quantas linhas vieram, <code>(3 rows)</code>.
+                </p>
+
+                <h3>Diferenças de "sotaque" pra quem vem do MySQL</h3>
+                <table>
+                    <thead><tr><th>Assunto</th><th>PostgreSQL</th><th>MySQL</th></tr></thead>
+                    <tbody>
+                        <tr><td>Juntar textos</td><td><code>'a' || 'b'</code></td><td><code>CONCAT('a', 'b')</code></td></tr>
+                        <tr><td>Busca sem diferenciar maiúscula</td><td><code>ILIKE</code></td><td><code>LIKE</code> (já ignora, pela collation)</td></tr>
+                        <tr><td>Aspas duplas</td><td>só pra nome de coluna/tabela</td><td>aceita como texto (não recomendado)</td></tr>
+                        <tr><td>Limitar resultado</td><td><code>LIMIT 2</code> ou <code>FETCH FIRST 2 ROWS ONLY</code></td><td><code>LIMIT 2</code></td></tr>
+                        <tr><td>Auto incremento</td><td><code>GENERATED ... AS IDENTITY</code> (ou o antigo <code>SERIAL</code>)</td><td><code>AUTO_INCREMENT</code></td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT 'Post: ' || titulo AS rotulo
+FROM post
+WHERE titulo ILIKE '%sql%'
+ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+         rotulo          
+-------------------------
+ Post: Começando com SQL
+ Post: Postgres x MySQL
+(2 rows)
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'Maiúsculas em nomes de tabela'} %}{% block body %}
+                    <p>
+                        O Postgres converte nomes sem aspas pra minúsculas: <code>CREATE TABLE Aluno</code> cria
+                        <code>aluno</code>. Se você criar com aspas, <code>"Aluno"</code>, vai ter que usar aspas pra sempre.
+                        Regra prática: use sempre nomes em minúsculas, com <code>_</code>.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Datas</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT titulo,
+       criado_em,
+       to_char(criado_em, 'DD/MM/YYYY')         AS data_br,
+       DATE '2026-10-01' - criado_em            AS dias_ate_outubro,
+       (criado_em + INTERVAL '30 days')::date   AS revisar_em
+FROM post
+ORDER BY criado_em;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       | criado_em  |  data_br   | dias_ate_outubro | revisar_em 
+-------------------+------------+------------+------------------+------------
+ Começando com SQL | 2026-08-01 | 01/08/2026 |               61 | 2026-08-31
+ JOIN sem medo     | 2026-08-15 | 15/08/2026 |               47 | 2026-09-14
+ Postgres x MySQL  | 2026-09-02 | 02/09/2026 |               29 | 2026-10-02
+ Rascunho: índices | 2026-09-20 | 20/09/2026 |               11 | 2026-10-20
+(4 rows)
+{%- endblock %}{% endembed %}
+                <p>
+                    Subtrair duas datas devolve o número de dias. Somar um <code>INTERVAL</code> desloca a data (o resultado
+                    vira data e hora, por isso o <code>::date</code>, que converte de volta pra data: <code>::tipo</code> é o
+                    jeito curto do Postgres de converter tipos). Pra data e hora, prefira o tipo <code>TIMESTAMPTZ</code>
+                    (com fuso horário).
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Liste os títulos dos posts não publicados.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'postgres', titulo: 'Resposta'} %}{% block code -%}
+SELECT titulo FROM post WHERE NOT publicado;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       
+-------------------
+ Rascunho: índices
+(1 row)
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Mostre o total de visualizações de cada autor.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'postgres', titulo: 'Resposta'} %}{% block code -%}
+SELECT a.nome, SUM(p.visualizacoes) AS total
+FROM autor a
+JOIN post p ON p.autor_id = a.id
+GROUP BY a.nome
+ORDER BY total DESC;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+     nome     | total 
+--------------+-------
+ Otávio Prado |  2300
+ Lia Ramos    |  2060
+(2 rows)
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. RETURNING: o banco devolve o que acabou de gravar</h2>
+                <p>
+                    No MySQL, depois de um INSERT você precisa de outra consulta pra descobrir o id gerado. No Postgres, o
+                    <code>RETURNING</code> devolve as colunas na hora, inclusive em UPDATE e DELETE:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+INSERT INTO post (autor_id, titulo, criado_em)
+VALUES (1, 'Window functions', '2026-10-01')
+RETURNING id, titulo, publicado;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ id |      titulo      | publicado 
+----+------------------+-----------
+  5 | Window functions | f
+(1 row)
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. Upsert com ON CONFLICT</h2>
+                <p>"Insere; se já existir, atualiza", o equivalente ao <code>ON DUPLICATE KEY UPDATE</code> do MySQL:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+CREATE TABLE curtida (
+    post_id    INT NOT NULL REFERENCES post (id),
+    usuario    TEXT NOT NULL,
+    quantidade INT NOT NULL DEFAULT 1,
+    PRIMARY KEY (post_id, usuario)
+);
+
+INSERT INTO curtida (post_id, usuario) VALUES (1, 'maria');
+
+INSERT INTO curtida (post_id, usuario) VALUES (1, 'maria')
+ON CONFLICT (post_id, usuario)
+DO UPDATE SET quantidade = curtida.quantidade + 1
+RETURNING *;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ post_id | usuario | quantidade 
+---------+---------+------------
+       1 | maria   |          2
+(1 row)
+{%- endblock %}{% endembed %}
+                <p>Use <code>DO NOTHING</code> quando quiser só ignorar a duplicata.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Agregações mais expressivas</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT a.nome,
+       COUNT(*)                                     AS posts,
+       COUNT(*) FILTER (WHERE p.publicado)          AS publicados,
+       STRING_AGG(p.titulo, ' | ' ORDER BY p.id)    AS titulos
+FROM autor a
+JOIN post p ON p.autor_id = a.id
+GROUP BY a.nome
+ORDER BY a.nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+     nome     | posts | publicados |                       titulos                        
+--------------+-------+------------+------------------------------------------------------
+ Lia Ramos    |     3 |          2 | Começando com SQL | JOIN sem medo | Window functions
+ Otávio Prado |     2 |          1 | Postgres x MySQL | Rascunho: índices
+(2 rows)
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>FILTER (WHERE ...)</code> conta só as linhas que passam na condição, dentro do mesmo GROUP BY.</li>
+                    <li><code>STRING_AGG</code> junta textos (o <code>GROUP_CONCAT</code> do MySQL).</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>4. DISTINCT ON: "o primeiro de cada grupo"</h2>
+                <p>Uma pergunta muito comum ("qual o post mais visto de cada autor?") tem um atalho exclusivo do Postgres:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT DISTINCT ON (autor_id)
+       autor_id, titulo, visualizacoes
+FROM post
+ORDER BY autor_id, visualizacoes DESC;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ autor_id |      titulo       | visualizacoes 
+----------+-------------------+---------------
+        1 | Começando com SQL |          1200
+        2 | Postgres x MySQL  |          2300
+(2 rows)
+{%- endblock %}{% endembed %}
+                <p>Ele mantém só a primeira linha de cada <code>autor_id</code>, seguindo a ordem do <code>ORDER BY</code>.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>5. generate_series: gerando linhas do nada</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+-- Posts por mês, inclusive os meses sem post (com zero)
+SELECT to_char(mes, 'YYYY-MM') AS mes,
+       COUNT(p.id)             AS posts
+FROM generate_series(DATE '2026-07-01', DATE '2026-10-01', INTERVAL '1 month') AS mes
+LEFT JOIN post p ON date_trunc('month', p.criado_em) = mes
+GROUP BY mes
+ORDER BY mes;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+   mes   | posts 
+---------+-------
+ 2026-07 |     0
+ 2026-08 |     2
+ 2026-09 |     2
+ 2026-10 |     1
+(4 rows)
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>6. Schemas: pastas dentro do banco</h2>
+                <p>
+                    No Postgres, um <strong>banco</strong> contém <strong>schemas</strong>, que contêm tabelas. O padrão é o
+                    schema <code>public</code>. Dá pra separar partes do sistema, como <code>vendas.pedido</code> e
+                    <code>rh.funcionario</code>. (No MySQL, "schema" e "database" são a mesma coisa.)
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+CREATE SCHEMA relatorio;
+
+CREATE VIEW relatorio.ranking AS
+SELECT titulo, visualizacoes
+FROM public.post
+WHERE publicado;
+
+SELECT * FROM relatorio.ranking ORDER BY visualizacoes DESC LIMIT 1;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo      | visualizacoes 
+------------------+---------------
+ Postgres x MySQL |          2300
+(1 row)
+{%- endblock %}{% endembed %}
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. JSONB: documentos dentro do relacional</h2>
+                <p>
+                    <code>JSONB</code> guarda JSON num formato binário, que dá pra indexar e consultar rápido. É um dos
+                    motivos de muita gente escolher o Postgres: dá pra ter o melhor dos dois mundos.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+ALTER TABLE post ADD COLUMN meta JSONB NOT NULL DEFAULT '{}';
+
+UPDATE post SET meta = '{"tags": ["sql", "iniciante"], "leitura_min": 5}' WHERE id = 1;
+UPDATE post SET meta = '{"tags": ["sql", "join"], "leitura_min": 8}'      WHERE id = 2;
+UPDATE post SET meta = '{"tags": ["postgres"], "leitura_min": 12}'        WHERE id = 3;
+
+SELECT titulo,
+       meta->>'leitura_min'        AS minutos,
+       meta->'tags'                AS tags
+FROM post
+WHERE meta @> '{"tags": ["sql"]}'   -- "o JSON contém tags com sql?"
+ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       | minutos |         tags         
+-------------------+---------+----------------------
+ Começando com SQL | 5       | ["sql", "iniciante"]
+ JOIN sem medo     | 8       | ["sql", "join"]
+(2 rows)
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>-&gt;</code> devolve JSON; <code>-&gt;&gt;</code> devolve texto.</li>
+                    <li><code>@&gt;</code> ("contém") é o operador que um índice <strong>GIN</strong> acelera:</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+CREATE INDEX idx_post_meta ON post USING GIN (meta);
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. Arrays</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT titulo,
+       ARRAY(SELECT jsonb_array_elements_text(meta->'tags')) AS tags,
+       cardinality(ARRAY(SELECT jsonb_array_elements_text(meta->'tags'))) AS qtd_tags
+FROM post
+WHERE meta ? 'tags'
+ORDER BY id;
+
+-- unnest "explode" um array em linhas
+SELECT unnest(ARRAY['a', 'b', 'c']) AS letra;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       |      tags       | qtd_tags 
+-------------------+-----------------+----------
+ Começando com SQL | {sql,iniciante} |        2
+ JOIN sem medo     | {sql,join}      |        2
+ Postgres x MySQL  | {postgres}      |        1
+(3 rows)
+
+ letra 
+-------
+ a
+ b
+ c
+(3 rows)
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Novidades do PostgreSQL 18</h2>
+                <p><strong>RETURNING com OLD e NEW</strong>: num UPDATE, ver o valor de antes e o de depois na mesma resposta.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+UPDATE post
+SET visualizacoes = visualizacoes + 100
+WHERE id = 2
+RETURNING old.visualizacoes AS antes, new.visualizacoes AS depois;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ antes | depois 
+-------+--------
+   860 |    960
+(1 row)
+{%- endblock %}{% endembed %}
+
+                <p><strong>Colunas geradas virtuais</strong> (agora o padrão): calculadas na leitura, sem ocupar espaço.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+ALTER TABLE post ADD COLUMN popular BOOLEAN GENERATED ALWAYS AS (visualizacoes >= 1000);
+
+SELECT titulo, visualizacoes, popular FROM post ORDER BY id LIMIT 3;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       | visualizacoes | popular 
+-------------------+---------------+---------
+ Começando com SQL |          1200 | t
+ JOIN sem medo     |           960 | f
+ Postgres x MySQL  |          2300 | t
+(3 rows)
+{%- endblock %}{% endembed %}
+
+                <p>
+                    <strong><code>uuidv7()</code></strong>: gera identificadores únicos que, diferente do UUID tradicional,
+                    crescem com o tempo, o que é bem melhor pra índice. Outras novidades da versão 18: um novo subsistema
+                    de leitura assíncrona (até 3× mais rápido lendo do disco), <em>skip scan</em> em índices de várias
+                    colunas e login via OAuth.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+SELECT length(uuidv7()::text) AS tamanho, uuidv7() < uuidv7() AS cresce_com_o_tempo;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ tamanho | cresce_com_o_tempo 
+---------+--------------------
+      36 | t
+(1 row)
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. MVCC e VACUUM: como o Postgres lida com muita gente ao mesmo tempo</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+                    <p>
+                        Quando você edita uma linha, o Postgres não apaga a versão antiga na hora: ele escreve uma
+                        <strong>versão nova</strong> e deixa a antiga visível pra quem já estava lendo. É como um documento com
+                        histórico de versões: cada leitor vê a versão do momento em que começou a ler. Isso é o
+                        <strong>MVCC</strong> (controle de concorrência por múltiplas versões), e é por isso que leitura não
+                        bloqueia escrita.
+                    </p>
+                {% endblock %}{% endembed %}
+                <p>
+                    O efeito colateral: versões antigas ("tuplas mortas") se acumulam. O <strong>autovacuum</strong> limpa
+                    isso sozinho em segundo plano. Em tabelas que mudam muito, vale acompanhar:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres', skip: true} %}{% block code -%}
+SELECT relname, n_live_tup, n_dead_tup, last_autovacuum
+FROM pg_stat_user_tables
+ORDER BY n_dead_tup DESC;
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. Extensões: o superpoder do Postgres</h2>
+                <table>
+                    <thead><tr><th>Extensão</th><th>Pra quê</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>PostGIS</strong></td><td>Dados geográficos: distâncias, áreas, "lojas num raio de 5 km".</td></tr>
+                        <tr><td><strong>pgvector</strong></td><td>Busca por similaridade de vetores (embeddings), base de aplicações de IA.</td></tr>
+                        <tr><td><strong>pg_trgm</strong></td><td>Busca por texto parecido, tolerante a erro de digitação.</td></tr>
+                        <tr><td><strong>pg_stat_statements</strong></td><td>Ranking das consultas mais lentas do servidor.</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/code.twig' with {engine: 'postgres'} %}{% block code -%}
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Quão parecidos são os textos? (0 = nada, 1 = igual)
+SELECT titulo, round(similarity(titulo, 'join sem medu')::numeric, 2) AS parecido
+FROM post
+ORDER BY parecido DESC
+LIMIT 2;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+      titulo       | parecido 
+-------------------+----------
+ JOIN sem medo     |     0.75
+ Começando com SQL |     0.04
+(2 rows)
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Usando o JSONB, liste cada tag e quantos posts a usam.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'postgres', titulo: 'Resposta'} %}{% block code -%}
+SELECT tag, COUNT(*) AS posts
+FROM post, jsonb_array_elements_text(meta->'tags') AS tag
+GROUP BY tag
+ORDER BY posts DESC, tag;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+    tag    | posts 
+-----------+-------
+ sql       |     2
+ iniciante |     1
+ join      |     1
+ postgres  |     1
+(4 rows)
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
     </div>
 
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Recursos que vão além do SQL básico: tipo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ARRAY</code> nativo numa coluna, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JSONB</code>
-                (JSON armazenado de forma binária, indexável — mais rápido de consultar que o JSON "texto" de
-                outros bancos), CTEs (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WITH ... AS</code>, consultas nomeadas que podem ser reaproveitadas dentro da
-                mesma query) e funções de janela (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">OVER</code>) pra cálculos como ranking sem precisar de subquery.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>CTE</strong> — deixa consultas complexas mais legíveis, quebrando em passos nomeados.</li>
-                <li><strong>Window function</strong> — calcula algo "por linha, olhando um grupo ao redor" (ex.: posição no ranking) sem colapsar as linhas como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> faz.</li>
-                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JSONB</code></strong> — guarda dado semiestruturado e ainda consegue indexar/consultar campos de dentro dele com performance boa.</li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                CTE quando uma consulta ficaria ilegível como subquery aninhada várias vezes. Window function
-                pra ranking, médias móveis, "linha anterior/próxima" — coisas que precisam de contexto das
-                linhas vizinhas. JSONB quando parte do dado é genuinamente flexível (preferências de usuário,
-                payload de webhook) mas ainda precisa ser filtrável com performance.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Comece pela CTE quando notar que uma subquery está se repetindo ou que a consulta ficou difícil
-                de ler numa linha só — dar nome aos passos ajuda até você mesmo a revisar depois. Window
-                function entra quando a pergunta é "como essa linha se compara às vizinhas" (ranking, acumulado,
-                diferença pro próximo registro) — se você está pensando em fazer isso com um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> e uma
-                subquery por fora, provavelmente uma window function resolve mais direto.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- CTE + window function: ranking de alunos por nota, por turma
-WITH notas_turma AS (
-    SELECT aluno_id, turma_id, nota
-    FROM avaliacao
-    WHERE ano = 2026
-)
-SELECT
-    aluno_id,
-    turma_id,
-    nota,
-    RANK() OVER (PARTITION BY turma_id ORDER BY nota DESC) AS posicao
-FROM notas_turma;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- JSONB: guarda e consulta um campo flexível com índice
-CREATE TABLE evento (
-    id      SERIAL PRIMARY KEY,
-    tipo    VARCHAR(50) NOT NULL,
-    payload JSONB NOT NULL
-);
-CREATE INDEX idx_evento_payload ON evento USING GIN (payload);
-
-SELECT * FROM evento WHERE payload->>'turno' = 'noite';</code></pre>
-        </div>
+    <div class="card guia mt-8">
+        <h2>📖 Quando escolher o PostgreSQL?</h2>
+        <ul>
+            <li>Quando o projeto precisa de recursos avançados: JSONB, geografia (PostGIS), busca vetorial (pgvector), tipos personalizados.</li>
+            <li>Quando a integridade e o respeito ao padrão SQL importam muito.</li>
+            <li>Em análises complexas, em que o planejador de consultas e as funções de janela fazem diferença.</li>
+            <li>MySQL continua ótimo pra aplicações web mais simples e já tem uma comunidade enorme. Os dois são excelentes, e saber SQL bem serve pros dois.</li>
+        </ul>
     </div>
 {% endblock %}

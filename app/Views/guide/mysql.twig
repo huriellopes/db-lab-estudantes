@@ -1,182 +1,791 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🐬</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">MySQL</h1>
-            <p class="mt-1 text-sm text-slate-500">O banco relacional usado neste laboratório.</p>
-        </div>
-    </div>
+    <div class="guia mb-6">
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab'} %}{% block body %}
+            <p>
+                É exatamente esse banco que você usa aqui: os schemas que você cria no
+                <a href="/dashboard" class="font-medium underline">painel</a> e os comandos do console SQL rodam num
+                <strong>MySQL 8.0</strong> de verdade. Todo exemplo com <strong>▶ Testar no console</strong> funciona lá.
+                Se ainda não sabe o básico de SQL (SELECT, WHERE, JOIN), comece pelo guia de
+                <a href="/guia/sql-ansi" class="font-medium underline">SQL ANSI</a>.
+            </p>
+        {% endblock %}{% endembed %}
 
-    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-900">
-        <svg class="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div>
-            É exatamente esse banco que você já usa aqui — os schemas que você cria no
-            <a href="/dashboard" class="font-medium underline underline-offset-2">painel</a> e os comandos que roda no
-            console SQL são MySQL de verdade. Os exemplos abaixo funcionam direto lá.
-        </div>
-    </div>
-
-    <div class="card mb-6">
-        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
-        <p class="mb-4 text-sm text-slate-500">
-            Neste laboratório é só usar <a href="/conectar" class="font-medium text-indigo-600 hover:text-indigo-700">a página "Conectar"</a>
-            com seu login/senha daqui — mas de forma geral, num MySQL qualquer:
+        <p>
+            O MySQL nasceu em 1995, é <strong>open source</strong> (edição Community) e hoje pertence à Oracle. É um dos
+            bancos mais usados do mundo em sites e sistemas web: WordPress, lojas virtuais e uma fatia enorme da
+            internet rodam em MySQL ou no <strong>MariaDB</strong>, um "irmão" criado a partir do código dele.
         </p>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <h3 class="field-label">Linha de comando</h3>
-                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>mysql -h HOST -P PORTA -u USUARIO -p</code></pre>
-            </div>
-            <div>
-                <h3 class="field-label">Ferramentas GUI comuns</h3>
-                <p class="text-sm text-slate-600">MySQL Workbench, DBeaver, TablePlus, DataGrip/PhpStorm, HeidiSQL, phpMyAdmin.</p>
-            </div>
-        </div>
-        <div class="mt-4">
-            <h3 class="field-label">Via código (driver PDO do PHP, como esta app usa)</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
-    "mysql:host=HOST;port=PORTA;dbname=SCHEMA;charset=utf8mb4",
-    "USUARIO",
-    "SENHA"
-);</code></pre>
-        </div>
-    </div>
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
+        <table>
+            <thead><tr><th>Versão</th><th>Situação (2026)</th></tr></thead>
+            <tbody>
+                <tr><td>8.0</td><td>Fim do suporte em abril de 2026 (é a usada neste laboratório).</td></tr>
+                <tr><td>8.4 LTS</td><td>Versão de suporte longo, recomendada pra quem sai da 8.0.</td></tr>
+                <tr><td>9.7 LTS</td><td>Nova versão de suporte longo, lançada em abril de 2026.</td></tr>
+            </tbody>
+        </table>
+        <p class="text-xs text-slate-500">
+            <strong>LTS</strong> (<em>Long-Term Support</em>) = versão que recebe correções por muitos anos, sem
+            mudanças bruscas. É a escolha certa pra produção.
+        </p>
 
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Um banco de dados relacional <strong>open-source</strong>, criado em 1995, hoje mantido pela
-                Oracle. É um dos bancos mais usados do mundo pra aplicações web — parte do clássico "LAMP"
-                (Linux, Apache, MySQL, PHP), a mesma base deste laboratório.
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Prepare os dados de exemplo desta página'} %}{% block body %}
+            <p>
+                Os exemplos usam uma lojinha com clientes, produtos e pedidos. Escolha um schema no console e execute o
+                bloco abaixo uma vez. Ele pode ficar no mesmo schema dos exemplos de SQL ANSI: os nomes das tabelas são
+                diferentes.
             </p>
-        </div>
+        {% endblock %}{% endembed %}
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Guardar e consultar dados estruturados de aplicações — desde um blog pequeno até sistemas com
-                milhões de usuários (WordPress, Wikipedia até um tempo atrás, e uma fração enorme da web usam
-                MySQL ou um "parente" dele, o MariaDB).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Aplicações web em geral, principalmente quando o time já conhece o ecossistema (PHP, Node,
-                Python...), quando simplicidade de operação importa mais que recursos avançados de banco, e em
-                cargas com bastante leitura. Se o projeto precisa de recursos relacionais mais sofisticados
-                (JSON avançado, tipos de dado ricos, extensões geoespaciais robustas), vale comparar com
-                PostgreSQL.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                No dia a dia: conecte com um cliente (linha de comando ou GUI, ver acima), escolha o schema com
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">USE nome_do_schema;</code> (ou já selecione ele na hora de conectar), e rode os comandos. Pra apagar
-                tudo de uma tabela sem apagar a tabela em si, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">TRUNCATE TABLE nome;</code> é mais rápido que
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE FROM nome;</code> sem <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code> (mas não dá pra desfazer com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROLLBACK</code>).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- AUTO_INCREMENT gera o id sozinho a cada INSERT
-CREATE TABLE tarefa (
-    id        INT AUTO_INCREMENT PRIMARY KEY,
-    titulo    VARCHAR(150) NOT NULL,
-    concluida TINYINT(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB;
-
-INSERT INTO tarefa (titulo) VALUES ('Estudar JOIN');
-
--- LIMIT: sintaxe do MySQL pra paginar resultado (outros bancos usam OFFSET/FETCH)
-SELECT * FROM tarefa ORDER BY id DESC LIMIT 10;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- SHOW: comandos exclusivos do MySQL pra "olhar" o banco por dentro
-SHOW DATABASES;
-SHOW TABLES;
-DESCRIBE tarefa;          -- mostra as colunas da tabela
-SHOW CREATE TABLE tarefa; -- mostra o CREATE TABLE completo, como ele existe hoje</code></pre>
-        </div>
-    </div>
-
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                MySQL suporta várias <strong>engines de armazenamento</strong> — a mais usada, InnoDB, é
-                transacional (suporta <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COMMIT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROLLBACK</code> e chaves estrangeiras de verdade). Isso é uma
-                particularidade do MySQL: em outros bancos a engine de armazenamento não é algo que você escolhe
-                por tabela.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>Chave estrangeira</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY ... ON DELETE CASCADE</code>) — garante que uma linha só referencia algo que
-                    realmente existe, e decide o que fazer se o "pai" for apagado.</li>
-                <li><strong>Índice composto</strong> — índice sobre mais de uma coluna, útil quando o filtro/JOIN
-                    usa as duas juntas com frequência.</li>
-                <li><strong>Tipo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JSON</code></strong> — coluna que guarda um documento JSON, com funções pra consultar campos
-                    de dentro dele sem precisar de uma tabela separada.</li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Chave estrangeira sempre que dois dados têm uma relação de dependência real (aluno → matrícula).
-                Coluna JSON é útil pra um pedaço de dado que varia de formato entre registros (ex.: metadados
-                opcionais) sem forçar todo mundo a ter as mesmas colunas fixas — mas não substitui modelagem
-                relacional pros dados que realmente são estruturados e consultados com frequência.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Ao desenhar uma tabela nova, pense primeiro nas chaves estrangeiras (o que essa linha depende
-                pra existir?) antes de criar os índices — o MySQL já cria um índice automático em toda coluna
-                com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY</code>. Pra saber se uma consulta está lenta por falta de índice, rode <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">EXPLAIN</code>
-                na frente dela — ele mostra se o MySQL está varrendo a tabela inteira ("full scan") ou usando
-                um índice.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>CREATE TABLE matricula (
-    id       INT AUTO_INCREMENT PRIMARY KEY,
-    aluno_id INT NOT NULL,
-    curso    VARCHAR(100) NOT NULL,
-    detalhes JSON NULL,
-    CONSTRAINT fk_matricula_aluno
-        FOREIGN KEY (aluno_id) REFERENCES aluno(id) ON DELETE CASCADE
+        {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Dados de exemplo — loja'} %}{% block code -%}
+CREATE TABLE cliente (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    nome       VARCHAR(100) NOT NULL,
+    email      VARCHAR(150) NOT NULL UNIQUE,
+    criado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Consultando um campo de dentro do JSON
-SELECT curso, detalhes->>'$.turno' AS turno
-FROM matricula
-WHERE detalhes->>'$.turno' = 'noite';</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- EXPLAIN: mostra como o MySQL vai executar a consulta, antes de rodar de verdade
-EXPLAIN SELECT * FROM matricula WHERE aluno_id = 42;
+CREATE TABLE produto (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    nome      VARCHAR(100) NOT NULL,
+    categoria ENUM('livro', 'eletronico', 'papelaria') NOT NULL,
+    preco     DECIMAL(10,2) NOT NULL,
+    estoque   INT NOT NULL DEFAULT 0
+);
 
--- Índice composto: acelera filtro/ordenação que usa as duas colunas juntas
-CREATE INDEX idx_matricula_aluno_curso ON matricula (aluno_id, curso);</code></pre>
-        </div>
+CREATE TABLE pedido (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id  INT NOT NULL,
+    feito_em    DATE NOT NULL,
+    status      VARCHAR(20) NOT NULL DEFAULT 'aberto',
+    FOREIGN KEY (cliente_id) REFERENCES cliente (id)
+);
+
+CREATE TABLE item_pedido (
+    pedido_id   INT NOT NULL,
+    produto_id  INT NOT NULL,
+    quantidade  INT NOT NULL,
+    preco_unit  DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (pedido_id, produto_id),
+    FOREIGN KEY (pedido_id)  REFERENCES pedido (id) ON DELETE CASCADE,
+    FOREIGN KEY (produto_id) REFERENCES produto (id)
+);
+
+INSERT INTO cliente (nome, email) VALUES
+    ('Marina Costa', 'marina@exemplo.com'),
+    ('Paulo Reis',   'paulo@exemplo.com'),
+    ('Júlia Alves',  'julia@exemplo.com');
+
+INSERT INTO produto (nome, categoria, preco, estoque) VALUES
+    ('Livro de SQL',  'livro',      89.90, 12),
+    ('Mouse sem fio', 'eletronico', 59.00, 30),
+    ('Caderno',       'papelaria',  18.50, 100),
+    ('Teclado',       'eletronico', 149.00, 0);
+
+INSERT INTO pedido (cliente_id, feito_em, status) VALUES
+    (1, '2026-09-01', 'entregue'),
+    (1, '2026-09-20', 'aberto'),
+    (2, '2026-09-15', 'entregue');
+
+INSERT INTO item_pedido VALUES
+    (1, 1, 1, 89.90),
+    (1, 3, 2, 18.50),
+    (2, 2, 1, 59.00),
+    (3, 3, 5, 18.50),
+    (3, 1, 1, 89.90);
+{%- endblock %}{% endembed %}
+    </div>
+
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
+
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Como conectar</h2>
+                <p>
+                    Aqui no laboratório, a página <a href="/conectar" class="font-medium text-indigo-600 hover:text-indigo-700">Conectar</a>
+                    mostra seu host, porta e usuário. Fora daqui, num MySQL qualquer, os jeitos mais comuns são:
+                </p>
+                <ul>
+                    <li><strong>Pelo navegador:</strong> o console SQL do painel ou o phpMyAdmin.</li>
+                    <li><strong>Por um programa (SGBD):</strong> DBeaver, MySQL Workbench, TablePlus, HeidiSQL, DataGrip.</li>
+                    <li><strong>Pelo terminal:</strong></li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'Terminal'} %}{% block code -%}
+mysql -h ENDERECO_DO_SERVIDOR -P PORTA -u SEU_USUARIO -p
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><strong>Por código</strong> (é assim que esta própria aplicação conecta, em PHP):</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'PHP (PDO)'} %}{% block code -%}
+$pdo = new PDO(
+    'mysql:host=ENDERECO;port=PORTA;dbname=SEU_SCHEMA;charset=utf8mb4',
+    'SEU_USUARIO',
+    'SUA_SENHA'
+);
+$alunos = $pdo->query('SELECT nome FROM aluno')->fetchAll();
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. Explorando o que existe</h2>
+                <p>Comandos que todo mundo usa pra "olhar em volta" num banco:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SHOW TABLES;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+
+| Tables_in_guia |
++----------------+
+| cliente        |
+| item_pedido    |
+| pedido         |
+| produto        |
++----------------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Quais colunas a tabela tem, de que tipo, se aceita vazio...
+DESCRIBE produto;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------+----------------------------------------+------+-----+---------+----------------+
+| Field     | Type                                   | Null | Key | Default | Extra          |
++-----------+----------------------------------------+------+-----+---------+----------------+
+| id        | int                                    | NO   | PRI | NULL    | auto_increment |
+| nome      | varchar(100)                           | NO   |     | NULL    |                |
+| categoria | enum('livro','eletronico','papelaria') | NO   |     | NULL    |                |
+| preco     | decimal(10,2)                          | NO   |     | NULL    |                |
+| estoque   | int                                    | NO   |     | 0       |                |
++-----------+----------------------------------------+------+-----+---------+----------------+
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>SHOW DATABASES;</code> lista os schemas que você pode ver.</li>
+                    <li><code>USE nome_do_schema;</code> escolhe com qual schema trabalhar (no console, é o seletor "Schema").</li>
+                    <li><code>SHOW CREATE TABLE produto;</code> mostra o comando completo que recriaria a tabela.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Tipos de dados do MySQL</h2>
+                <p>Escolher o tipo certo evita dor de cabeça. Os mais usados:</p>
+                <table>
+                    <thead><tr><th>Tipo</th><th>Guarda</th><th>Exemplo de uso</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>INT</code></td><td>número inteiro</td><td>idade, quantidade, id</td></tr>
+                        <tr><td><code>DECIMAL(10,2)</code></td><td>número com casas decimais <strong>exatas</strong></td><td>preço, salário (nunca use FLOAT pra dinheiro)</td></tr>
+                        <tr><td><code>VARCHAR(n)</code></td><td>texto curto, até n caracteres</td><td>nome, e-mail</td></tr>
+                        <tr><td><code>TEXT</code></td><td>texto longo</td><td>descrição, comentário</td></tr>
+                        <tr><td><code>DATE</code> / <code>DATETIME</code></td><td>data / data e hora</td><td>nascimento / momento do cadastro</td></tr>
+                        <tr><td><code>BOOLEAN</code></td><td>verdadeiro/falso (no MySQL vira <code>TINYINT(1)</code>: 1 ou 0)</td><td>ativo, concluído</td></tr>
+                        <tr><td><code>ENUM('a','b')</code></td><td>um valor de uma lista fixa</td><td>categoria, status</td></tr>
+                        <tr><td><code>JSON</code></td><td>documento JSON validado</td><td>configurações, dados flexíveis</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'Por que não FLOAT pra dinheiro?'} %}{% block body %}
+                    <p>
+                        <code>FLOAT</code> e <code>DOUBLE</code> guardam números de forma aproximada (é assim que o processador
+                        trabalha). Somar 0.1 + 0.2 pode dar 0.30000000000000004. Com dinheiro, use <code>DECIMAL</code>,
+                        que é exato.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. AUTO_INCREMENT: o id que se preenche sozinho</h2>
+                <p>
+                    Na tabela <code>cliente</code>, o <code>id</code> é <code>AUTO_INCREMENT</code>: você não informa o id
+                    no INSERT, o MySQL escolhe o próximo número. E <code>criado_em</code> tem um <code>DEFAULT</code>: se
+                    você não mandar valor, ele usa a data e hora atuais.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+INSERT INTO cliente (nome, email) VALUES ('Renato Gomes', 'renato@exemplo.com');
+
+-- Qual id o MySQL acabou de gerar?
+SELECT LAST_INSERT_ID() AS id_gerado;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------+
+| id_gerado |
++-----------+
+|         4 |
++-----------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. Funções úteis do dia a dia</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT nome,
+       UPPER(nome)                       AS em_maiusculas,
+       CHAR_LENGTH(nome)                 AS letras,
+       CONCAT(nome, ' <', email, '>')    AS contato,
+       SUBSTRING_INDEX(email, '@', -1)   AS dominio
+FROM cliente
+ORDER BY id
+LIMIT 3;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------------+---------------+--------+-----------------------------------+-------------+
+| nome         | em_maiusculas | letras | contato                           | dominio     |
++--------------+---------------+--------+-----------------------------------+-------------+
+| Marina Costa | MARINA COSTA  |     12 | Marina Costa &lt;marina@exemplo.com&gt; | exemplo.com |
+| Paulo Reis   | PAULO REIS    |     10 | Paulo Reis &lt;paulo@exemplo.com&gt;    | exemplo.com |
+| Júlia Alves  | JÚLIA ALVES   |     11 | Júlia Alves &lt;julia@exemplo.com&gt;   | exemplo.com |
++--------------+---------------+--------+-----------------------------------+-------------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT id,
+       feito_em,
+       DATE_FORMAT(feito_em, '%d/%m/%Y')  AS data_brasileira,
+       DATEDIFF('2026-10-01', feito_em)   AS dias_ate_1_outubro,
+       DATE_ADD(feito_em, INTERVAL 7 DAY) AS prazo_entrega
+FROM pedido
+ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+------------+-----------------+--------------------+---------------+
+| id | feito_em   | data_brasileira | dias_ate_1_outubro | prazo_entrega |
++----+------------+-----------------+--------------------+---------------+
+|  1 | 2026-09-01 | 01/09/2026      |                 30 | 2026-09-08    |
+|  2 | 2026-09-20 | 20/09/2026      |                 11 | 2026-09-27    |
+|  3 | 2026-09-15 | 15/09/2026      |                 16 | 2026-09-22    |
++----+------------+-----------------+--------------------+---------------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT nome,
+       estoque,
+       IF(estoque > 0, 'Disponível', 'Esgotado') AS situacao,
+       ROUND(preco * 1.1, 2)                      AS preco_com_10_por_cento
+FROM produto
+ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------------+---------+------------+------------------------+
+| nome          | estoque | situacao   | preco_com_10_por_cento |
++---------------+---------+------------+------------------------+
+| Livro de SQL  |      12 | Disponível |                  98.89 |
+| Mouse sem fio |      30 | Disponível |                  64.90 |
+| Caderno       |     100 | Disponível |                  20.35 |
+| Teclado       |       0 | Esgotado   |                 163.90 |
++---------------+---------+------------+------------------------+
+{%- endblock %}{% endembed %}
+                <p>
+                    <code>NOW()</code> devolve a data e hora atuais e <code>CURDATE()</code> só a data. Elas não aparecem nos
+                    exemplos com resultado porque o valor muda a cada execução.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>⚠️ Erros comuns (com a mensagem que o MySQL mostra)</h2>
+                <table>
+                    <thead><tr><th>Mensagem</th><th>O que significa</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>ERROR 1046: No database selected</code></td><td>Você não escolheu um schema. No console, selecione um no campo "Schema".</td></tr>
+                        <tr><td><code>ERROR 1064: You have an error in your SQL syntax</code></td><td>Erro de digitação: vírgula sobrando, aspa sem fechar, palavra errada. Olhe o trecho que ele mostra logo depois de "near".</td></tr>
+                        <tr><td><code>ERROR 1146: Table '...' doesn't exist</code></td><td>Nome da tabela errado ou ela está em outro schema.</td></tr>
+                        <tr><td><code>ERROR 1054: Unknown column</code></td><td>Nome de coluna errado (ou texto sem aspas, que o MySQL achou que era coluna).</td></tr>
+                        <tr><td><code>ERROR 1062: Duplicate entry</code></td><td>Você tentou repetir um valor numa coluna <code>UNIQUE</code> ou na chave primária.</td></tr>
+                        <tr><td><code>ERROR 1452: Cannot add or update a child row</code></td><td>A chave estrangeira aponta pra algo que não existe (ex.: pedido de um cliente que não está cadastrado).</td></tr>
+                    </tbody>
+                </table>
+                <p>
+                    No console do laboratório a mensagem chega com um prefixo do PHP, por exemplo
+                    <code>SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry...</code>. O que importa é o
+                    mesmo: o número (1062) e o texto depois dele.
+                </p>
+                <p>Veja o erro 1062 acontecendo (este exemplo falha de propósito):</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, expect_error: true} %}{% block code -%}
+INSERT INTO cliente (nome, email) VALUES ('Outra Marina', 'marina@exemplo.com');
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {titulo: 'Resultado: erro', compare: false} %}{% block out -%}
+ERROR 1062 (23000): Duplicate entry 'marina@exemplo.com' for key 'cliente.email'
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Liste os produtos esgotados (estoque zero).</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT nome FROM produto WHERE estoque = 0;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------+
+| nome    |
++---------+
+| Teclado |
++---------+
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Mostre os pedidos com a data no formato brasileiro e o status em maiúsculas.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT id, DATE_FORMAT(feito_em, '%d/%m/%Y') AS data, UPPER(status) AS status
+FROM pedido
+ORDER BY id;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+------------+----------+
+| id | data       | status   |
++----+------------+----------+
+|  1 | 01/09/2026 | ENTREGUE |
+|  2 | 20/09/2026 | ABERTO   |
+|  3 | 15/09/2026 | ENTREGUE |
++----+------------+----------+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Chaves estrangeiras e o que acontece ao apagar</h2>
+                <p>
+                    A chave estrangeira garante que um pedido sempre aponta pra um cliente que existe. E ela decide o
+                    que acontece quando o "pai" é apagado:
+                </p>
+                <table>
+                    <thead><tr><th>Opção</th><th>Ao apagar o pai...</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>RESTRICT</code> / <code>NO ACTION</code> (padrão)</td><td>o MySQL <strong>impede</strong> enquanto existirem filhos</td></tr>
+                        <tr><td><code>CASCADE</code></td><td>apaga os filhos junto</td></tr>
+                        <tr><td><code>SET NULL</code></td><td>deixa a coluna dos filhos como NULL</td></tr>
+                    </tbody>
+                </table>
+                <p>
+                    Nos dados de exemplo, <code>item_pedido</code> usa <code>ON DELETE CASCADE</code>: apagar um pedido
+                    apaga os itens dele. Já <code>pedido</code> → <code>cliente</code> usa o padrão, então não dá pra apagar
+                    um cliente que tem pedidos:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, expect_error: true} %}{% block code -%}
+DELETE FROM cliente WHERE id = 1;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {titulo: 'Resultado: erro (a proteção funcionou)', compare: false} %}{% block out -%}
+ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails
+(`seu_schema`.`pedido`, CONSTRAINT `pedido_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `cliente` (`id`))
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. Mudando a estrutura com ALTER TABLE</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Nova coluna (as linhas que já existem recebem o DEFAULT)
+ALTER TABLE cliente ADD COLUMN telefone VARCHAR(20) NULL AFTER email;
+
+-- Uma regra nova: preço nunca pode ser negativo
+ALTER TABLE produto ADD CONSTRAINT chk_preco_positivo CHECK (preco >= 0);
+
+DESCRIBE cliente;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------+--------------+------+-----+-------------------+-------------------+
+| Field     | Type         | Null | Key | Default           | Extra             |
++-----------+--------------+------+-----+-------------------+-------------------+
+| id        | int          | NO   | PRI | NULL              | auto_increment    |
+| nome      | varchar(100) | NO   |     | NULL              |                   |
+| email     | varchar(150) | NO   | UNI | NULL              |                   |
+| telefone  | varchar(20)  | YES  |     | NULL              |                   |
+| criado_em | datetime     | NO   |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
++-----------+--------------+------+-----+-------------------+-------------------+
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, expect_error: true} %}{% block code -%}
+-- O CHECK agora barra isto:
+UPDATE produto SET preco = -1 WHERE id = 1;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {titulo: 'Resultado: erro', compare: false} %}{% block out -%}
+ERROR 3819 (HY000): Check constraint 'chk_preco_positivo' is violated.
+{%- endblock %}{% endembed %}
+                <p>
+                    Outros usos: <code>MODIFY COLUMN</code> (muda o tipo), <code>RENAME COLUMN a TO b</code>,
+                    <code>DROP COLUMN</code>. Em tabelas grandes, ALTER TABLE pode demorar: faça fora do horário de pico.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Relatórios com JOIN, GROUP BY e GROUP_CONCAT</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Total de cada pedido e a lista de produtos
+SELECT p.id AS pedido,
+       c.nome AS cliente,
+       SUM(i.quantidade * i.preco_unit)                       AS total,
+       GROUP_CONCAT(pr.nome ORDER BY pr.nome SEPARATOR ', ')   AS produtos
+FROM pedido p
+JOIN cliente c      ON c.id = p.cliente_id
+JOIN item_pedido i  ON i.pedido_id = p.id
+JOIN produto pr     ON pr.id = i.produto_id
+GROUP BY p.id, c.nome
+ORDER BY p.id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------+--------------+--------+-----------------------+
+| pedido | cliente      |  total | produtos              |
++--------+--------------+--------+-----------------------+
+|      1 | Marina Costa | 126.90 | Caderno, Livro de SQL |
+|      2 | Marina Costa |  59.00 | Mouse sem fio         |
+|      3 | Paulo Reis   | 182.40 | Caderno, Livro de SQL |
++--------+--------------+--------+-----------------------+
+{%- endblock %}{% endembed %}
+                <p><code>GROUP_CONCAT</code> é do MySQL: junta os valores do grupo num texto só. No PostgreSQL o equivalente é <code>STRING_AGG</code>.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>4. "Insere ou atualiza": ON DUPLICATE KEY UPDATE</h2>
+                <p>
+                    Situação comum: "se o item já está no pedido, aumente a quantidade; senão, adicione". O MySQL resolve
+                    isso num comando só (o famoso <em>upsert</em>):
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+INSERT INTO item_pedido (pedido_id, produto_id, quantidade, preco_unit)
+VALUES (2, 2, 1, 59.00)
+ON DUPLICATE KEY UPDATE quantidade = quantidade + 1;
+
+SELECT * FROM item_pedido WHERE pedido_id = 2;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------+------------+------------+------------+
+| pedido_id | produto_id | quantidade | preco_unit |
++-----------+------------+------------+------------+
+|         2 |          2 |          2 |      59.00 |
++-----------+------------+------------+------------+
+{%- endblock %}{% endembed %}
+                <p>O item (2, 2) já existia com quantidade 1. Em vez de dar erro de chave duplicada, a quantidade virou 2.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>5. Transação de verdade: fechando um pedido</h2>
+                <p>Dar baixa no estoque e mudar o status do pedido precisam acontecer juntos:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+START TRANSACTION;
+
+UPDATE produto p
+JOIN item_pedido i ON i.produto_id = p.id
+SET p.estoque = p.estoque - i.quantidade
+WHERE i.pedido_id = 2;
+
+UPDATE pedido SET status = 'pago' WHERE id = 2;
+
+COMMIT;
+
+SELECT nome, estoque FROM produto WHERE id = 2;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------------+---------+
+| nome          | estoque |
++---------------+---------+
+| Mouse sem fio |      28 |
++---------------+---------+
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'InnoDB: o motor por trás disso'} %}{% block body %}
+                    <p>
+                        O MySQL permite escolher o <strong>motor de armazenamento</strong> de cada tabela. O padrão, e o que
+                        você deve usar, é o <strong>InnoDB</strong>: ele tem transações, chaves estrangeiras e recuperação
+                        depois de queda de energia. O antigo <strong>MyISAM</strong> não tem nada disso.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>6. Acentos e emoji: utf8mb4</h2>
+                <p>
+                    Use sempre o conjunto de caracteres <code>utf8mb4</code> (o padrão do MySQL 8). O antigo
+                    <code>utf8</code> do MySQL só guarda até 3 bytes por caractere e <strong>não aceita emoji</strong>.
+                    A <em>collation</em> define como comparar e ordenar: nas collations padrão, <code>'joão' = 'JOAO'</code>
+                    é verdadeiro (ignora maiúsculas e acentos).
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT 'joão' = 'JOAO' AS iguais_na_collation_padrao,
+       CHAR_LENGTH('café ☕') AS caracteres,
+       LENGTH('café ☕')      AS bytes;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------------------+------------+-------+
+| iguais_na_collation_padrao | caracteres | bytes |
++----------------------------+------------+-------+
+|                          1 |          6 |     9 |
++----------------------------+------------+-------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Quanto cada cliente já gastou no total? Inclua quem nunca comprou (com 0).</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT c.nome,
+       COALESCE(SUM(i.quantidade * i.preco_unit), 0) AS total_gasto
+FROM cliente c
+LEFT JOIN pedido p      ON p.cliente_id = c.id
+LEFT JOIN item_pedido i ON i.pedido_id = p.id
+GROUP BY c.id, c.nome
+ORDER BY total_gasto DESC, c.nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------------+-------------+
+| nome         | total_gasto |
++--------------+-------------+
+| Marina Costa |      244.90 |
+| Paulo Reis   |      182.40 |
+| Júlia Alves  |        0.00 |
+| Renato Gomes |        0.00 |
++--------------+-------------+
+{%- endblock %}{% endembed %}
+                    <p><code>COALESCE(x, 0)</code> devolve o primeiro valor que não é NULL: transforma o "sem compras" em 0.</p>
+                </details>
+                <details>
+                    <summary>2. Qual produto mais vendeu em quantidade?</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT pr.nome, SUM(i.quantidade) AS unidades
+FROM item_pedido i
+JOIN produto pr ON pr.id = i.produto_id
+GROUP BY pr.id, pr.nome
+ORDER BY unidades DESC
+LIMIT 1;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------+----------+
+| nome    | unidades |
++---------+----------+
+| Caderno |        7 |
++---------+----------+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Colunas JSON</h2>
+                <p>
+                    Uma coluna <code>JSON</code> guarda dados flexíveis, que variam de um registro pro outro. O MySQL
+                    valida o JSON e deixa você consultar campos de dentro dele com <code>-&gt;&gt;</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+ALTER TABLE produto ADD COLUMN atributos JSON NULL;
+
+UPDATE produto SET atributos = '{"autor": "C. J. Date", "paginas": 320}' WHERE id = 1;
+UPDATE produto SET atributos = '{"cor": "preto", "conexao": "bluetooth"}' WHERE id = 2;
+
+SELECT nome,
+       atributos->>'$.autor' AS autor,
+       atributos->>'$.cor'   AS cor
+FROM produto
+WHERE atributos IS NOT NULL
+ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------------+------------+-------+
+| nome          | autor      | cor   |
++---------------+------------+-------+
+| Livro de SQL  | C. J. Date | NULL  |
+| Mouse sem fio | NULL       | preto |
++---------------+------------+-------+
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'JSON não é desculpa pra não modelar'} %}{% block body %}
+                    <p>
+                        Se uma informação é consultada sempre (preço, categoria), ela merece uma coluna de verdade. Use JSON
+                        pra atributos opcionais que mudam muito de um produto pro outro.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. Colunas geradas e índice em campo JSON</h2>
+                <p>
+                    Uma <strong>coluna gerada</strong> é calculada a partir de outras. Combinada com um índice, ela acelera
+                    buscas por um campo de dentro do JSON:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+ALTER TABLE produto
+    ADD COLUMN cor VARCHAR(30) GENERATED ALWAYS AS (atributos->>'$.cor') STORED,
+    ADD INDEX idx_produto_cor (cor);
+
+SELECT nome, cor FROM produto WHERE cor = 'preto';
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------------+-------+
+| nome          | cor   |
++---------------+-------+
+| Mouse sem fio | preto |
++---------------+-------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Triggers: reações automáticas</h2>
+                <p>
+                    Um <strong>trigger</strong> (gatilho) roda sozinho antes ou depois de um INSERT, UPDATE ou DELETE. Exemplo:
+                    impedir que alguém grave um nome de produto com espaços sobrando.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE TRIGGER produto_limpa_nome
+BEFORE INSERT ON produto
+FOR EACH ROW
+SET NEW.nome = TRIM(NEW.nome);
+
+INSERT INTO produto (nome, categoria, preco) VALUES ('   Lápis   ', 'papelaria', 2.50);
+SELECT CONCAT('[', nome, ']') AS nome_gravado FROM produto WHERE preco = 2.50;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------------+
+| nome_gravado |
++--------------+
+| [Lápis]      |
++--------------+
+{%- endblock %}{% endembed %}
+                <p><code>NEW</code> é a linha que está chegando. Num trigger de UPDATE você também tem <code>OLD</code>, a linha como era antes.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>4. Stored procedures</h2>
+                <p>
+                    Uma <strong>procedure</strong> é um bloco de SQL salvo no banco com um nome, que você chama com
+                    <code>CALL</code>. Serve pra reutilizar uma operação que envolve vários passos.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE PROCEDURE pedidos_do_cliente(IN p_cliente_id INT)
+SELECT id, feito_em, status
+FROM pedido
+WHERE cliente_id = p_cliente_id
+ORDER BY feito_em;
+
+CALL pedidos_do_cliente(1);
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+------------+----------+
+| id | feito_em   | status   |
++----+------------+----------+
+|  1 | 2026-09-01 | entregue |
+|  2 | 2026-09-20 | pago     |
++----+------------+----------+
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Procedures e triggers com vários comandos'} %}{% block body %}
+                    <p>
+                        Quando o corpo tem vários comandos, ele vai entre <code>BEGIN</code> e <code>END</code>, e os
+                        <code>;</code> de dentro confundem a ferramenta, que acha que o comando acabou. No terminal e no
+                        phpMyAdmin, troque o separador com <code>DELIMITER</code>. O console SQL deste laboratório separa
+                        comandos por <code>;</code>, então use o <strong>phpMyAdmin</strong> pra exemplos assim:
+                    </p>
+                {% endblock %}{% endembed %}
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', titulo: 'MySQL (terminal ou phpMyAdmin)'} %}{% block code -%}
+DELIMITER //
+CREATE PROCEDURE cancelar_pedido(IN p_pedido_id INT)
+BEGIN
+    UPDATE produto p
+    JOIN item_pedido i ON i.produto_id = p.id
+    SET p.estoque = p.estoque + i.quantidade
+    WHERE i.pedido_id = p_pedido_id;
+
+    UPDATE pedido SET status = 'cancelado' WHERE id = p_pedido_id;
+END //
+DELIMITER ;
+
+CALL cancelar_pedido(2);
+SELECT id, status FROM pedido WHERE id = 2;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+-----------+
+| id | status    |
++----+-----------+
+|  2 | cancelado |
++----+-----------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. Medindo de verdade: EXPLAIN ANALYZE</h2>
+                <p>
+                    <code>EXPLAIN</code> mostra o plano que o MySQL <em>pretende</em> usar. <code>EXPLAIN ANALYZE</code>
+                    executa a consulta e mostra quanto tempo cada etapa levou de fato. É a ferramenta número 1 pra
+                    investigar consulta lenta.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+EXPLAIN ANALYZE
+SELECT c.nome, COUNT(*) AS pedidos
+FROM cliente c
+JOIN pedido p ON p.cliente_id = c.id
+GROUP BY c.nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (resumido) — os tempos mudam a cada execução'} %}{% block out -%}
+-&gt; Table scan on &lt;temporary&gt;  (actual time=0.157..0.167 rows=2 loops=1)
+    -&gt; Aggregate using temporary table  (actual time=0.146..0.146 rows=2 loops=1)
+        -&gt; Nested loop inner join  (cost=1.6 rows=3) (actual time=0.0611..0.111 rows=3 loops=1)
+            -&gt; Covering index scan on p using cliente_id  (cost=0.55 rows=3) (actual time=0.0321..0.0445 rows=3 loops=1)
+            -&gt; Single-row index lookup on c using PRIMARY (id=p.cliente_id)  (cost=0.283 rows=1) (actual time=0.00985..0.0114 rows=1 loops=3)
+{%- endblock %}{% endembed %}
+                <p>
+                    Leia de dentro pra fora. Aqui o MySQL percorre o índice <code>cliente_id</code> de <code>pedido</code>
+                    ("Covering index scan": a resposta sai toda do índice, sem ler a tabela) e, pra cada pedido, busca o
+                    cliente pela chave primária ("Single-row index lookup"). Esse índice em <code>cliente_id</code> o
+                    MySQL criou sozinho, por causa da chave estrangeira. Se aparecer "Table scan" numa tabela grande, é
+                    sinal de que falta índice. <code>loops=3</code> quer dizer que aquela etapa rodou 3 vezes.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>6. Usuários e permissões</h2>
+                <p>
+                    No MySQL, um usuário é <code>'nome'@'host'</code>: o mesmo nome vindo de lugares diferentes pode ter
+                    permissões diferentes. Este laboratório faz exatamente isso por baixo dos panos: cada aluno ganha um
+                    usuário com permissão só nos próprios schemas.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', skip: true, titulo: 'MySQL (precisa de privilégio de administrador)'} %}{% block code -%}
+CREATE USER 'relatorio'@'%' IDENTIFIED BY 'uma-senha-forte-aqui';
+GRANT SELECT ON loja.* TO 'relatorio'@'%';      -- só leitura no schema loja
+SHOW GRANTS FOR 'relatorio'@'%';
+REVOKE SELECT ON loja.* FROM 'relatorio'@'%';
+{%- endblock %}{% endembed %}
+                <p>
+                    Princípio do <strong>menor privilégio</strong>: cada usuário recebe só o que precisa. Um sistema que só
+                    lê relatórios não precisa de permissão de <code>DELETE</code>.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Crie um trigger que impeça estoque negativo, transformando qualquer valor negativo em 0 num UPDATE.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+CREATE TRIGGER produto_estoque_minimo
+BEFORE UPDATE ON produto
+FOR EACH ROW
+SET NEW.estoque = GREATEST(NEW.estoque, 0);
+
+UPDATE produto SET estoque = estoque - 999 WHERE id = 3;
+SELECT nome, estoque FROM produto WHERE id = 3;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------+---------+
+| nome    | estoque |
++---------+---------+
+| Caderno |       0 |
++---------+---------+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+    </div>
+
+    <div class="card guia mt-8">
+        <h2>📖 Glossário rápido</h2>
+        <table>
+            <tbody>
+                <tr><td><strong>InnoDB</strong></td><td>O motor de armazenamento padrão do MySQL, com transações e chaves estrangeiras.</td></tr>
+                <tr><td><strong>utf8mb4</strong></td><td>O conjunto de caracteres que aceita qualquer letra do mundo e emoji.</td></tr>
+                <tr><td><strong>Collation</strong></td><td>A regra de comparação e ordenação de texto (se diferencia maiúscula, acento...).</td></tr>
+                <tr><td><strong>Upsert</strong></td><td>"Insere ou atualiza" num comando só.</td></tr>
+                <tr><td><strong>LTS</strong></td><td>Versão com suporte longo, indicada pra produção.</td></tr>
+                <tr><td><strong>MariaDB</strong></td><td>Banco derivado do MySQL, quase 100% compatível no dia a dia.</td></tr>
+            </tbody>
+        </table>
     </div>
 {% endblock %}
