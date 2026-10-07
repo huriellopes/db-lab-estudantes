@@ -1,174 +1,350 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🏛️</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Oracle Database</h1>
-            <p class="mt-1 text-sm text-slate-500">Relacional corporativo, comum em grandes empresas.</p>
-        </div>
-    </div>
-
-    <div class="card mb-6">
-        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
-        <p class="mb-4 text-sm text-slate-500">
-            O Oracle usa um formato de endereço próprio, chamado <strong>TNS</strong>, em vez de só host/porta.
+    <div class="guia mb-6">
+        <p>
+            O <strong>Oracle Database</strong> é um dos bancos relacionais mais antigos e poderosos do mercado (desde
+            1979). Ele é muito comum em bancos, operadoras, governo e grandes empresas, onde roda sistemas que não podem
+            parar. O dialeto dele mistura SQL com <strong>PL/SQL</strong>, uma linguagem de programação completa que roda
+            dentro do banco.
         </p>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <h3 class="field-label">Linha de comando (SQL*Plus)</h3>
-                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>sqlplus USUARIO/SENHA@HOST:1521/SERVICO</code></pre>
-            </div>
-            <div>
-                <h3 class="field-label">Ferramentas GUI comuns</h3>
-                <p class="text-sm text-slate-600">Oracle SQL Developer (gratuita), DataGrip, DBeaver.</p>
-            </div>
-        </div>
-        <div class="mt-4">
-            <h3 class="field-label">Via código (driver PDO OCI do PHP)</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
-    "oci:dbname=//HOST:1521/SERVICO",
-    "USUARIO",
-    "SENHA"
-);</code></pre>
-        </div>
+        <table>
+            <thead><tr><th>Versão / edição</th><th>O que é</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Oracle AI Database 26ai</strong></td><td>A versão atual (outubro de 2025), sucessora da 23ai, com busca vetorial e recursos de IA inclusos.</td></tr>
+                <tr><td><strong>Free</strong></td><td>Edição gratuita pra estudar e desenvolver: até 12 GB de dados e 2 CPUs.</td></tr>
+                <tr><td><strong>Enterprise / Standard</strong></td><td>Edições pagas, pra produção.</td></tr>
+            </tbody>
+        </table>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Como praticar'} %}{% block body %}
+            <p>
+                Use a edição Free em Docker: <code>docker run -e ORACLE_PASSWORD=senha -p 1521:1521 gvenzl/oracle-free</code>,
+                e conecte no serviço <code>FREEPDB1</code> com o SQL Developer, o DBeaver ou o <code>sqlplus</code>.
+                Também dá pra usar o <strong>Oracle Live SQL</strong> no navegador, sem instalar nada. Os resultados
+                aqui são saídas reais do Oracle Free, formatadas como tabela simples.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
 
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Um banco de dados relacional <strong>comercial</strong> (pago, com licenciamento por servidor/
-                núcleo), da empresa Oracle — um dos bancos mais antigos e usados no mundo corporativo. Tem uma
-                versão gratuita limitada (Oracle XE) pra estudo e projetos pequenos.
-            </p>
-        </div>
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Os conceitos que confundem no começo</h2>
+                <table>
+                    <thead><tr><th>No Oracle</th><th>Quer dizer</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Instância</strong></td><td>O programa rodando (memória + processos).</td></tr>
+                        <tr><td><strong>Banco (CDB) e PDB</strong></td><td>Um banco "contêiner" que abriga vários bancos "plugáveis" (PDB). Você trabalha dentro de um PDB, como o <code>FREEPDB1</code>.</td></tr>
+                        <tr><td><strong>Schema = usuário</strong></td><td>No Oracle, cada usuário tem o seu schema. Criar o usuário <code>loja</code> cria o schema <code>loja</code>.</td></tr>
+                        <tr><td><strong>DUAL</strong></td><td>Uma tabela de uma linha só, usada quando você quer calcular algo sem ler tabela nenhuma (nas versões novas, o <code>FROM DUAL</code> é opcional).</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Sistemas corporativos de grande porte — bancos, seguradoras, governo, ERPs (SAP costuma rodar
-                sobre Oracle ou SQL Server) — onde suporte oficial, ferramentas de administração maduras e
-                recursos de alta disponibilidade/desempenho em larga escala pesam mais que o custo da licença.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Quando a empresa já usa Oracle (trocar de banco corporativo é caro e arriscado), quando o
-                projeto exige certificações/suporte contratual formal, ou quando a escala e os recursos de
-                tuning avançado do Oracle realmente fazem diferença. Pra projetos novos, pequenos ou de estudo,
-                costuma valer mais a pena um banco open-source.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                No Oracle, "usuário" e "schema" são basicamente a mesma coisa — cada usuário tem seu próprio
-                schema, e as tabelas que ele cria ficam nele (diferente do MySQL, onde schema/database é uma
-                coisa à parte de quem loga). Por isso raramente se troca de schema no meio de uma sessão como
-                se faz com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">USE</code> no MySQL.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Oracle não tem AUTO_INCREMENT/SERIAL "de fábrica" — usa SEQUENCE
-CREATE SEQUENCE aluno_seq START WITH 1 INCREMENT BY 1;
-
-CREATE TABLE aluno (
-    id    NUMBER PRIMARY KEY,
-    nome  VARCHAR2(100) NOT NULL
+            <div class="card guia">
+                <h2>2. Tipos e tabelas</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle', titulo: 'Oracle — dados de exemplo'} %}{% block code -%}
+CREATE TABLE departamento (
+    id    NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome  VARCHAR2(50) NOT NULL
 );
 
-INSERT INTO aluno (id, nome) VALUES (aluno_seq.NEXTVAL, 'Ana Silva');
+CREATE TABLE empregado (
+    id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome        VARCHAR2(100) NOT NULL,
+    salario     NUMBER(10,2)  NOT NULL,
+    contratado  DATE          NOT NULL,
+    depto_id    NUMBER        REFERENCES departamento (id),
+    gerente_id  NUMBER        REFERENCES empregado (id)
+);
 
--- DUAL: tabela "fantasma" de 1 linha, pra testar expressão sem consultar tabela nenhuma
-SELECT SYSDATE FROM dual;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- FETCH FIRST: forma padrão ANSI de limitar resultado (Oracle 12c+)
-SELECT nome FROM aluno
-ORDER BY nome
-FETCH FIRST 10 ROWS ONLY;</code></pre>
-        </div>
-    </div>
+INSERT INTO departamento (nome) VALUES ('Diretoria');
+INSERT INTO departamento (nome) VALUES ('Tecnologia');
+INSERT INTO departamento (nome) VALUES ('Comercial');
 
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
+INSERT INTO empregado (nome, salario, contratado, depto_id, gerente_id) VALUES ('Helena Duarte', 18000, DATE '2015-01-10', 1, NULL);
+INSERT INTO empregado (nome, salario, contratado, depto_id, gerente_id) VALUES ('Igor Pacheco',  11000, DATE '2018-06-01', 2, 1);
+INSERT INTO empregado (nome, salario, contratado, depto_id, gerente_id) VALUES ('Lara Fontes',   8200,  DATE '2021-09-15', 2, 2);
+INSERT INTO empregado (nome, salario, contratado, depto_id, gerente_id) VALUES ('Nilo Barros',   7600,  DATE '2022-03-20', 3, 1);
+COMMIT;
+{%- endblock %}{% endembed %}
+                <table>
+                    <thead><tr><th>Oracle</th><th>Equivale a</th><th>Detalhe</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>VARCHAR2(n)</code></td><td><code>VARCHAR(n)</code></td><td>o texto padrão do Oracle</td></tr>
+                        <tr><td><code>NUMBER(10,2)</code></td><td><code>DECIMAL(10,2)</code></td><td><code>NUMBER</code> serve pra inteiro e decimal</td></tr>
+                        <tr><td><code>DATE</code></td><td><code>DATETIME</code></td><td><strong>guarda hora também!</strong></td></tr>
+                        <tr><td><code>CLOB</code></td><td><code>TEXT</code></td><td>texto longo</td></tr>
+                        <tr><td><code>DATE '2015-01-10'</code></td><td><code>'2015-01-10'</code></td><td>literal de data no padrão ANSI</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'No Oracle, você precisa do COMMIT'} %}{% block body %}
+                    <p>
+                        Por padrão, as ferramentas do Oracle <strong>não confirmam sozinhas</strong> o que você altera: um
+                        INSERT só vale pra todo mundo depois do <code>COMMIT</code>. Se você fechar sem commitar, as mudanças
+                        se perdem. (No MySQL, cada comando costuma ser confirmado na hora.)
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
 
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                <strong>PL/SQL</strong> — a extensão procedural do Oracle pra SQL (parecida em espírito com o
-                T-SQL do SQL Server): permite escrever lógica de verdade (variáveis, laços, condicionais) dentro
-                do banco, em <em>procedures</em>/<em>functions</em>/<em>triggers</em>.
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>3. Consultas e funções do dia a dia</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+SELECT nome,
+       TO_CHAR(contratado, 'DD/MM/YYYY')                    AS contratacao,
+       TRUNC(MONTHS_BETWEEN(DATE '2026-10-01', contratado) / 12) AS anos_de_casa,
+       NVL(TO_CHAR(gerente_id), 'sem gerente')               AS gerente
+FROM empregado
+ORDER BY contratado;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>TO_CHAR(data, 'formato')</code> formata datas e números como texto.</li>
+                    <li><code>NVL(a, b)</code> devolve b quando a é NULL (o <code>IFNULL</code> do MySQL / <code>COALESCE</code> do padrão).</li>
+                    <li><code>MONTHS_BETWEEN</code> conta meses entre datas.</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+-- Os 2 maiores salários (forma moderna, padrão ANSI)
+SELECT nome, salario
+FROM empregado
+ORDER BY salario DESC
+FETCH FIRST 2 ROWS ONLY;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <p>
+                    Em código antigo você vai ver <code>WHERE ROWNUM &lt;= 2</code>: era o jeito de limitar linhas antes do
+                    <code>FETCH FIRST</code>. Cuidado: o ROWNUM é atribuído <em>antes</em> do ORDER BY, o que causa bugs.
+                </p>
+            </div>
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>Stored procedure</strong> — lógica reutilizável que roda dentro do banco, útil pra regras que precisam de várias etapas em uma transação só.</li>
-                <li><strong>Trigger</strong> — código que dispara sozinho num <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code>, útil pra auditoria ou validação que não dá pra expressar só com constraint.</li>
-                <li><strong>FETCH FIRST n ROWS ONLY</strong> — forma padrão ANSI de limitar resultado (Oracle moderno aceita isso; versões antigas usavam <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROWNUM</code>).</li>
-            </ul>
-        </div>
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Liste cada empregado com o nome do departamento dele.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'oracle', titulo: 'Resposta'} %}{% block code -%}
+SELECT e.nome, d.nome AS departamento
+FROM empregado e
+JOIN departamento d ON d.id = e.depto_id
+ORDER BY d.nome, e.nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                    <p>Repare que no Oracle o apelido de tabela vem sem <code>AS</code> (<code>empregado e</code>). Com <code>AS</code> dá erro.</p>
+                </details>
+            </div>
+        </section>
 
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                PL/SQL quando a regra de negócio precisa rodar muito perto do dado (menos ida e volta com a
-                aplicação) ou quando várias aplicações diferentes precisam da mesma regra garantida — colocando
-                no banco, ninguém escapa dela. Em contrapartida, lógica de negócio dentro do banco é mais difícil
-                de testar/versionar que código na aplicação, então costuma ser reservada pro que realmente
-                precisa estar ali (integridade, auditoria).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Escreva a lógica em PL/SQL só quando ela precisa mesmo estar perto do dado (validação que várias
-                aplicações compartilham, auditoria automática). Pra tudo que é regra específica de uma aplicação
-                só, prefira manter na aplicação — fica mais fácil de testar e não trava a evolução do sistema
-                numa alteração de banco toda vez.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Procedure simples em PL/SQL
-CREATE OR REPLACE PROCEDURE matricular_aluno(
-    p_aluno_id IN NUMBER,
-    p_curso_id IN NUMBER
-) AS
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. PL/SQL: programando dentro do banco</h2>
+                <p>
+                    Um <strong>bloco anônimo</strong> PL/SQL tem três partes: <code>DECLARE</code> (variáveis),
+                    <code>BEGIN</code> (o código) e, opcionalmente, <code>EXCEPTION</code> (tratamento de erro). A barra
+                    <code>/</code> sozinha na linha manda executar o bloco.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+DECLARE
+    v_total   NUMBER;
+    v_media   NUMBER(10,2);
 BEGIN
-    INSERT INTO matricula (aluno_id, curso_id, criado_em)
-    VALUES (p_aluno_id, p_curso_id, SYSDATE);
+    SELECT COUNT(*), AVG(salario) INTO v_total, v_media FROM empregado;
 
-    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Empregados: ' || v_total);
+    DBMS_OUTPUT.PUT_LINE('Média salarial: ' || v_media);
+
+    IF v_media > 10000 THEN
+        DBMS_OUTPUT.PUT_LINE('Folha acima de 10 mil em média');
+    END IF;
+END;
+/
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <p><code>DBMS_OUTPUT.PUT_LINE</code> imprime uma mensagem. No SQL*Plus ou SQL Developer, ligue antes com <code>SET SERVEROUTPUT ON</code>.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Laço sobre o resultado de uma consulta</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+BEGIN
+    FOR emp IN (SELECT nome, salario FROM empregado WHERE depto_id = 2 ORDER BY nome) LOOP
+        DBMS_OUTPUT.PUT_LINE(RPAD(emp.nome, 15) || TO_CHAR(emp.salario, '99G990D00'));
+    END LOOP;
+END;
+/
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Consultas hierárquicas: CONNECT BY</h2>
+                <p>
+                    A tabela <code>empregado</code> tem um auto-relacionamento (<code>gerente_id</code>). O Oracle tem uma
+                    sintaxe própria, bem antiga e muito usada, pra percorrer essa árvore:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+SELECT LEVEL AS nivel,
+       LPAD(' ', (LEVEL - 1) * 2) || nome AS organograma
+FROM empregado
+START WITH gerente_id IS NULL
+CONNECT BY PRIOR id = gerente_id
+ORDER SIBLINGS BY nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <p>O Oracle também aceita a forma padrão, a CTE recursiva (<code>WITH ... UNION ALL</code>), igual nos outros bancos.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>4. LISTAGG e funções analíticas</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+SELECT d.nome AS departamento,
+       COUNT(e.id) AS pessoas,
+       LISTAGG(e.nome, ', ') WITHIN GROUP (ORDER BY e.nome) AS equipe
+FROM departamento d
+LEFT JOIN empregado e ON e.depto_id = d.id
+GROUP BY d.nome
+ORDER BY d.nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Procedures com tratamento de exceção</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+CREATE OR REPLACE PROCEDURE dar_aumento (
+    p_empregado_id IN NUMBER,
+    p_percentual   IN NUMBER
+) AS
+    v_nome empregado.nome%TYPE;
+BEGIN
+    SELECT nome INTO v_nome FROM empregado WHERE id = p_empregado_id;
+
+    UPDATE empregado
+    SET salario = salario * (1 + p_percentual / 100)
+    WHERE id = p_empregado_id;
+
+    DBMS_OUTPUT.PUT_LINE('Aumento aplicado para ' || v_nome);
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Empregado ' || p_empregado_id || ' não existe');
 END;
 /
 
--- Chamando a procedure
 BEGIN
-    matricular_aluno(1, 10);
+    dar_aumento(3, 10);
+    dar_aumento(99, 10);
 END;
-/</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Trigger: audita toda alteração de saldo, sozinho, sem a aplicação pedir
-CREATE OR REPLACE TRIGGER trg_auditoria_conta
-AFTER UPDATE OF saldo ON conta
-FOR EACH ROW
-BEGIN
-    INSERT INTO auditoria_conta (conta_id, saldo_antigo, saldo_novo, quando)
-    VALUES (:OLD.id, :OLD.saldo, :NEW.saldo, SYSDATE);
-END;
-/</code></pre>
-        </div>
+/
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>empregado.nome%TYPE</code> declara a variável com o mesmo tipo da coluna: se a coluna mudar, a variável acompanha.</li>
+                    <li><code>NO_DATA_FOUND</code> é a exceção que um <code>SELECT ... INTO</code> lança quando não acha nada.</li>
+                    <li>Em sistemas grandes, procedures e funções relacionadas são agrupadas em <strong>packages</strong>.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Novidades das versões 23ai e 26ai</h2>
+                <p>A versão 23ai trouxe recursos que outros bancos já tinham e muita gente esperava no Oracle:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+-- Tipo BOOLEAN e IF NOT EXISTS
+CREATE TABLE IF NOT EXISTS tarefa (
+    id        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    titulo    VARCHAR2(100) NOT NULL,
+    concluida BOOLEAN DEFAULT FALSE NOT NULL
+);
+
+-- INSERT de várias linhas de uma vez (antes era uma por comando)
+INSERT INTO tarefa (titulo, concluida) VALUES ('Estudar PL/SQL', TRUE), ('Criar índices', FALSE);
+
+-- SELECT sem FROM DUAL
+SELECT 'Hoje é ' || TO_CHAR(DATE '2026-10-07', 'DD/MM/YYYY') AS mensagem;
+
+SELECT titulo FROM tarefa WHERE NOT concluida;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><strong>JSON Relational Duality</strong>: as mesmas tabelas relacionais podem ser lidas e gravadas como documentos JSON, como se fosse um banco de documentos.</li>
+                    <li><strong>AI Vector Search</strong>: tipo <code>VECTOR</code> e índices vetoriais pra busca por significado, incluídos sem custo extra na versão 26ai.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Flashback: voltar no tempo</h2>
+                <p>
+                    O Oracle guarda por um tempo as versões antigas dos dados (o <em>undo</em>). Com isso dá pra consultar
+                    uma tabela <strong>como ela era</strong> alguns minutos atrás, por exemplo pra recuperar o que alguém
+                    apagou sem querer:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle', skip: true} %}{% block code -%}
+-- Como estava a tabela 10 minutos atrás?
+SELECT * FROM empregado AS OF TIMESTAMP (SYSTIMESTAMP - INTERVAL '10' MINUTE);
+
+-- Recuperar linhas apagadas por engano
+INSERT INTO empregado
+SELECT * FROM empregado AS OF TIMESTAMP (SYSTIMESTAMP - INTERVAL '10' MINUTE)
+WHERE id NOT IN (SELECT id FROM empregado);
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Desempenho: bind variables e plano</h2>
+                <ul>
+                    <li>
+                        <strong>Use bind variables</strong> (<code>WHERE id = :id</code>) em vez de colar o valor no texto da
+                        consulta. O Oracle guarda o plano de cada texto de SQL: com bind variable, a mesma consulta é
+                        reaproveitada milhares de vezes; com o valor colado, cada id vira um SQL novo pra analisar. (E bind
+                        variable também protege contra SQL injection.)
+                    </li>
+                    <li><code>EXPLAIN PLAN FOR ...</code> seguido de <code>SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);</code> mostra o plano de execução.</li>
+                    <li>O Oracle usa <strong>leitura consistente</strong> (versões dos dados, parecido com o MVCC do PostgreSQL): leitura nunca bloqueia escrita.</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
+EXPLAIN PLAN FOR SELECT nome FROM empregado WHERE id = 2;
+
+SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, NULL, 'BASIC'));
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+PENDENTE
+{%- endblock %}{% endembed %}
+                <p>"INDEX UNIQUE SCAN" mostra que o Oracle foi direto na linha pelo índice da chave primária.</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="card guia mt-8">
+        <h2>📖 Quando escolher o Oracle?</h2>
+        <ul>
+            <li>Ambientes corporativos de missão crítica, com alto volume e exigência de disponibilidade (bancos, telecom, governo).</li>
+            <li>Quando a empresa já tem licenças, DBAs e sistemas (como ERPs) construídos em cima dele.</li>
+            <li>O custo de licença é alto. Pra estudar e pra projetos pequenos, a edição Free resolve.</li>
+        </ul>
     </div>
 {% endblock %}

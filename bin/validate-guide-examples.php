@@ -287,11 +287,16 @@ function runCode(string $engine, string $code, bool $asSystem = false): array
     ][$engine];
 
     if ($engine === 'oracle') {
-        $code = "SET FEEDBACK OFF\nSET PAGESIZE 100\nSET LINESIZE 200\nSET TRIMSPOOL ON\nSET SERVEROUTPUT ON\nWHENEVER SQLERROR EXIT FAILURE\n{$code}\nEXIT\n";
+        // LINESIZE no máximo: sem isso uma coluna larga (LISTAGG = VARCHAR2(4000)) quebra a linha.
+        $code = "SET FEEDBACK OFF\nSET PAGESIZE 1000\nSET LINESIZE 32767\nSET TRIMOUT ON\nSET TAB OFF\nSET SERVEROUTPUT ON\nWHENEVER SQLERROR EXIT FAILURE\n{$code}\nEXIT\n";
     }
     if ($engine === 'mongo') {
         // Cada exemplo é um script; sem isso o mongosh imprime o "eco" de cada linha.
         $code .= "\n";
+    }
+    if ($engine === 'mssql' && !$asSystem) {
+        // Sem isso cada INSERT/UPDATE imprime "(N rows affected)" no meio do resultado.
+        $code = "SET NOCOUNT ON;\nGO\n{$code}";
     }
 
     // LANG=C.UTF-8: sem isso o cliente mysql (locale POSIX do container) calcula errado a
@@ -315,6 +320,12 @@ function runCode(string $engine, string $code, bool $asSystem = false): array
     $ok = $exit === 0 && !($engine === 'redis' && preg_match('/^\(error\)/m', $stdout));
     if ($engine === 'mysql') {
         $stdout = realignTables($stdout);
+    }
+    if ($engine === 'mssql') {
+        $stdout = formatSqlcmd($stdout);
+    }
+    if ($engine === 'oracle') {
+        $stdout = formatSqlplus($stdout);
     }
 
     // Só tira linhas em branco das pontas: espaço no começo da 1ª linha faz parte do alinhamento
@@ -380,6 +391,116 @@ function realignTables(string $text): string
     $flush();
 
     return implode("\n", $out);
+}
+
+/**
+ * O sqlcmd com -W -s '|' imprime "col1|col2", uma linha de traços e as linhas, sem alinhar
+ * (sem o -W ele preencheria cada coluna até o tamanho máximo do tipo — 100 espaços pra um
+ * NVARCHAR(100)). Aqui vira uma tabela alinhada no mesmo estilo do psql.
+ */
+function formatSqlcmd(string $text): string
+{
+    $lines = explode("\n", $text);
+    $out = [];
+    for ($i = 0; $i < count($lines); $i++) {
+        $next = $lines[$i + 1] ?? '';
+        if (!preg_match('/^-+(\|-+)*$/', trim($next))) {
+            $out[] = $lines[$i];
+            continue;
+        }
+        $rows = [explode('|', $lines[$i])];
+        $i += 2;
+        // Para na linha em branco ou quando começa outra tabela (sem NOCOUNT o sqlcmd separaria
+        // com "(N rows affected)"; com ele, a tabela seguinte vem colada).
+        while ($i < count($lines) && trim($lines[$i]) !== ''
+            && !preg_match('/^-+(\|-+)*$/', trim($lines[$i + 1] ?? ''))) {
+            $rows[] = explode('|', $lines[$i]);
+            $i++;
+        }
+        $widths = [];
+        $numeric = [];
+        foreach ($rows as $r => $cells) {
+            foreach ($cells as $c => $cell) {
+                $widths[$c] = max($widths[$c] ?? 0, mb_strlen($cell));
+                if ($r > 0) {
+                    $numeric[$c] = ($numeric[$c] ?? true) && preg_match('/^-?\d*\.?\d+$|^NULL$/', $cell);
+                }
+            }
+        }
+        foreach ($rows as $r => $cells) {
+            $parts = [];
+            foreach ($cells as $c => $cell) {
+                $pad = str_repeat(' ', $widths[$c] - mb_strlen($cell));
+                $parts[] = ($r > 0 && ($numeric[$c] ?? false)) ? $pad . $cell : $cell . $pad;
+            }
+            $out[] = ' ' . rtrim(implode(' | ', $parts));
+            if ($r === 0) {
+                $out[] = '-' . implode('-+-', array_map(static fn (int $w): string => str_repeat('-', $w), $widths)) . '-';
+            }
+        }
+        $out[] = '';
+        $i--;
+    }
+
+    return rtrim(implode("\n", $out));
+}
+
+/**
+ * O SQL*Plus preenche cada coluna até o tamanho declarado (um VARCHAR2(100) vira 100 espaços).
+ * As posições das colunas saem da linha de traços embaixo do cabeçalho; aqui a tabela é
+ * remontada alinhada, no mesmo estilo das outras engines.
+ */
+function formatSqlplus(string $text): string
+{
+    $lines = explode("\n", $text);
+    $out = [];
+    for ($i = 0; $i < count($lines); $i++) {
+        $line = $lines[$i];
+        if (!preg_match('/^-+( +-+)*$/', rtrim($line)) || $out === []) {
+            $out[] = $line;
+            continue;
+        }
+        $header = array_pop($out);
+        preg_match_all('/-+/', $line, $groups, PREG_OFFSET_CAPTURE);
+        $starts = array_map(static fn (array $g): int => $g[1], $groups[0]);
+        $slice = static function (string $row) use ($starts): array {
+            $cells = [];
+            foreach ($starts as $k => $start) {
+                $end = $starts[$k + 1] ?? null;
+                $cells[] = trim($end === null ? mb_substr($row, $start) : mb_substr($row, $start, $end - $start));
+            }
+
+            return $cells;
+        };
+        $rows = [$slice($header)];
+        for ($i++; $i < count($lines) && trim($lines[$i]) !== ''; $i++) {
+            $rows[] = $slice($lines[$i]);
+        }
+        $widths = [];
+        $numeric = [];
+        foreach ($rows as $r => $cells) {
+            foreach ($cells as $c => $cell) {
+                $widths[$c] = max($widths[$c] ?? 0, mb_strlen($cell));
+                if ($r > 0) {
+                    $numeric[$c] = ($numeric[$c] ?? true) && preg_match('/^-?[\d.,]+$/', $cell);
+                }
+            }
+        }
+        foreach ($rows as $r => $cells) {
+            $parts = [];
+            foreach ($cells as $c => $cell) {
+                $pad = str_repeat(' ', $widths[$c] - mb_strlen($cell));
+                $parts[] = ($r > 0 && ($numeric[$c] ?? false)) ? $pad . $cell : $cell . $pad;
+            }
+            $out[] = ' ' . rtrim(implode(' | ', $parts));
+            if ($r === 0) {
+                $out[] = '-' . implode('-+-', array_map(static fn (int $w): string => str_repeat('-', $w), $widths)) . '-';
+            }
+        }
+        $out[] = '';
+    }
+
+    return rtrim(implode("\n", $out));
 }
 
 /** Compara ignorando espaços repetidos e linhas em branco — o que importa é o conteúdo. */
