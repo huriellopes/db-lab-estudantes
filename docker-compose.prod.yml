@@ -1,13 +1,9 @@
-# Stack de produção (Contabo) — mesmo padrão dos outros projetos em /apps/*:
-# app e phpMyAdmin são publicados pelo Nginx Proxy Manager já existente, através da rede
-# externa 'proxy' (criada pela stack do NPM) — declarada abaixo, sem precisar de
-# `docker network connect` manual depois do `up`.
+# Stack de produção: app e phpMyAdmin são publicados por um proxy reverso já existente no
+# servidor (que termina o TLS), através da rede externa 'proxy' — declarada abaixo, sem
+# precisar de `docker network connect` manual depois do `up`.
 #
-# O MySQL é público (0.0.0.0), de propósito, pra dar pra conectar direto por qualquer
-# SGBD local sem precisar de túnel SSH (decisão explícita — ver SECURITY.md, "MySQL
-# público"). TLS disponível (certificado autoassinado que o próprio MySQL já gera) pra
-# quem ligar "usar SSL" no cliente; não é obrigatório porque forçar isso quebraria a
-# conexão interna da própria app sem retrabalho considerável.
+# O MySQL aceita conexão direta, de propósito, pra alunos usarem o SGBD que preferirem —
+# as camadas que protegem isso estão no SECURITY.md ("MySQL acessível diretamente").
 services:
   mysql:
     image: mysql:8.0.46
@@ -46,8 +42,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       # Root só via socket/localhost de dentro do container (healthcheck, manutenção com
       # `docker compose exec`). Sem isso a imagem cria root@'%' — senha de root aberta pra
-      # força bruta na porta pública. Só vale na criação do volume; em volume já existente
-      # ver SECURITY.md ("root@'%'") pra remover na mão.
+      # força bruta na porta pública. Só vale na criação do volume (em volume antigo, revise
+      # as contas root em mysql.user).
       MYSQL_ROOT_HOST: localhost
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
@@ -55,8 +51,8 @@ services:
     volumes:
       - dblab-mysql-data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d:ro
-    # Porta própria (13306) pra não colidir com outros bancos do servidor. Pública de
-    # propósito (0.0.0.0) — conexão direta por SGBD local, sem túnel SSH.
+    # Porta configurável (MYSQL_PORT) pra não colidir com outros serviços do servidor.
+    # Pública de propósito — conexão direta por SGBD local.
     ports:
       - "${MYSQL_PORT}:3306"
     healthcheck:
@@ -65,7 +61,7 @@ services:
       timeout: 5s
       retries: 10
     # Sem isso, o log do container (docker logs) cresce sem limite — em anos de uptime,
-    # já vi disco cheio derrubar servidor inteiro (todos os apps de /apps/*, não só esse).
+    # disco cheio derruba o servidor inteiro, não só esta app.
     # 10MB x 3 arquivos por serviço é bastante pra debugar sem virar risco de disco cheio.
     logging:
       driver: json-file
@@ -83,9 +79,8 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       UPLOAD_LIMIT: 64M
-    # 127.0.0.1 continua aberto (acesso via túnel SSH direto, sem depender do domínio
-    # público) — o acesso público de verdade é feito pelo Nginx Proxy Manager, via rede
-    # 'proxy' abaixo, apontando pro container na porta 80.
+    # Só em 127.0.0.1 (acesso de manutenção por túnel SSH) — o acesso público passa pelo
+    # proxy reverso, via rede 'proxy' abaixo, apontando pro container na porta 80.
     ports:
       - "127.0.0.1:${PMA_PORT}:80"
     depends_on:
@@ -162,7 +157,7 @@ volumes:
 networks:
   dblab-net:
     name: dblab-net
-  # Rede do Nginx Proxy Manager, já existente no servidor — não é criada por este projeto.
+  # Rede do proxy reverso, já existente no servidor — não é criada por este projeto.
   proxy:
     external: true
     name: proxy

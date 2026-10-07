@@ -35,7 +35,7 @@ LOAD_VUS=30 LOAD_DURATION=1m k6 run k6/load-test.js
 Contra outra URL (ex.: ambiente de homologação):
 
 ```bash
-BASE_URL=https://dblab.217.76.60.113.sslip.io k6 run k6/load-test.js
+BASE_URL=https://homologacao.seu-dominio.com k6 run k6/load-test.js
 ```
 
 ## Variáveis de ambiente

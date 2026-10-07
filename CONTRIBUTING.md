@@ -1,7 +1,7 @@
 # Fluxo de branches
 
 ```
-feature/xyz  →  PR  →  dev  →  PR  →  main  →  deploy automático (Contabo)
+feature/xyz  →  PR  →  dev  →  PR  →  main  →  deploy automático
 ```
 
 - **Nunca commite direto em `dev` ou `main`.** Toda mudança começa numa branch nova a
@@ -53,4 +53,4 @@ Numa emergência (ou falso positivo de segredo): `git push --no-verify` ou
 
 ## Deploy em produção
 
-Veja a seção "Produção (Contabo)" no [README](README.md#produção-contabo).
+Veja a seção "Produção" no [README](README.md#️-produção).
