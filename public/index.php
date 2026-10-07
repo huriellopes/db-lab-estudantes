@@ -91,6 +91,11 @@ session_set_cookie_params([
 ]);
 session_start();
 
+// Revalida a sessão logada contra o banco (conta desativada/excluída, senha trocada, papel
+// alterado, timeout) — ver App\Core\Auth::enforceSession(). Antes do attemptRememberLogin
+// de propósito: uma sessão que acabou de expirar pode ser reaberta pelo cookie na sequência.
+Auth::enforceSession();
+
 // Sem sessão ativa, mas com um cookie "lembrar de mim" válido? Reabre sozinho — ver
 // App\Core\Auth::attemptRememberLogin(). Roda uma vez só, aqui, antes de qualquer rota.
 Auth::attemptRememberLogin();

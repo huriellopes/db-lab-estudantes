@@ -71,6 +71,18 @@ final class RememberToken
             ->execute([self::hash($plainToken)]);
     }
 
+    /**
+     * Derruba os tokens de TODOS os dispositivos da conta — usado quando a senha muda ou a
+     * conta é desativada/excluída. Sem isso, um cookie de "lembrar de mim" roubado
+     * continuava reabrindo sessão por até TTL_DAYS mesmo depois da troca de senha.
+     */
+    public static function revokeAllFor(int $userId): void
+    {
+        Database::connection()
+            ->prepare('DELETE FROM remember_tokens WHERE user_id = ?')
+            ->execute([$userId]);
+    }
+
     private static function insert(PDO $pdo, int $userId): string
     {
         $plainToken = bin2hex(random_bytes(32));

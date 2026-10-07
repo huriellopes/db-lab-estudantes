@@ -35,6 +35,11 @@ final class UpdatePasswordAction extends Action
 
         try {
             UserManager::resetPassword($user, $newPassword);
+            // resetPassword derrubou todas as sessões e cookies de lembrar (inclusive os
+            // daqui) — sincroniza esta sessão com o session_version novo pra ela continuar
+            // valendo, e reemite o "manter conectado" deste navegador se ele tinha um.
+            Auth::refresh(User::find($user->id));
+            Auth::keepRememberedDevice($user->id);
             // Mantém o console SQL funcionando sem exigir novo login.
             Auth::refreshMysqlPassword($newPassword);
             $this->respond(true, 'Senha atualizada com sucesso.', '/profile');

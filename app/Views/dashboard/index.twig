@@ -40,10 +40,10 @@
                     <label for="label" class="field-label">Nome do schema</label>
                     <div class="flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
                         <span class="flex items-center whitespace-nowrap border-r border-slate-200 bg-slate-50 pl-3 pr-1 text-sm text-slate-400">
-                            {{ user.mysqlLogin }}__
+                            {{ schemaPrefix }}__
                         </span>
                         <input
-                            type="text" id="label" name="label" pattern="[A-Za-z0-9_]{1,40}" maxlength="40" required
+                            type="text" id="label" name="label" pattern="[A-Za-z0-9][A-Za-z0-9_]{0,39}" maxlength="40" required
                             placeholder="biologia_2026"
                             class="w-full border-0 bg-transparent px-2 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
                         >
@@ -141,8 +141,8 @@
 
             <p class="text-xs text-slate-500" x-show="!schema" x-cloak>
                 Sem schema selecionado: dá pra criar o primeiro rodando algo como
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">CREATE DATABASE {{ user.mysqlLogin }}__meu_schema;</code>
-                aqui embaixo — o nome precisa começar com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">{{ user.mysqlLogin }}__</code>.
+                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">CREATE DATABASE {{ schemaPrefix }}__meu_schema;</code>
+                aqui embaixo — o nome precisa começar com <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">{{ schemaPrefix }}__</code>.
                 Ele aparece na lista acima assim que for criado.
             </p>
 
