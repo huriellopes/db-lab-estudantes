@@ -491,4 +491,4 @@ em modo dev (hot-reload) em vez do build estático, defina `VITE_DEV_SERVER_URL=
 
 ## 🏷️ Créditos
 
-Desenvolvido por **[Hurvion Systems](https://hurvionsystems.cantinbr.com.br)**. Código-fonte: [github.com/huriellopes/db-lab-estudantes](https://github.com/huriellopes/db-lab-estudantes).
+Desenvolvido por **[Hurvion Systems](https://hurvionsystems.vercel.app)**. Código-fonte: [github.com/huriellopes/db-lab-estudantes](https://github.com/huriellopes/db-lab-estudantes).
