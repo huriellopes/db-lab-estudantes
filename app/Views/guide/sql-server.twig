@@ -1,162 +1,440 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🪟</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">SQL Server</h1>
-            <p class="mt-1 text-sm text-slate-500">Relacional da Microsoft, forte no ecossistema .NET/Windows.</p>
-        </div>
+    <div class="guia mb-6">
+        <p>
+            O <strong>SQL Server</strong> é o banco relacional da Microsoft, muito usado em empresas que trabalham com
+            Windows, .NET, Power BI e a nuvem Azure. O dialeto de SQL dele se chama <strong>T-SQL</strong>
+            (<em>Transact-SQL</em>): é o mesmo SQL que você já conhece, com algumas palavras diferentes e uma linguagem
+            de programação embutida (variáveis, IF, laços).
+        </p>
+        <table>
+            <thead><tr><th>Edição</th><th>Pra quem</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Express</strong></td><td>Gratuita, pra aplicações pequenas (tem limite de tamanho do banco).</td></tr>
+                <tr><td><strong>Developer</strong></td><td>Gratuita e completa, mas só pra desenvolvimento e estudo (não pode ir pra produção).</td></tr>
+                <tr><td><strong>Standard / Enterprise</strong></td><td>Pagas, pra produção.</td></tr>
+            </tbody>
+        </table>
+        <p>
+            A versão mais recente é o <strong>SQL Server 2025</strong> (lançado em novembro de 2025), que trouxe tipo
+            JSON nativo, expressões regulares e busca vetorial pra aplicações de IA. Ele roda no Windows, no Linux e em
+            Docker. Pra conectar, as ferramentas mais comuns são o <strong>SSMS</strong> (SQL Server Management Studio),
+            a extensão <strong>MSSQL</strong> do VS Code e o <code>sqlcmd</code> no terminal.
+        </p>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Como praticar'} %}{% block body %}
+            <p>
+                O console do laboratório é MySQL, então os exemplos desta página rodam num SQL Server. O jeito mais fácil:
+                <code>docker run -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=UmaSenha_Forte1 -p 1433:1433 mcr.microsoft.com/mssql/server:2025-latest</code>
+                e conectar com usuário <code>sa</code>. Os resultados aqui são saídas reais do SQL Server 2025, mostradas
+                em formato de tabela simples.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="card mb-6">
-        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
-        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 1433.</p>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <h3 class="field-label">Linha de comando (sqlcmd)</h3>
-                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>sqlcmd -S HOST,1433 -U USUARIO -P SENHA -d SCHEMA</code></pre>
-            </div>
-            <div>
-                <h3 class="field-label">Ferramentas GUI comuns</h3>
-                <p class="text-sm text-slate-600">SQL Server Management Studio (SSMS), Azure Data Studio, DataGrip, DBeaver.</p>
-            </div>
-        </div>
-        <div class="mt-4">
-            <h3 class="field-label">Via código (driver PDO SQLSRV do PHP)</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$pdo = new PDO(
-    "sqlsrv:Server=HOST,1433;Database=SCHEMA",
-    "USUARIO",
-    "SENHA"
-);</code></pre>
-        </div>
-    </div>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Banco de dados relacional da Microsoft. Assim como o Oracle, é comercial (tem uma edição gratuita
-                limitada, a Express), historicamente mais forte no mundo Windows, mas hoje roda em Linux e
-                containers também.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                A mesma coisa de qualquer relacional, com integração forte ao ecossistema Microsoft: aplicações
-                .NET/C#, Active Directory pra autenticação, e uma suíte de ferramentas de BI (SSRS pra relatório,
-                SSAS pra cubos analíticos, SSIS pra ETL) que muitas empresas já usam.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Times/empresas já dentro do ecossistema Microsoft (.NET, Azure, Active Directory), ou quando as
-                ferramentas de BI integradas (relatórios, dashboards, ETL) pesam na decisão. Fora desse contexto,
-                a escolha costuma ser mais sobre preferência/contrato do que sobre um recurso técnico que só o
-                SQL Server tem.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Um servidor SQL Server hospeda vários <em>databases</em>; pra trocar de um pro outro na mesma
-                sessão, usa-se <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">USE nome_do_banco;</code>, igual ao MySQL. Strings usam o prefixo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">N</code> (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">N'texto'</code>)
-                quando a coluna é <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NVARCHAR</code> (Unicode) — sem isso, acento pode não gravar certo.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- IDENTITY é o "AUTO_INCREMENT" do SQL Server
-CREATE TABLE tarefa (
-    id     INT IDENTITY(1,1) PRIMARY KEY,
-    titulo NVARCHAR(150) NOT NULL
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Criando tabelas em T-SQL</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql', titulo: 'SQL Server — dados de exemplo'} %}{% block code -%}
+CREATE TABLE funcionario (
+    id          INT IDENTITY(1,1) PRIMARY KEY,   -- começa em 1, soma 1
+    nome        NVARCHAR(100) NOT NULL,           -- N = aceita acentos/qualquer idioma
+    setor       NVARCHAR(50)  NOT NULL,
+    salario     DECIMAL(10,2) NOT NULL,
+    admitido_em DATE NOT NULL,
+    ativo       BIT NOT NULL DEFAULT 1            -- BIT = 0 ou 1
 );
 
-INSERT INTO tarefa (titulo) VALUES (N'Estudar T-SQL');
+INSERT INTO funcionario (nome, setor, salario, admitido_em) VALUES
+    (N'Joana Freitas', N'TI',         7500.00, '2021-03-01'),
+    (N'Marcos Vieira', N'TI',         5200.00, '2023-07-15'),
+    (N'Sônia Araújo',  N'Financeiro', 6100.00, '2019-11-20'),
+    (N'Caio Mendes',   N'Vendas',     4300.00, '2024-02-05');
+{%- endblock %}{% endembed %}
+                <p>As diferenças que mais aparecem no começo:</p>
+                <table>
+                    <thead><tr><th>T-SQL</th><th>MySQL</th><th>Significa</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>IDENTITY(1,1)</code></td><td><code>AUTO_INCREMENT</code></td><td>id automático</td></tr>
+                        <tr><td><code>NVARCHAR</code> e <code>N'texto'</code></td><td><code>VARCHAR</code> (utf8mb4)</td><td>texto com acentos de qualquer idioma</td></tr>
+                        <tr><td><code>BIT</code></td><td><code>BOOLEAN</code>/<code>TINYINT(1)</code></td><td>verdadeiro/falso como 1/0</td></tr>
+                        <tr><td><code>SELECT TOP 3</code></td><td><code>LIMIT 3</code></td><td>primeiras linhas</td></tr>
+                        <tr><td><code>GETDATE()</code></td><td><code>NOW()</code></td><td>data e hora atual</td></tr>
+                        <tr><td><code>'a' + 'b'</code> ou <code>CONCAT</code></td><td><code>CONCAT</code></td><td>juntar textos</td></tr>
+                        <tr><td><code>[nome estranho]</code></td><td><code>`nome estranho`</code></td><td>nome de coluna com espaço/palavra reservada</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
--- TOP: sintaxe do SQL Server pra limitar resultado (vem ANTES das colunas, não depois)
-SELECT TOP 10 * FROM tarefa ORDER BY id DESC;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Listar bancos e tabelas (metadados do próprio SQL Server)
-SELECT name FROM sys.databases;
-SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES;</code></pre>
-        </div>
-    </div>
+            <div class="card guia">
+                <h2>2. Consultando</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+SELECT TOP 2 nome, salario
+FROM funcionario
+ORDER BY salario DESC;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | salario
+---------------+---------
+ Joana Freitas | 7500.00
+ Sônia Araújo  | 6100.00
+{%- endblock %}{% endembed %}
 
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+SELECT nome,
+       setor,
+       FORMAT(admitido_em, 'dd/MM/yyyy')               AS admissao,
+       DATEDIFF(YEAR, admitido_em, '2026-10-01')        AS anos_de_casa,
+       UPPER(LEFT(nome, CHARINDEX(' ', nome) - 1))      AS primeiro_nome
+FROM funcionario
+WHERE setor = N'TI'
+ORDER BY admitido_em;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | setor | admissao   | anos_de_casa | primeiro_nome
+---------------+-------+------------+--------------+---------------
+ Joana Freitas | TI    | 01/03/2021 |            5 | JOANA
+ Marcos Vieira | TI    | 15/07/2023 |            3 | MARCOS
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>DATEDIFF(unidade, início, fim)</code> conta quantas unidades (anos, meses, dias) há entre duas datas.</li>
+                    <li><code>LEFT(texto, n)</code> pega os n primeiros caracteres; <code>CHARINDEX</code> acha a posição de um texto dentro de outro.</li>
+                </ul>
+            </div>
 
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                <strong>T-SQL</strong> (Transact-SQL) é a extensão procedural do SQL Server — parecida em
-                objetivo com o PL/SQL do Oracle: variáveis, controle de fluxo, <em>stored procedures</em> e
-                <em>triggers</em> rodando dentro do banco.
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>3. GO: o "separador de lotes"</h2>
+                <p>
+                    Nas ferramentas da Microsoft você vai ver muito a palavra <code>GO</code> sozinha numa linha. Ela
+                    <strong>não é SQL</strong>: é um aviso pra ferramenta (SSMS, sqlcmd) mandar tudo que está acima como um
+                    lote. Alguns comandos, como <code>CREATE VIEW</code> e <code>CREATE PROCEDURE</code>, precisam ser o
+                    primeiro comando do lote, por isso aparecem logo depois de um <code>GO</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+CREATE VIEW vw_ti AS
+SELECT nome, salario FROM funcionario WHERE setor = N'TI';
+GO
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>Stored procedure</strong> — lógica reutilizável no banco, chamada por nome em vez de reenviar SQL toda vez.</li>
-                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code></strong> — um comando só pra "insere se não existe, atualiza se já existe" (upsert), sem precisar de duas queries separadas.</li>
-                <li><strong>Índice columnstore</strong> — pensado pra consultas analíticas (somar/agregar muitas linhas), bem diferente de um índice comum otimizado pra achar poucas linhas rápido.</li>
-            </ul>
-        </div>
+SELECT * FROM vw_ti ORDER BY nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | salario
+---------------+---------
+ Joana Freitas | 7500.00
+ Marcos Vieira | 5200.00
+{%- endblock %}{% endembed %}
+            </div>
 
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Stored procedure quando a mesma lógica é chamada de vários lugares (aplicação, job agendado,
-                relatório) e faz sentido centralizar. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code> quando o padrão "upsert" é comum no
-                sistema (ex.: sincronizar dados vindos de outro sistema). Columnstore quando a tabela é grande e
-                as consultas são majoritariamente analíticas (somas, médias) em vez de buscar registros
-                individuais.
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Mostre o funcionário mais antigo da empresa.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mssql', titulo: 'Resposta'} %}{% block code -%}
+SELECT TOP 1 nome, admitido_em FROM funcionario ORDER BY admitido_em;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome         | admitido_em
+--------------+-------------
+ Sônia Araújo | 2019-11-20
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Mostre a média salarial por setor, da maior pra menor.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mssql', titulo: 'Resposta'} %}{% block code -%}
+SELECT setor, AVG(salario) AS media
+FROM funcionario
+GROUP BY setor
+ORDER BY media DESC;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+ setor      | media
+------------+-------------
+ TI         | 6350.000000
+ Financeiro | 6100.000000
+ Vendas     | 4300.000000
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
 
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Centralize numa stored procedure quando a mesma operação é chamada por mais de um lugar
-                (aplicação web, job agendado no SQL Server Agent, relatório). Use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code> só quando o
-                "insere ou atualiza" for realmente a operação natural — pra um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code> comum, forçar um
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">MERGE</code> só deixa a query mais difícil de ler à toa.
-            </p>
-        </div>
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Variáveis e lógica dentro do SQL</h2>
+                <p>T-SQL deixa você programar: declarar variáveis, usar IF e laços.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+DECLARE @aumento DECIMAL(4,2) = 0.10;   -- 10%
+DECLARE @setor   NVARCHAR(50) = N'TI';
 
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Stored procedure simples em T-SQL
-CREATE PROCEDURE MatricularAluno
-    @AlunoId INT,
-    @CursoId INT
+IF EXISTS (SELECT 1 FROM funcionario WHERE setor = @setor)
+    SELECT nome,
+           salario,
+           salario * (1 + @aumento) AS salario_com_aumento
+    FROM funcionario
+    WHERE setor = @setor
+    ORDER BY nome;
+ELSE
+    PRINT N'Setor sem funcionários';
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | salario | salario_com_aumento
+---------------+---------+---------------------
+ Joana Freitas | 7500.00 |           8250.0000
+ Marcos Vieira | 5200.00 |           5720.0000
+{%- endblock %}{% endembed %}
+                <p>Variáveis sempre começam com <code>@</code>. <code>PRINT</code> escreve uma mensagem (aparece na aba "Mensagens" do SSMS).</p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. OUTPUT: ver o que foi alterado</h2>
+                <p>
+                    O equivalente ao <code>RETURNING</code> do PostgreSQL. <code>INSERTED</code> é a linha como ficou, e
+                    <code>DELETED</code> é como era antes:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+UPDATE funcionario
+SET salario = salario * 1.05
+OUTPUT INSERTED.nome, DELETED.salario AS antes, INSERTED.salario AS depois
+WHERE setor = N'Vendas';
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome        | antes   | depois
+-------------+---------+---------
+ Caio Mendes | 4300.00 | 4515.00
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Paginação com OFFSET / FETCH</h2>
+                <p>Pra mostrar "página 2, com 2 por página" (o <code>LIMIT 2 OFFSET 2</code> do MySQL):</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+SELECT nome
+FROM funcionario
+ORDER BY nome
+OFFSET 2 ROWS FETCH NEXT 2 ROWS ONLY;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome
+---------------
+ Marcos Vieira
+ Sônia Araújo
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Transação com tratamento de erro (TRY/CATCH)</h2>
+                <p>
+                    O padrão profissional em T-SQL: se qualquer comando falhar, cai no <code>CATCH</code>, que desfaz tudo.
+                    Aqui o segundo UPDATE quebra de propósito (divisão por zero):
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+BEGIN TRY
+    BEGIN TRANSACTION;
+    UPDATE funcionario SET salario = salario + 100 WHERE id = 1;
+    UPDATE funcionario SET salario = salario / 0    WHERE id = 2;   -- erro!
+    COMMIT;
+END TRY
+BEGIN CATCH
+    ROLLBACK;
+    SELECT ERROR_NUMBER() AS erro, ERROR_MESSAGE() AS mensagem;
+END CATCH;
+
+SELECT nome, salario FROM funcionario WHERE id = 1;   -- continua igual
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ erro | mensagem
+------+-----------------------------------
+ 8134 | Divide by zero error encountered.
+
+ nome          | salario
+---------------+---------
+ Joana Freitas | 7500.00
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. MERGE: sincronizar duas tabelas</h2>
+                <p>
+                    <code>MERGE</code> compara uma tabela de origem com a de destino e, num comando só, atualiza o que
+                    existe, insere o que falta e (se quiser) apaga o que sobrou. Útil pra importar planilhas.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+CREATE TABLE #importacao (nome NVARCHAR(100), setor NVARCHAR(50), salario DECIMAL(10,2));
+INSERT INTO #importacao VALUES
+    (N'Joana Freitas', N'TI',     7800.00),   -- já existe: atualiza o salário
+    (N'Rita Campos',   N'Vendas', 4500.00);   -- não existe: insere
+
+MERGE funcionario AS destino
+USING #importacao AS origem
+    ON destino.nome = origem.nome
+WHEN MATCHED THEN
+    UPDATE SET destino.salario = origem.salario
+WHEN NOT MATCHED THEN
+    INSERT (nome, setor, salario, admitido_em)
+    VALUES (origem.nome, origem.setor, origem.salario, '2026-10-01');
+
+SELECT nome, setor, salario FROM funcionario ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | setor      | salario
+---------------+------------+---------
+ Joana Freitas | TI         | 7800.00
+ Marcos Vieira | TI         | 5200.00
+ Sônia Araújo  | Financeiro | 6100.00
+ Caio Mendes   | Vendas     | 4515.00
+ Rita Campos   | Vendas     | 4500.00
+{%- endblock %}{% endembed %}
+                <p>
+                    <code>#importacao</code> é uma <strong>tabela temporária</strong>: existe só durante a sua conexão e
+                    some sozinha depois.
+                </p>
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Stored procedures</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+CREATE PROCEDURE dbo.reajustar_setor
+    @setor      NVARCHAR(50),
+    @percentual DECIMAL(5,2)
 AS
 BEGIN
-    INSERT INTO matricula (aluno_id, curso_id, criado_em)
-    VALUES (@AlunoId, @CursoId, GETDATE());
+    SET NOCOUNT ON;
+    UPDATE funcionario
+    SET salario = salario * (1 + @percentual / 100)
+    WHERE setor = @setor AND ativo = 1;
+
+    SELECT nome, salario FROM funcionario WHERE setor = @setor ORDER BY nome;
 END;
 GO
 
--- Chamando a procedure
-EXEC MatricularAluno @AlunoId = 1, @CursoId = 10;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- MERGE: upsert num comando só
-MERGE INTO estoque AS alvo
-USING (SELECT 42 AS produto_id, 10 AS quantidade) AS novo
-ON alvo.produto_id = novo.produto_id
-WHEN MATCHED THEN
-    UPDATE SET alvo.quantidade = alvo.quantidade + novo.quantidade
-WHEN NOT MATCHED THEN
-    INSERT (produto_id, quantidade) VALUES (novo.produto_id, novo.quantidade);</code></pre>
-        </div>
+EXEC dbo.reajustar_setor @setor = N'Financeiro', @percentual = 8;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome         | salario
+--------------+---------
+ Sônia Araújo | 6588.00
+{%- endblock %}{% endembed %}
+                <p><code>dbo</code> é o schema padrão do SQL Server ("database owner"), como o <code>public</code> do PostgreSQL.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Funções de janela e CTE</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+WITH ranking AS (
+    SELECT nome, setor, salario,
+           DENSE_RANK() OVER (PARTITION BY setor ORDER BY salario DESC) AS posicao,
+           salario - AVG(salario) OVER (PARTITION BY setor)            AS diferenca_da_media
+    FROM funcionario
+)
+SELECT * FROM ranking ORDER BY setor, posicao;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | setor      | salario | posicao | diferenca_da_media
+---------------+------------+---------+---------+--------------------
+ Sônia Araújo  | Financeiro | 6588.00 |       1 |            .000000
+ Joana Freitas | TI         | 7800.00 |       1 |        1300.000000
+ Marcos Vieira | TI         | 5200.00 |       2 |       -1300.000000
+ Caio Mendes   | Vendas     | 4515.00 |       1 |           7.500000
+ Rita Campos   | Vendas     | 4500.00 |       2 |          -7.500000
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Novidades do SQL Server 2025</h2>
+                <p><strong>Tipo JSON nativo</strong> (antes, JSON era guardado em NVARCHAR):</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+CREATE TABLE perfil (
+    funcionario_id INT PRIMARY KEY REFERENCES funcionario (id),
+    dados          JSON NOT NULL
+);
+
+INSERT INTO perfil VALUES
+    (1, '{"linguagens": ["SQL", "C#"], "remoto": true}'),
+    (2, '{"linguagens": ["Python"], "remoto": false}');
+
+SELECT f.nome,
+       JSON_VALUE(p.dados, '$.remoto')  AS remoto,
+       JSON_QUERY(p.dados, '$.linguagens') AS linguagens
+FROM perfil p
+JOIN funcionario f ON f.id = p.funcionario_id
+ORDER BY f.id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome          | remoto | linguagens
+---------------+--------+--------------
+ Joana Freitas | true   | ["SQL","C#"]
+ Marcos Vieira | false  | ["Python"]
+{%- endblock %}{% endembed %}
+
+                <p><strong>Expressões regulares</strong> direto no SQL:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+-- Nome e sobrenome, só com letras SEM acento
+SELECT nome
+FROM funcionario
+WHERE REGEXP_LIKE(nome, '^[A-Z][a-z]+ [A-Z][a-z]+$')
+ORDER BY nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ nome
+---------------
+ Caio Mendes
+ Joana Freitas
+ Marcos Vieira
+ Rita Campos
+{%- endblock %}{% endembed %}
+
+                <p>
+                    <strong>Tipo VECTOR</strong>: guarda "embeddings" (listas de números que representam o significado de um
+                    texto ou imagem, gerados por modelos de IA) e mede a distância entre eles. Quanto menor a distância,
+                    mais parecido o significado:
+                </p>
+                <p>
+                    Repare que a Sônia Araújo ficou de fora: <code>[a-z]</code> só cobre as letras sem acento. Pra aceitar
+                    acentos, use <code>\p{L}</code> (qualquer letra de qualquer idioma) no lugar de <code>[a-z]</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mssql'} %}{% block code -%}
+DECLARE @gato     VECTOR(3) = '[0.9, 0.1, 0.0]';
+DECLARE @felino   VECTOR(3) = '[0.8, 0.2, 0.1]';
+DECLARE @planilha VECTOR(3) = '[0.0, 0.1, 0.9]';
+
+SELECT CAST(VECTOR_DISTANCE('cosine', @gato, @felino)   AS DECIMAL(5,3)) AS gato_vs_felino,
+       CAST(VECTOR_DISTANCE('cosine', @gato, @planilha) AS DECIMAL(5,3)) AS gato_vs_planilha;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ gato_vs_felino | gato_vs_planilha
+----------------+------------------
+           .016 |             .988
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Desempenho: plano de execução e isolamento</h2>
+                <ul>
+                    <li>No SSMS, <strong>Ctrl+M</strong> liga o "plano de execução real": um desenho de cada etapa da consulta. Procure por <em>Table Scan</em> / <em>Clustered Index Scan</em> em tabelas grandes (leitura da tabela inteira) e pelos avisos amarelos de índice faltando.</li>
+                    <li><code>SET STATISTICS IO ON;</code> mostra quantas páginas cada consulta leu, uma medida melhor que o tempo.</li>
+                    <li>Por padrão, leituras e escritas podem se bloquear. Ligar <code>READ_COMMITTED_SNAPSHOT</code> no banco faz as leituras usarem versões das linhas (parecido com o MVCC do PostgreSQL) e reduz muito os bloqueios.</li>
+                    <li>A <strong>chave primária vira o índice clusterizado</strong> por padrão: a tabela fica fisicamente ordenada por ela. Por isso uma PK que cresce sempre (<code>IDENTITY</code>) é mais eficiente que um GUID aleatório.</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <div class="card guia mt-8">
+        <h2>📖 Quando escolher o SQL Server?</h2>
+        <ul>
+            <li>Empresas que já usam o ecossistema Microsoft: .NET/C#, Windows Server, Power BI, Azure.</li>
+            <li>Quando você precisa das ferramentas integradas de relatórios (SSRS), integração de dados (SSIS) e análise (SSAS).</li>
+            <li>Atenção ao custo de licença em produção. Pra estudar, a edição Developer é gratuita e completa.</li>
+        </ul>
     </div>
 {% endblock %}

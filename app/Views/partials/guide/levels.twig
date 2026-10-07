@@ -1,0 +1,10 @@
+{# Abas de nível do guia. Precisa estar dentro de um x-data="guideLevels" (ver resources/js/app.js). #}
+<div class="sticky top-0 z-10 -mx-1 mb-6 flex flex-wrap gap-2 bg-slate-50/95 px-1 py-2 backdrop-blur" role="tablist" aria-label="Nível">
+    {% for chave, nivel in {iniciante: {rotulo: '🌱 Iniciante', ativo: 'bg-indigo-600 text-white'}, intermediario: {rotulo: '🚀 Intermediário', ativo: 'bg-amber-500 text-white'}, avancado: {rotulo: '🧠 Avançado', ativo: 'bg-rose-600 text-white'}} %}
+        <button
+            type="button" role="tab" @click="choose('{{ chave }}')" :aria-selected="level === '{{ chave }}'"
+            :class="level === '{{ chave }}' ? '{{ nivel.ativo }} shadow-sm' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100'"
+            class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+        >{{ nivel.rotulo }}</button>
+    {% endfor %}
+</div>

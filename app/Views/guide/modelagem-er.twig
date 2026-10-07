@@ -1,256 +1,490 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🧩</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Modelagem de dados (MER/DER)</h1>
-            <p class="mt-1 text-sm text-slate-500">Como desenhar entidades e relacionamentos antes de criar as tabelas.</p>
-        </div>
+    <div class="guia mb-6">
+        {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+            <p>
+                Ninguém constrói uma casa começando pelos tijolos: primeiro vem a <strong>planta</strong>. Modelar dados
+                é fazer a planta do banco. Você decide quais "cômodos" existem (as tabelas), o que tem em cada um (as
+                colunas) e quais portas ligam um ao outro (os relacionamentos). Só depois disso você escreve
+                <code>CREATE TABLE</code>.
+            </p>
+        {% endblock %}{% endembed %}
+
+        <p>
+            <strong>MER</strong> (Modelo Entidade-Relacionamento) é a técnica; <strong>DER</strong> (Diagrama
+            Entidade-Relacionamento) é o desenho que sai dela. Os dois foram criados por Peter Chen em 1976 e continuam
+            sendo o jeito mais usado de planejar um banco relacional.
+        </p>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab'} %}{% block body %}
+            <p>
+                Dá pra desenhar o diagrama e gerar o SQL automaticamente no
+                <a href="/laboratorio/modelagem" class="font-medium underline">Laboratório de modelagem</a>. Depois de
+                modelar, confira se as tabelas estão bem organizadas com o guia de
+                <a href="/guia/formas-normais" class="font-medium underline">Formas Normais</a>.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div>
-            Esta página é sobre o passo <strong>antes</strong> do <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> —
-            planejar no papel (ou numa ferramenta de diagrama) o que vai virar tabela depois. Pra escrever o SQL em si,
-            veja o guia de <a href="/guia/sql-ansi" class="font-medium text-indigo-600 hover:text-indigo-700">SQL ANSI</a>;
-            pra revisar se as tabelas que saíram daqui estão bem desenhadas (sem dado repetido/inconsistente), veja
-            <a href="/guia/formas-normais" class="font-medium text-indigo-600 hover:text-indigo-700">Formas Normais</a>
-            — os exemplos desta página usam o mesmo cenário (aluno, curso, matrícula) pra ficar fácil comparar.
-        </div>
-    </div>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                <strong>MER</strong> (Modelo Entidade-Relacionamento) é a técnica pra descrever, de forma conceitual e
-                independente de qualquer banco específico, quais "coisas" um sistema precisa guardar (as
-                <strong>entidades</strong> — aluno, curso, produto, pedido...), quais dados cada uma tem (os
-                <strong>atributos</strong> — nome, e-mail, preço...) e como elas se conectam (os
-                <strong>relacionamentos</strong> — "aluno se matricula em curso"). O <strong>DER</strong> (Diagrama de
-                Entidade-Relacionamento) é o desenho desse modelo: caixas para entidades, losangos (ou linhas
-                anotadas, dependendo da notação) para relacionamentos, ligados por linhas com a
-                <strong>cardinalidade</strong> de cada lado.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Pra pensar na estrutura dos dados <strong>antes</strong> de escrever qualquer <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code>,
-                evitando o retrabalho de descobrir no meio do projeto que faltou uma tabela ou que duas entidades
-                deveriam ter sido uma só. Também serve como "linguagem comum" pra discutir o banco com outras
-                pessoas (colega, professor) sem precisar já saber SQL — um DER bem feito, qualquer um lê.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                No começo de qualquer sistema novo que vá guardar dados estruturados, e de novo toda vez que um
-                módulo novo introduzir entidades/relacionamentos que ainda não existiam (ex.: o sistema já tinha
-                "aluno" e "curso", e agora precisa de "professor" ministrando "curso" — vale revisar o DER antes de
-                sair alterando tabela em produção).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Um roteiro que funciona pra maioria dos casos:
-            </p>
-            <ol class="mt-2 list-inside list-decimal space-y-1 text-sm text-slate-600">
-                <li><strong>Liste os substantivos</strong> do que o sistema precisa guardar — cada um vira uma entidade candidata (aluno, curso, matrícula...).</li>
-                <li><strong>Liste os atributos</strong> de cada entidade (nome, e-mail, data...) e marque qual é o identificador único (a futura chave primária).</li>
-                <li><strong>Liste os verbos</strong> que conectam duas entidades — "aluno <em>se matricula em</em> curso" é um relacionamento chamado <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matrícula</code>.</li>
-                <li><strong>Defina a cardinalidade</strong> de cada lado do relacionamento (quantos de um se ligam a quantos do outro — ver o card "Intermediário" abaixo).</li>
-                <li><strong>Desenhe o DER</strong>: uma caixa por entidade, uma linha por relacionamento, cardinalidade escrita em cada ponta.</li>
-            </ol>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <p class="mb-2 text-sm text-slate-600">
-                Duas entidades (ALUNO e MATRÍCULA) ligadas por um relacionamento 1:N — um aluno faz várias matrículas,
-                cada matrícula pertence a um único aluno:
-            </p>
-            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-6">
-                <div class="flex min-w-max items-center justify-center gap-3">
-                    <div class="rounded-lg border-2 border-indigo-300 bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700 shadow-sm">
-                        ALUNO
-                    </div>
-                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
-                        <span class="font-mono">1</span>
-                        <div class="h-px w-16 bg-slate-300"></div>
-                        <span class="mt-0.5 whitespace-nowrap font-medium text-slate-600">faz</span>
-                    </div>
-                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
-                        <div class="h-px w-16 bg-slate-300"></div>
-                        <span class="font-mono">N</span>
-                    </div>
-                    <div class="rounded-lg border-2 border-amber-300 bg-white px-4 py-2 text-center text-sm font-semibold text-amber-700 shadow-sm">
-                        MATRÍCULA
-                    </div>
-                </div>
-            </div>
-            <p class="mt-2 text-xs text-slate-500">
-                Lê-se nas duas direções: "1 aluno faz N matrículas" e, olhando a linha da direita pra esquerda,
-                "N matrículas pertencem a 1 aluno".
-            </p>
-        </div>
-    </div>
-
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                É a hora de sair do desenho e chegar nas tabelas de verdade. Uma <strong>tabela</strong> é a versão
-                física de uma entidade: uma grade de linhas e colunas, onde cada <strong>linha</strong> (ou
-                "registro") é uma ocorrência daquela entidade (um aluno específico) e cada <strong>coluna</strong> é
-                um dos atributos que você já tinha listado no card "Iniciante" (nome, e-mail...). O que muda de um
-                DER pra outro é como as tabelas se conectam entre si — e isso depende da <strong>cardinalidade</strong>
-                de cada relacionamento: <strong>1:1</strong> (um pra um — ex.: uma pessoa tem um único CPF),
-                <strong>1:N</strong> (um pra muitos — um curso tem muitas matrículas) e <strong>N:N</strong> (muitos
-                pra muitos — um aluno se matricula em vários cursos, e um curso tem vários alunos). Bancos
-                relacionais não sabem representar N:N numa tabela só — todo N:N vira uma <strong>tabela
-                associativa</strong> (também chamada de tabela de junção), com uma chave estrangeira pra cada lado.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                As peças que toda tabela relacional usa pra garantir que os dados fiquem íntegros — sem precisar
-                confiar que o código da aplicação sempre vai validar tudo certo:
-            </p>
-            <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>Chave primária</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">PRIMARY KEY</code>, ou PK) — identifica cada linha de forma única dentro da própria tabela; nunca aceita <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NULL</code>, nunca repete, e uma tabela só tem <strong>uma</strong>. Pode ser um id gerado sozinho (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">AUTO_INCREMENT</code> — "chave substituta"/surrogate) ou combinar mais de uma coluna (<strong>chave composta</strong>, ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">PRIMARY KEY (aluno_id, curso_id)</code>).</li>
-                <li><strong>Chave estrangeira</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY</code>, ou FK) — coluna que aponta pra chave primária de outra tabela; é o que implementa o relacionamento do DER fisicamente, e o banco recusa (erro) qualquer valor que não exista na tabela referenciada.</li>
-                <li><strong>Chave única</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UNIQUE</code>) — parecida com a PK (não deixa repetir), mas uma tabela pode ter <strong>várias</strong>, e (diferente da PK) geralmente aceita <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NULL</code>. Serve pra atributo que já é naturalmente único mas não é o identificador principal da tabela — ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">email</code> do aluno é único, mas quem identifica a linha continua sendo o <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">id</code>.</li>
-                <li><strong>Constraint</strong> (restrição) — qualquer regra que o próprio banco garante linha a linha, sem depender do código: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NOT NULL</code> (coluna obrigatória), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DEFAULT</code> (valor usado quando nada é informado), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CHECK</code> (valida um valor/faixa, ex.: nota entre 0 e 10) e o comportamento de uma FK quando a linha referenciada é apagada (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ON DELETE CASCADE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SET NULL</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RESTRICT</code>). PK, FK e UNIQUE são, cada uma à sua forma, também um tipo de constraint.</li>
-                <li><strong>1:N</strong> na prática — a FK fica do lado "N" (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matricula.aluno_id</code> aponta pra <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno.id</code>).</li>
-                <li><strong>N:N</strong> na prática — precisa de uma tabela nova, só com as duas FKs (às vezes mais colunas próprias, tipo data da matrícula).</li>
-                <li><strong>Entidade fraca</strong> — não faz sentido sozinha, só existe amarrada a outra (ex.: "item de pedido" sem "pedido" não significa nada).</li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Cardinalidade: sempre que dois "substantivos" do sistema puderem se relacionar em ambas as direções
-                múltiplas vezes — esse é o sinal de N:N. Se ficar em dúvida, pergunte: "um X pode ter vários Y,
-                <em>e</em> um Y pode ter vários X?" Se sim dos dois lados, é N:N e precisa de tabela associativa; se
-                só um lado for "vários", é 1:N e a FK resolve sozinha, sem tabela extra.
-            </p>
-            <p class="mt-2 text-sm text-slate-600">
-                Constraints: use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NOT NULL</code> em todo atributo que o DER marcou como obrigatório, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UNIQUE</code> pra atributo que precisa ser único mas não é a PK, e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CHECK</code> pra regra de valor que não depende de outra tabela (ex.: preço não pode ser negativo). Pra FK, pense no que faz sentido acontecer se a linha "pai" for apagada: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CASCADE</code> quando o "filho" não existe sem o "pai" (matrícula sem aluno não faz sentido), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SET NULL</code> quando o filho pode continuar órfão (pedido cujo vendedor foi desligado), e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RESTRICT</code> (o padrão) quando apagar o pai com filhos deveria ser um erro, forçando quem apaga a decidir explicitamente.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Traduzindo um DER pra tabelas, na prática: <strong>cada entidade vira uma tabela</strong>, cada
-                <strong>atributo vira uma coluna</strong>, o identificador único vira a <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">PRIMARY KEY</code>,
-                relacionamento <strong>1:N</strong> vira uma <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">FOREIGN KEY</code> na tabela do lado "N", e
-                relacionamento <strong>N:N</strong> vira uma tabela nova. Depois que as tabelas e chaves estão no
-                lugar, revise coluna por coluna: ela é obrigatória (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">NOT NULL</code>)? tem um valor
-                padrão razoável (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DEFAULT</code>)? existe alguma regra de valor que o banco pode garantir
-                sozinho (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CHECK</code>)? É exatamente isso que o cenário aluno/curso/matrícula usado no
-                guia de <a href="/guia/sql-ansi" class="font-medium text-indigo-600 hover:text-indigo-700">SQL ANSI</a> representa:
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matricula</code> é a tabela associativa que resolve o N:N entre
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code> e <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso</code>.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <p class="mb-2 text-sm text-slate-600">
-                N:N entre ALUNO e CURSO, resolvido pela entidade associativa MATRÍCULA:
-            </p>
-            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-6">
-                <div class="flex min-w-max items-center justify-center gap-3">
-                    <div class="rounded-lg border-2 border-indigo-300 bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700 shadow-sm">
-                        ALUNO
-                    </div>
-                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
-                        <span class="font-mono">1</span>
-                        <div class="h-px w-14 bg-slate-300"></div>
-                    </div>
-                    <div class="rotate-45 rounded border-2 border-emerald-300 bg-white px-5 py-5 text-center shadow-sm">
-                        <span class="-rotate-45 block text-xs font-semibold text-emerald-700">MATRÍCULA</span>
-                    </div>
-                    <div class="flex flex-col items-center px-1 text-xs text-slate-500">
-                        <div class="h-px w-14 bg-slate-300"></div>
-                        <span class="font-mono">1</span>
-                    </div>
-                    <div class="rounded-lg border-2 border-amber-300 bg-white px-4 py-2 text-center text-sm font-semibold text-amber-700 shadow-sm">
-                        CURSO
-                    </div>
-                </div>
-                <p class="mt-4 text-center text-xs text-slate-500">
-                    (do ponto de vista de ALUNO e CURSO, cada um se liga a "N" matrículas — por isso ALUNO ↔ CURSO é N:N)
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. As três peças do modelo</h2>
+                <table>
+                    <thead><tr><th>Peça</th><th>O que é</th><th>Como achar</th><th>Exemplo</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Entidade</strong></td><td>Uma "coisa" sobre a qual o sistema guarda informação</td><td>Os <strong>substantivos</strong> do problema</td><td>Livro, Leitor, Autor</td></tr>
+                        <tr><td><strong>Atributo</strong></td><td>Uma característica da entidade</td><td>"O que eu preciso saber sobre...?"</td><td>título, ano, e-mail</td></tr>
+                        <tr><td><strong>Relacionamento</strong></td><td>Uma ligação entre entidades</td><td>Os <strong>verbos</strong> do problema</td><td>Leitor <em>pega emprestado</em> Livro</td></tr>
+                    </tbody>
+                </table>
+                <p>
+                    Toda entidade precisa de um <strong>identificador</strong>: um atributo (ou mais de um) que nunca se
+                    repete e diferencia um item do outro. É ele que vira a <strong>chave primária</strong>.
                 </p>
             </div>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Cada entidade do DER vira uma tabela
-CREATE TABLE aluno (
-    id    INT PRIMARY KEY AUTO_INCREMENT,
+
+            <div class="card guia">
+                <h2>2. Passo a passo com um exemplo: a biblioteca</h2>
+                <p>Imagine que a escola pediu este sistema:</p>
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'O pedido (o "enunciado")'} %}{% block body %}
+                    <p>
+                        "Queremos cadastrar os <u>livros</u> da biblioteca, com título e ano. Cada livro tem um ou mais
+                        <u>autores</u>. Os <u>leitores</u> (com nome e e-mail) <u>pegam livros emprestados</u>, e precisamos
+                        saber a data do empréstimo e a data em que o livro foi devolvido."
+                    </p>
+                {% endblock %}{% endembed %}
+                <ol>
+                    <li><strong>Sublinhe os substantivos</strong> → entidades candidatas: <strong>Livro</strong>, <strong>Autor</strong>, <strong>Leitor</strong>.</li>
+                    <li><strong>Liste os atributos</strong> de cada uma: Livro (título, ano); Autor (nome); Leitor (nome, e-mail).</li>
+                    <li><strong>Escolha o identificador</strong> de cada uma: um <code>id</code> numérico pra todas. O e-mail do leitor também é único, mas pessoas trocam de e-mail; um id não muda nunca.</li>
+                    <li><strong>Ache os verbos</strong> → relacionamentos: Autor <em>escreve</em> Livro; Leitor <em>pega emprestado</em> Livro.</li>
+                    <li><strong>Pergunte "quantos?" nos dois sentidos</strong> (a cardinalidade, explicada a seguir).</li>
+                    <li><strong>Atributos que pertencem ao verbo</strong>: "data do empréstimo" não é do leitor nem do livro, é <em>do empréstimo</em>.</li>
+                </ol>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Cardinalidade: quantos de cada lado?</h2>
+                <p>
+                    Pra cada relacionamento, faça duas perguntas, uma em cada sentido. As respostas dão a cardinalidade:
+                </p>
+                <table>
+                    <thead><tr><th>Pergunta</th><th>Resposta</th></tr></thead>
+                    <tbody>
+                        <tr><td>Um autor escreve quantos livros?</td><td>Vários (N)</td></tr>
+                        <tr><td>Um livro é escrito por quantos autores?</td><td>Vários (N)</td></tr>
+                        <tr><td colspan="2"><strong>→ Autor–Livro é N:N</strong> (muitos pra muitos)</td></tr>
+                        <tr><td>Um leitor faz quantos empréstimos?</td><td>Vários (N)</td></tr>
+                        <tr><td>Um empréstimo é de quantos leitores?</td><td>Um só (1)</td></tr>
+                        <tr><td colspan="2"><strong>→ Leitor–Empréstimo é 1:N</strong> (um pra muitos)</td></tr>
+                    </tbody>
+                </table>
+                <p>Existem três tipos:</p>
+                <ul>
+                    <li><strong>1:1</strong> (um pra um): uma pessoa tem um passaporte; um passaporte é de uma pessoa.</li>
+                    <li><strong>1:N</strong> (um pra muitos): um leitor faz muitos empréstimos; um empréstimo é de um leitor.</li>
+                    <li><strong>N:N</strong> (muitos pra muitos): um livro tem vários autores; um autor escreve vários livros.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>4. O desenho (DER)</h2>
+                <p>Juntando tudo, o diagrama da biblioteca fica assim (cada caixa é uma entidade, cada linha um relacionamento):</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'DER da biblioteca'} %}{% block code -%}
+ ┌─────────┐  N       N  ┌─────────┐  1       N  ┌────────────┐  N       1  ┌──────────┐
+ │  AUTOR  │─── escreve ─│  LIVRO  │─────────────│ EMPRÉSTIMO │─────────────│  LEITOR  │
+ ├─────────┤             ├─────────┤             ├────────────┤             ├──────────┤
+ │ id (PK) │             │ id (PK) │             │ id (PK)    │             │ id (PK)  │
+ │ nome    │             │ titulo  │             │ data_saida │             │ nome     │
+ └─────────┘             │ ano     │             │ devolucao  │             │ email    │
+                         └─────────┘             └────────────┘             └──────────┘
+{%- endblock %}{% endembed %}
+                <p>
+                    Repare que "pegar emprestado" virou a entidade <strong>Empréstimo</strong>: como o verbo tem
+                    atributos próprios (as datas), ele ganha uma caixa só dele. Isso é muito comum.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>⚠️ Erros comuns na modelagem</h2>
+                <ul>
+                    <li><strong>Transformar tudo em entidade.</strong> "Cor do carro" quase nunca precisa de tabela: é atributo. Pergunte: eu preciso guardar várias informações sobre isso?</li>
+                    <li><strong>Esquecer o identificador</strong>, ou usar um que pode repetir (nome de pessoa repete!).</li>
+                    <li><strong>Guardar uma lista dentro de um campo</strong>, como <code>autores = 'Ana, Bruno'</code>. Isso impede buscar "todos os livros da Ana". Lista vira relacionamento.</li>
+                    <li><strong>Pensar só num sentido</strong> da cardinalidade. Sempre pergunte nos dois.</li>
+                    <li><strong>Guardar o que pode ser calculado</strong>, como a idade (muda todo ano). Guarde a data de nascimento e calcule a idade na consulta.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Num sistema de hospital: "médicos atendem pacientes em consultas, com data e diagnóstico". Quais são as entidades e a cardinalidade?</summary>
+                    <p class="mt-2">
+                        Entidades: <strong>Médico</strong>, <strong>Paciente</strong> e <strong>Consulta</strong> (o verbo
+                        "atender" tem atributos: data e diagnóstico). Um médico faz N consultas; um paciente tem N consultas;
+                        cada consulta tem 1 médico e 1 paciente. Médico 1:N Consulta N:1 Paciente, ou seja, um N:N entre
+                        médico e paciente "resolvido" pela consulta.
+                    </p>
+                </details>
+                <details>
+                    <summary>2. "Cada funcionário tem um crachá, e cada crachá pertence a um funcionário." Qual a cardinalidade?</summary>
+                    <p class="mt-2"><strong>1:1</strong>. Uma ideia de por que existe: dados do crachá (número, validade) podem ficar numa tabela separada se só alguns funcionários tiverem crachá.</p>
+                </details>
+            </div>
+        </section>
+
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Do desenho pra tabela: as regras de conversão</h2>
+                <p>Cada tipo de relacionamento vira tabela de um jeito fixo. Decore esta tabela, ela resolve 90% dos casos:</p>
+                <table>
+                    <thead><tr><th>Relacionamento</th><th>Vira</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Entidade</strong></td><td>uma tabela; o identificador vira <code>PRIMARY KEY</code></td></tr>
+                        <tr><td><strong>1:N</strong></td><td>uma <strong>chave estrangeira no lado N</strong> apontando pro lado 1 (o empréstimo guarda <code>leitor_id</code>)</td></tr>
+                        <tr><td><strong>N:N</strong></td><td>uma <strong>tabela nova</strong> (associativa) com duas chaves estrangeiras, uma pra cada lado</td></tr>
+                        <tr><td><strong>1:1</strong></td><td>chave estrangeira <code>UNIQUE</code> em um dos lados (ou juntar as duas numa tabela só)</td></tr>
+                    </tbody>
+                </table>
+                <p>Aplicando as regras na biblioteca:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Biblioteca — do DER pro SQL'} %}{% block code -%}
+CREATE TABLE autor (
+    id   INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE livro (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(150) NOT NULL,
+    ano    SMALLINT
+);
+
+-- N:N entre autor e livro -> tabela associativa
+CREATE TABLE livro_autor (
+    livro_id INT NOT NULL,
+    autor_id INT NOT NULL,
+    PRIMARY KEY (livro_id, autor_id),          -- o mesmo par não pode repetir
+    FOREIGN KEY (livro_id) REFERENCES livro (id),
+    FOREIGN KEY (autor_id) REFERENCES autor (id)
+);
+
+CREATE TABLE leitor (
+    id    INT AUTO_INCREMENT PRIMARY KEY,
     nome  VARCHAR(100) NOT NULL,
-    -- chave única: não pode repetir entre alunos, mas quem identifica a
-    -- linha continua sendo o "id" — a PK
     email VARCHAR(150) NOT NULL UNIQUE
 );
 
-CREATE TABLE curso (
-    id       INT PRIMARY KEY AUTO_INCREMENT,
-    nome     VARCHAR(100) NOT NULL,
-    -- DEFAULT: usado quando ninguém informa carga_horaria no INSERT
-    carga_horaria INT NOT NULL DEFAULT 60,
-    -- CHECK: o próprio banco recusa um valor fora da faixa, sem precisar
-    -- validar isso no código da aplicação
-    CHECK (carga_horaria BETWEEN 1 AND 400)
+-- 1:N leitor -> emprestimo: a chave estrangeira fica no lado N
+CREATE TABLE emprestimo (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    leitor_id  INT  NOT NULL,
+    livro_id   INT  NOT NULL,
+    data_saida DATE NOT NULL,
+    devolucao  DATE NULL,                     -- NULL = ainda não devolveu
+    FOREIGN KEY (leitor_id) REFERENCES leitor (id),
+    FOREIGN KEY (livro_id)  REFERENCES livro (id)
 );
 
--- A entidade associativa (o losango do N:N) vira uma tabela com duas FKs —
--- uma pra cada entidade que ela conecta
-CREATE TABLE matricula (
-    id         INT PRIMARY KEY AUTO_INCREMENT,
-    aluno_id   INT NOT NULL,
-    curso_id   INT NOT NULL,
-    nota       DECIMAL(4,2) NULL,
-    criada_em  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- matrícula sem aluno não existe: se o aluno for apagado, apaga a
-    -- matrícula dele junto (CASCADE)
-    FOREIGN KEY (aluno_id) REFERENCES aluno(id) ON DELETE CASCADE,
-    -- apagar um curso com matrículas ativas deveria ser um erro — força
-    -- quem for apagar a decidir antes o que fazer com elas (RESTRICT é o
-    -- padrão da maioria dos bancos, mas fica explícito aqui de propósito)
-    FOREIGN KEY (curso_id) REFERENCES curso(id) ON DELETE RESTRICT,
-    -- evita a mesma pessoa se matriculando duas vezes no mesmo curso —
-    -- repare que é uma UNIQUE de duas colunas juntas, diferente da UNIQUE
-    -- de uma coluna só lá em cima (email)
-    UNIQUE (aluno_id, curso_id),
-    -- nota, se informada, tem que estar entre 0 e 10
-    CHECK (nota IS NULL OR nota BETWEEN 0 AND 10)
-);</code></pre>
-            <p class="mt-3 text-xs text-slate-500">
-                Repare que <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">matricula</code> já tem, ao mesmo tempo, um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">id</code> como PK
-                (chave substituta, mais fácil de referenciar de outro lugar) <em>e</em> a combinação
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">(aluno_id, curso_id)</code> como UNIQUE — uma alternativa igualmente válida seria não ter o
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono">id</code> e usar essa combinação diretamente como <strong>chave primária composta</strong>
-                (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono">PRIMARY KEY (aluno_id, curso_id)</code>); a diferença é mais sobre gosto/praticidade do
-                que sobre estar certo ou errado.
-            </p>
-        </div>
+INSERT INTO autor (nome) VALUES ('Ana Prado'), ('Bruno Teles'), ('Carla Nunes'), ('Diego Ramos');
+INSERT INTO livro (titulo, ano) VALUES ('SQL na Prática', 2021), ('Modelagem Fácil', 2023), ('Dados para Todos', 2024);
+INSERT INTO livro_autor VALUES (1, 1), (2, 1), (2, 2), (3, 3);
+INSERT INTO leitor (nome, email) VALUES ('Davi Souza', 'davi@exemplo.com'), ('Eva Lima', 'eva@exemplo.com');
+INSERT INTO emprestimo (leitor_id, livro_id, data_saida, devolucao) VALUES
+    (1, 1, '2026-09-01', '2026-09-10'),
+    (1, 2, '2026-09-12', NULL),
+    (2, 2, '2026-09-03', '2026-09-08');
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. Consultando através do N:N</h2>
+                <p>A tabela associativa é a "ponte": pra ir de livro até autor, você atravessa ela com dois JOINs.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT l.titulo,
+       GROUP_CONCAT(a.nome ORDER BY a.nome SEPARATOR ' e ') AS autores
+FROM livro l
+JOIN livro_autor la ON la.livro_id = l.id
+JOIN autor a        ON a.id = la.autor_id
+GROUP BY l.id, l.titulo
+ORDER BY l.titulo;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------------+-------------------------+
+| titulo           | autores                 |
++------------------+-------------------------+
+| Dados para Todos | Carla Nunes             |
+| Modelagem Fácil  | Ana Prado e Bruno Teles |
+| SQL na Prática   | Ana Prado               |
++------------------+-------------------------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Quem está com livro emprestado agora (sem devolução)?
+SELECT le.nome AS leitor, l.titulo, e.data_saida
+FROM emprestimo e
+JOIN leitor le ON le.id = e.leitor_id
+JOIN livro l   ON l.id = e.livro_id
+WHERE e.devolucao IS NULL;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+-----------------+------------+
+| leitor     | titulo          | data_saida |
++------------+-----------------+------------+
+| Davi Souza | Modelagem Fácil | 2026-09-12 |
++------------+-----------------+------------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. As chaves e o que elas garantem</h2>
+                <table>
+                    <thead><tr><th>Chave</th><th>Garante</th><th>Quantas por tabela</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Primária</strong> (PK)</td><td>Cada linha é única e identificável; nunca NULL</td><td>uma (pode ter várias colunas: chave <em>composta</em>)</td></tr>
+                        <tr><td><strong>Estrangeira</strong> (FK)</td><td>O valor existe na tabela apontada</td><td>quantas precisar</td></tr>
+                        <tr><td><strong>Única</strong> (UNIQUE)</td><td>Não repete (mas pode ser NULL)</td><td>quantas precisar</td></tr>
+                    </tbody>
+                </table>
+                <p>O banco protege você sozinho. Tentar emprestar um livro que não existe:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, expect_error: true} %}{% block code -%}
+INSERT INTO emprestimo (leitor_id, livro_id, data_saida) VALUES (1, 999, '2026-10-01');
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {titulo: 'Resultado: erro (a chave estrangeira barrou)', compare: false} %}{% block out -%}
+ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (...)
+{%- endblock %}{% endembed %}
+
+                <h3>Chave natural ou chave substituta?</h3>
+                <ul>
+                    <li><strong>Natural</strong>: um dado do mundo real que já é único (CPF, ISBN, placa). Tem significado, mas pode mudar ou ter erro de digitação.</li>
+                    <li><strong>Substituta</strong> (<em>surrogate</em>): um número sem significado, gerado pelo banco (<code>AUTO_INCREMENT</code>). Nunca muda.</li>
+                </ul>
+                <p>
+                    Na prática: use uma <strong>substituta como PK</strong> e marque a natural como <code>UNIQUE</code>.
+                    Assim você tem um id estável e ainda garante que o CPF não repete.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>4. Opcional ou obrigatório? (participação)</h2>
+                <p>
+                    Além do "quantos", existe o "<strong>no mínimo quantos</strong>": um empréstimo <em>precisa</em> ter um
+                    leitor (obrigatório), mas um leitor pode existir sem nunca ter pegado livro (opcional). No SQL:
+                </p>
+                <ul>
+                    <li>Lado obrigatório → coluna <code>NOT NULL</code> (<code>emprestimo.leitor_id</code>).</li>
+                    <li>Lado opcional → coluna que aceita <code>NULL</code> (<code>emprestimo.devolucao</code>, que só é preenchida depois).</li>
+                </ul>
+                <p>
+                    Nos diagramas, isso aparece como <code>(0,N)</code>, <code>(1,N)</code>, <code>(0,1)</code>,
+                    <code>(1,1)</code>: o primeiro número é o mínimo e o segundo o máximo.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Um curso tem muitas turmas; cada turma é de um curso. Onde fica a chave estrangeira?</summary>
+                    <p class="mt-2">Na tabela <strong>turma</strong> (o lado N): <code>turma.curso_id</code> → <code>curso.id</code>.</p>
+                </details>
+                <details>
+                    <summary>2. Liste quantos livros cada autor escreveu, inclusive quem não tem livro.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT a.nome, COUNT(la.livro_id) AS livros
+FROM autor a
+LEFT JOIN livro_autor la ON la.autor_id = a.id
+GROUP BY a.id, a.nome
+ORDER BY livros DESC, a.nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------------+--------+
+| nome        | livros |
++-------------+--------+
+| Ana Prado   |      2 |
+| Bruno Teles |      1 |
+| Carla Nunes |      1 |
+| Diego Ramos |      0 |
++-------------+--------+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Os três níveis de modelo</h2>
+                <table>
+                    <thead><tr><th>Modelo</th><th>Responde</th><th>Depende do banco?</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Conceitual</strong></td><td>O que existe no negócio (o DER)</td><td>Não</td></tr>
+                        <tr><td><strong>Lógico</strong></td><td>Quais tabelas, colunas e chaves</td><td>Só do tipo de banco (relacional)</td></tr>
+                        <tr><td><strong>Físico</strong></td><td>Tipos exatos, índices, particionamento: o <code>CREATE TABLE</code></td><td>Sim (MySQL ≠ PostgreSQL)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Notações: Chen x Pé de galinha</h2>
+                <p>
+                    O desenho original de Chen usa retângulos pra entidades, losangos pra relacionamentos e elipses pra
+                    atributos. No mercado, a mais usada hoje é a notação <strong>pé de galinha</strong> (<em>crow's foot</em>),
+                    que é a das ferramentas como MySQL Workbench, dbdiagram e DBeaver:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'Pé de galinha — como ler as pontas'} %}{% block code -%}
+  ──┼┼──   exatamente um           (1,1)
+  ──o┼──   zero ou um              (0,1)
+  ──┼<──   um ou muitos            (1,N)
+  ──o<──   zero ou muitos          (0,N)
+
+  LEITOR ──┼┼──────────o<── EMPRESTIMO
+  "cada empréstimo tem exatamente 1 leitor; cada leitor tem 0 ou muitos empréstimos"
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Entidade fraca</h2>
+                <p>
+                    Uma <strong>entidade fraca</strong> só existe "pendurada" em outra e não tem identificador próprio.
+                    Exemplo: os <em>itens</em> de um pedido. O item 1 do pedido 10 e o item 1 do pedido 11 são coisas
+                    diferentes, então a chave dele é composta: <code>(pedido_id, numero_item)</code>. Se o pedido for
+                    apagado, os itens não fazem sentido sozinhos: use <code>ON DELETE CASCADE</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE TABLE reserva (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    leitor_id INT NOT NULL,
+    FOREIGN KEY (leitor_id) REFERENCES leitor (id)
+);
+
+CREATE TABLE reserva_item (
+    reserva_id INT NOT NULL,
+    numero     INT NOT NULL,
+    livro_id   INT NOT NULL,
+    PRIMARY KEY (reserva_id, numero),
+    FOREIGN KEY (reserva_id) REFERENCES reserva (id) ON DELETE CASCADE,
+    FOREIGN KEY (livro_id)   REFERENCES livro (id)
+);
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Auto-relacionamento</h2>
+                <p>
+                    Quando uma entidade se liga a ela mesma: um funcionário tem um chefe, que também é funcionário; um
+                    livro pode ser a continuação de outro livro. Vira uma chave estrangeira apontando pra própria tabela:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+ALTER TABLE livro ADD COLUMN continuacao_de INT NULL,
+    ADD FOREIGN KEY (continuacao_de) REFERENCES livro (id);
+
+INSERT INTO livro (titulo, ano, continuacao_de) VALUES ('SQL na Prática 2', 2025, 1);
+
+SELECT l.titulo AS livro, anterior.titulo AS continuacao_de
+FROM livro l
+JOIN livro anterior ON anterior.id = l.continuacao_de;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------------+----------------+
+| livro            | continuacao_de |
++------------------+----------------+
+| SQL na Prática 2 | SQL na Prática |
++------------------+----------------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. Herança (especialização e generalização)</h2>
+                <p>
+                    Às vezes uma entidade tem "tipos" com atributos diferentes. Na biblioteca: todo <em>item do acervo</em>
+                    tem título, mas um <em>livro</em> tem número de páginas e uma <em>revista</em> tem número da edição.
+                    O modelo relacional não tem herança, então existem três jeitos de representar:
+                </p>
+                <table>
+                    <thead><tr><th>Estratégia</th><th>Como</th><th>Bom quando</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Tabela única</strong></td><td>Uma tabela com todas as colunas + uma coluna <code>tipo</code>; o que não se aplica fica NULL</td><td>Poucos atributos diferentes; consultas misturam os tipos</td></tr>
+                        <tr><td><strong>Tabela por tipo</strong></td><td>Tabela "pai" com o comum + uma tabela por tipo, com a mesma PK</td><td>Muitos atributos específicos; quer manter NOT NULL corretos</td></tr>
+                        <tr><td><strong>Tabela por tipo concreto</strong></td><td>Uma tabela completa por tipo, sem pai</td><td>Os tipos quase nunca são consultados juntos</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Tabela por tipo'} %}{% block code -%}
+CREATE TABLE acervo (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(150) NOT NULL,
+    tipo   ENUM('livro', 'revista') NOT NULL
+);
+CREATE TABLE acervo_livro (
+    acervo_id INT PRIMARY KEY,                 -- mesma chave do pai
+    paginas   INT NOT NULL,
+    FOREIGN KEY (acervo_id) REFERENCES acervo (id)
+);
+CREATE TABLE acervo_revista (
+    acervo_id INT PRIMARY KEY,
+    edicao    INT NOT NULL,
+    FOREIGN KEY (acervo_id) REFERENCES acervo (id)
+);
+
+INSERT INTO acervo (titulo, tipo) VALUES ('Banco de Dados Moderno', 'livro'), ('Revista Dev', 'revista');
+INSERT INTO acervo_livro VALUES (1, 412);
+INSERT INTO acervo_revista VALUES (2, 57);
+
+SELECT a.titulo, a.tipo, l.paginas, r.edicao
+FROM acervo a
+LEFT JOIN acervo_livro l   ON l.acervo_id = a.id
+LEFT JOIN acervo_revista r ON r.acervo_id = a.id
+ORDER BY a.id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------------------+---------+---------+--------+
+| titulo                 | tipo    | paginas | edicao |
++------------------------+---------+---------+--------+
+| Banco de Dados Moderno | livro   |     412 |   NULL |
+| Revista Dev            | revista |    NULL |     57 |
++------------------------+---------+---------+--------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>6. Atributos especiais</h2>
+                <ul>
+                    <li><strong>Composto</strong>: formado por partes, como endereço (rua, número, cidade). Guarde as partes em colunas separadas se você vai filtrar por elas ("todos de Recife").</li>
+                    <li><strong>Multivalorado</strong>: tem vários valores, como os telefones de uma pessoa. Vira uma tabela própria (<code>telefone(pessoa_id, numero)</code>), nunca uma coluna com lista.</li>
+                    <li><strong>Derivado</strong>: calculável a partir de outros, como idade ou total do pedido. Normalmente não se guarda; quando guardar por desempenho, é uma decisão consciente (desnormalização) e alguém precisa manter o valor atualizado.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Modele: "Um professor pode orientar vários alunos; cada aluno tem no máximo um orientador; professores também podem ser coordenadores de um curso (um coordenador por curso)."</summary>
+                    <ul class="mt-2">
+                        <li>Professor 1:N Aluno (orientação, opcional) → <code>aluno.orientador_id INT NULL</code> → <code>professor.id</code>.</li>
+                        <li>Professor 1:1 Curso (coordenação) → <code>curso.coordenador_id INT NOT NULL UNIQUE</code> → <code>professor.id</code>. O <code>UNIQUE</code> impede o mesmo professor de coordenar dois cursos.</li>
+                    </ul>
+                </details>
+            </div>
+        </section>
+    </div>
+
+    <div class="card guia mt-8">
+        <h2>📖 Glossário rápido</h2>
+        <table>
+            <tbody>
+                <tr><td><strong>MER / DER</strong></td><td>O modelo (a ideia) / o diagrama (o desenho).</td></tr>
+                <tr><td><strong>Cardinalidade</strong></td><td>Quantos de um lado se ligam a quantos do outro: 1:1, 1:N, N:N.</td></tr>
+                <tr><td><strong>Tabela associativa</strong></td><td>A tabela que resolve um N:N, com uma chave estrangeira pra cada lado.</td></tr>
+                <tr><td><strong>Chave composta</strong></td><td>Chave primária formada por mais de uma coluna.</td></tr>
+                <tr><td><strong>Entidade fraca</strong></td><td>Entidade que depende de outra pra existir e ser identificada.</td></tr>
+            </tbody>
+        </table>
     </div>
 {% endblock %}

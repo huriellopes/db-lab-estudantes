@@ -1,155 +1,436 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🍃</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">MongoDB</h1>
-            <p class="mt-1 text-sm text-slate-500">NoSQL orientado a documentos.</p>
-        </div>
+    <div class="guia mb-6">
+        {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+            <p>
+                Um banco relacional é como um <strong>formulário de papel</strong>: todo mundo preenche os mesmos campos,
+                e o que tem várias partes (os telefones, os itens do pedido) vai pra outra folha. O MongoDB é como uma
+                <strong>pasta de fichas livres</strong>: cada ficha é um documento que pode ter seus próprios campos, e as
+                listas e subinformações ficam <em>dentro</em> da própria ficha.
+            </p>
+        {% endblock %}{% endembed %}
+
+        <p>
+            O <strong>MongoDB</strong> é o banco <strong>NoSQL de documentos</strong> mais popular. Em vez de tabelas com
+            colunas fixas, ele guarda <strong>documentos</strong> parecidos com JSON (internamente, num formato binário
+            chamado BSON). Não existe <code>CREATE TABLE</code>: você grava o documento e pronto. A versão atual é a
+            <strong>8.2</strong>, que trouxe a busca textual e vetorial (antes só na nuvem, o MongoDB Atlas) também pra
+            edição Community, a gratuita.
+        </p>
+
+        <table>
+            <thead><tr><th>SQL</th><th>MongoDB</th></tr></thead>
+            <tbody>
+                <tr><td>banco (database)</td><td>banco (database)</td></tr>
+                <tr><td>tabela</td><td><strong>coleção</strong> (collection)</td></tr>
+                <tr><td>linha</td><td><strong>documento</strong></td></tr>
+                <tr><td>coluna</td><td><strong>campo</strong></td></tr>
+                <tr><td>chave primária</td><td><code>_id</code> (todo documento tem; se você não mandar, o MongoDB gera um <code>ObjectId</code>)</td></tr>
+                <tr><td>JOIN</td><td>documento embutido, ou <code>$lookup</code></td></tr>
+            </tbody>
+        </table>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Como praticar'} %}{% block body %}
+            <p>
+                Use o <strong>MongoDB Atlas</strong> (tem um plano gratuito na nuvem) ou Docker:
+                <code>docker run -p 27017:27017 mongo:8.2</code>, e conecte com o terminal <code>mongosh</code> ou com o
+                programa <strong>MongoDB Compass</strong>. Os comandos desta página são do <code>mongosh</code> (que é
+                JavaScript), e os resultados são saídas reais dele. Os exemplos usam <code>_id</code> fixos pra que o
+                resultado seja sempre o mesmo.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="card mb-6">
-        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
-        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 27017. A conexão é sempre por uma "connection string" no formato URI.</p>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <h3 class="field-label">Linha de comando (mongosh)</h3>
-                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>mongosh "mongodb://USUARIO:SENHA@HOST:27017/SCHEMA"</code></pre>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
+
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Inserindo documentos</h2>
+                <p>
+                    A coleção <code>filmes</code> passa a existir no primeiro insert. Repare que os documentos não precisam
+                    ter os mesmos campos: só o segundo tem <code>premios</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.filmes.insertMany([
+  { _id: 1, titulo: "Central do Brasil",    ano: 1998, nota: 8.0, generos: ["drama"] },
+  { _id: 2, titulo: "Cidade de Deus",       ano: 2002, nota: 8.6, generos: ["crime", "drama"], premios: 4 },
+  { _id: 3, titulo: "O Auto da Compadecida", ano: 2000, nota: 8.6, generos: ["comédia", "aventura"] },
+  { _id: 4, titulo: "Bacurau",              ano: 2019, nota: 7.3, generos: ["suspense", "faroeste"] }
+])
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{ acknowledged: true, insertedIds: { '0': 1, '1': 2, '2': 3, '3': 4 } }
+{%- endblock %}{% endembed %}
             </div>
-            <div>
-                <h3 class="field-label">Ferramentas GUI comuns</h3>
-                <p class="text-sm text-slate-600">MongoDB Compass (oficial, gratuita), Studio 3T.</p>
+
+            <div class="card guia">
+                <h2>2. Buscando com find</h2>
+                <p><code>find(filtro, projeção)</code>: o <strong>filtro</strong> diz quais documentos; a <strong>projeção</strong> diz quais campos mostrar (1 = mostra, 0 = esconde).</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.filmes.find({ ano: 2002 }, { _id: 0, titulo: 1, nota: 1 })
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+[ { titulo: 'Cidade de Deus', nota: 8.6 } ]
+{%- endblock %}{% endembed %}
+                <p>
+                    Equivale a <code>SELECT titulo, nota FROM filmes WHERE ano = 2002</code>. Os filtros por comparação
+                    usam operadores que começam com <code>$</code>:
+                </p>
+                <table>
+                    <thead><tr><th>MongoDB</th><th>SQL</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>{ nota: { $gte: 8.5 } }</code></td><td><code>nota &gt;= 8.5</code></td></tr>
+                        <tr><td><code>{ ano: { $lt: 2000 } }</code></td><td><code>ano &lt; 2000</code></td></tr>
+                        <tr><td><code>{ ano: { $in: [1998, 2019] } }</code></td><td><code>ano IN (1998, 2019)</code></td></tr>
+                        <tr><td><code>{ titulo: { $regex: "^C" } }</code></td><td><code>titulo LIKE 'C%'</code></td></tr>
+                        <tr><td><code>{ premios: { $exists: true } }</code></td><td><code>premios IS NOT NULL</code> (mais ou menos)</td></tr>
+                        <tr><td><code>{ ano: { $gte: 2000 }, nota: { $gt: 8 } }</code></td><td><code>ano &gt;= 2000 AND nota &gt; 8</code></td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.filmes.find(
+  { nota: { $gte: 8 } },
+  { _id: 0, titulo: 1, nota: 1 }
+).sort({ nota: -1, titulo: 1 }).limit(3)
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+[
+  { titulo: 'Cidade de Deus', nota: 8.6 },
+  { titulo: 'O Auto da Compadecida', nota: 8.6 },
+  { titulo: 'Central do Brasil', nota: 8 }
+]
+{%- endblock %}{% endembed %}
+                <p><code>sort({ nota: -1 })</code> ordena decrescente (1 = crescente). <code>limit(3)</code> traz só 3.</p>
             </div>
-        </div>
-        <div class="mt-4">
-            <h3 class="field-label">Via código (driver oficial do PHP)</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$client = new MongoDB\Client("mongodb://USUARIO:SENHA@HOST:27017");
-$colecao = $client->SCHEMA->alunos;</code></pre>
-        </div>
+
+            <div class="card guia">
+                <h2>3. Atualizando e apagando</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+// $set muda (ou cria) um campo; $inc soma
+db.filmes.updateOne({ _id: 4 }, { $set: { diretor: "Kleber Mendonça Filho" }, $inc: { nota: 0.2 } })
+db.filmes.findOne({ _id: 4 }, { _id: 0, titulo: 1, diretor: 1, nota: 1 })
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+{ titulo: 'Bacurau', nota: 7.5, diretor: 'Kleber Mendonça Filho' }
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'Cuidado com o update sem $set'} %}{% block body %}
+                    <p>
+                        <code>updateOne(filtro, { diretor: "X" })</code> sem <code>$set</code> dá erro nas versões novas, mas o
+                        antigo <code>replaceOne</code> <strong>substitui o documento inteiro</strong>: os outros campos somem.
+                        Pra alterar um campo, use sempre os operadores (<code>$set</code>, <code>$inc</code>, <code>$push</code>...).
+                    </p>
+                {% endblock %}{% endembed %}
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.filmes.insertOne({ _id: 99, titulo: "Filme de teste" })
+db.filmes.deleteOne({ _id: 99 })
+db.filmes.countDocuments()
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{ acknowledged: true, insertedId: 99 }
+{ acknowledged: true, deletedCount: 1 }
+4
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Mostre só os títulos dos filmes lançados antes de 2005, em ordem de ano.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mongo', titulo: 'Resposta'} %}{% block code -%}
+db.filmes.find({ ano: { $lt: 2005 } }, { _id: 0, titulo: 1, ano: 1 }).sort({ ano: 1 })
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+[
+  { titulo: 'Central do Brasil', ano: 1998 },
+  { titulo: 'O Auto da Compadecida', ano: 2000 },
+  { titulo: 'Cidade de Deus', ano: 2002 }
+]
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Quantos filmes têm o campo premios?</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mongo', titulo: 'Resposta'} %}{% block code -%}
+db.filmes.countDocuments({ premios: { $exists: true } })
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
+1
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Arrays e documentos dentro de documentos</h2>
+                <p>
+                    O grande trunfo do MongoDB: listas e "sub-fichas" moram no próprio documento. Consultar um array é
+                    natural: <code>{ generos: "drama" }</code> significa "o array contém drama".
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.filmes.find({ generos: "drama" }, { _id: 0, titulo: 1 }).sort({ titulo: 1 })
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+[ { titulo: 'Central do Brasil' }, { titulo: 'Cidade de Deus' } ]
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+// Um documento embutido (direção) e um array de documentos (avaliações)
+db.filmes.updateOne(
+  { _id: 2 },
+  {
+    $set: { direcao: { nome: "Fernando Meirelles", pais: "Brasil" } },
+    $push: { avaliacoes: { $each: [ { usuario: "ana", estrelas: 5 }, { usuario: "beto", estrelas: 4 } ] } }
+  }
+)
+
+// Ponto pra entrar no documento embutido
+db.filmes.find({ "direcao.pais": "Brasil" }, { _id: 0, titulo: 1, "direcao.nome": 1, avaliacoes: 1 })
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+[
+  {
+    titulo: 'Cidade de Deus',
+    avaliacoes: [ { usuario: 'ana', estrelas: 5 }, { usuario: 'beto', estrelas: 4 } ],
+    direcao: { nome: 'Fernando Meirelles' }
+  }
+]
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>$push</code> adiciona ao array (<code>$each</code> adiciona vários de uma vez).</li>
+                    <li><code>$pull</code> remove do array; <code>$addToSet</code> adiciona só se ainda não existir.</li>
+                    <li>Pra filtrar por <em>duas condições no mesmo item</em> de um array de documentos, use <code>$elemMatch</code>: <code>{ avaliacoes: { $elemMatch: { usuario: "ana", estrelas: 5 } } }</code>.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Aggregation pipeline: a "linha de montagem"</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+                    <p>
+                        O <strong>pipeline de agregação</strong> é uma linha de montagem: os documentos entram, passam por
+                        estações (filtrar, agrupar, ordenar, calcular) e cada estação entrega o resultado pra próxima. É o
+                        equivalente do <code>WHERE</code> + <code>GROUP BY</code> + <code>ORDER BY</code> do SQL.
+                    </p>
+                {% endblock %}{% endembed %}
+                <table>
+                    <thead><tr><th>Estágio</th><th>Faz</th><th>No SQL</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>$match</code></td><td>filtra</td><td><code>WHERE</code> / <code>HAVING</code></td></tr>
+                        <tr><td><code>$group</code></td><td>agrupa e calcula</td><td><code>GROUP BY</code> + <code>COUNT</code>/<code>AVG</code></td></tr>
+                        <tr><td><code>$sort</code></td><td>ordena</td><td><code>ORDER BY</code></td></tr>
+                        <tr><td><code>$project</code></td><td>escolhe/calcula campos</td><td>a lista do <code>SELECT</code></td></tr>
+                        <tr><td><code>$unwind</code></td><td>"explode" um array: um documento por item</td><td>(parecido com juntar uma tabela filha)</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+// Nota média por gênero, só dos gêneros com 2 filmes ou mais
+db.filmes.aggregate([
+  { $unwind: "$generos" },
+  { $group: { _id: "$generos", filmes: { $sum: 1 }, media: { $avg: "$nota" } } },
+  { $match: { filmes: { $gte: 2 } } },
+  { $sort: { media: -1, _id: 1 } }
+])
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+[ { _id: 'drama', filmes: 2, media: 8.3 } ]
+{%- endblock %}{% endembed %}
+                <p>
+                    Só "drama" aparece: é o único gênero com 2 filmes. O <code>$match</code> depois do <code>$group</code>
+                    funciona como o <code>HAVING</code> do SQL; antes dele, funcionaria como o <code>WHERE</code>. Dentro dos
+                    estágios, <code>"$campo"</code> (com cifrão, entre aspas) quer dizer "o valor do campo".
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Índices</h2>
+                <p>
+                    Sem índice, o MongoDB lê a coleção inteira (<em>COLLSCAN</em>). Com índice, vai direto (<em>IXSCAN</em>).
+                    O <code>explain</code> mostra qual foi usado:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.filmes.createIndex({ ano: 1 })
+
+db.filmes.find({ ano: 2019 }).explain().queryPlanner.winningPlan.inputStage.stage
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+ano_1
+IXSCAN
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Upsert</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+// Conta visualizações: cria o documento na primeira vez, soma nas próximas
+db.visualizacoes.updateOne({ _id: "Bacurau" }, { $inc: { total: 1 } }, { upsert: true })
+db.visualizacoes.updateOne({ _id: "Bacurau" }, { $inc: { total: 1 } }, { upsert: true })
+db.visualizacoes.findOne({ _id: "Bacurau" })
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{
+  acknowledged: true,
+  insertedId: 'Bacurau',
+  matchedCount: 0,
+  modifiedCount: 0,
+  upsertedCount: 1
+}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+{ _id: 'Bacurau', total: 2 }
+{%- endblock %}{% endembed %}
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Modelagem: embutir ou referenciar?</h2>
+                <p>A decisão mais importante no MongoDB. A regra geral: <strong>modele pelo jeito que os dados são lidos</strong>.</p>
+                <table>
+                    <thead><tr><th>Embutir (dentro do documento)</th><th>Referenciar (guardar o _id de outro)</th></tr></thead>
+                    <tbody>
+                        <tr><td>Os dados são lidos juntos quase sempre</td><td>Os dados são lidos separados com frequência</td></tr>
+                        <tr><td>Relação "um pra poucos" (endereços de um cliente)</td><td>Relação "um pra muitos de verdade" (milhões de logs)</td></tr>
+                        <tr><td>A parte filha não faz sentido sozinha</td><td>A parte é compartilhada (o mesmo autor em vários livros)</td></tr>
+                        <tr><td>Uma leitura só, sem junção</td><td>Precisa de <code>$lookup</code> ou de duas consultas</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'Limite de 16 MB por documento'} %}{% block body %}
+                    <p>
+                        Um documento não pode passar de 16 MB. Um array que cresce sem fim (todos os comentários de um post
+                        muito popular, por exemplo) é um erro clássico: guarde só os mais recentes no documento e o resto numa
+                        coleção separada.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. $lookup: o "JOIN" do MongoDB</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.diretores.insertMany([
+  { _id: "kmf", nome: "Kleber Mendonça Filho" },
+  { _id: "ws",  nome: "Walter Salles" }
+])
+db.filmes.updateOne({ _id: 4 }, { $set: { diretor_id: "kmf" } })
+db.filmes.updateOne({ _id: 1 }, { $set: { diretor_id: "ws" } })
+
+db.filmes.aggregate([
+  { $match: { diretor_id: { $exists: true } } },
+  { $lookup: { from: "diretores", localField: "diretor_id", foreignField: "_id", as: "dir" } },
+  { $project: { _id: 0, titulo: 1, diretor: { $first: "$dir.nome" } } },
+  { $sort: { titulo: 1 } }
+])
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{ acknowledged: true, insertedIds: { '0': 'kmf', '1': 'ws' } }
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+[
+  { titulo: 'Bacurau', diretor: 'Kleber Mendonça Filho' },
+  { titulo: 'Central do Brasil', diretor: 'Walter Salles' }
+]
+{%- endblock %}{% endembed %}
+                <p>Se você precisa de <code>$lookup</code> o tempo todo, talvez os dados devessem estar embutidos, ou talvez o problema peça um banco relacional.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Validação de esquema</h2>
+                <p>"Sem esquema" não quer dizer "sem regras". Dá pra exigir campos e tipos com <code>$jsonSchema</code>:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo'} %}{% block code -%}
+db.createCollection("usuarios", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["email", "idade"],
+      properties: {
+        email: { bsonType: "string", pattern: "@" },
+        idade: { bsonType: "int", minimum: 13 }
+      }
+    }
+  }
+})
+
+db.usuarios.insertOne({ _id: 1, email: "ana@exemplo.com", idade: 20 })
+
+try {
+  db.usuarios.insertOne({ _id: 2, email: "sem-arroba", idade: 10 })
+} catch (e) {
+  print("Recusado: " + e.errmsg)
+}
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+{ ok: 1 }
+{ acknowledged: true, insertedId: 1 }
+Recusado: Document failed validation
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Escalando: replica set e sharding</h2>
+                <ul>
+                    <li><strong>Replica set</strong>: várias cópias do mesmo banco em servidores diferentes. Um é o primário (recebe as escritas), os outros acompanham. Se o primário cair, outro assume sozinho em segundos. Em produção, sempre use replica set (no mínimo 3 membros).</li>
+                    <li><strong>Sharding</strong>: dividir uma coleção enorme entre vários servidores, cada um com uma parte, escolhida por uma <em>shard key</em>. Escolher uma shard key ruim (que manda tudo pro mesmo servidor) é o erro mais caro de corrigir.</li>
+                    <li><strong>Transações com vários documentos</strong> existem desde a versão 4.0, mas precisam de replica set. Se você precisa delas o tempo todo, revise a modelagem: no MongoDB, um documento bem modelado já é atualizado de forma atômica.</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'mongo', skip: true, titulo: 'Transação (precisa de replica set)'} %}{% block code -%}
+const sessao = db.getMongo().startSession()
+sessao.startTransaction()
+try {
+  const contas = sessao.getDatabase("banco").contas
+  contas.updateOne({ _id: "ana" },  { $inc: { saldo: -100 } })
+  contas.updateOne({ _id: "beto" }, { $inc: { saldo: 100 } })
+  sessao.commitTransaction()
+} catch (e) {
+  sessao.abortTransaction()
+}
+{%- endblock %}{% endembed %}
+            </div>
+        </section>
     </div>
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                "NoSQL" é o nome guarda-chuva pra bancos que <strong>não</strong> organizam dado em tabelas
-                fixas com colunas pré-definidas — existem vários tipos (documento, chave-valor, coluna larga,
-                grafo). MongoDB é o mais popular do tipo <strong>documento</strong>: cada registro é um
-                "documento" parecido com JSON, guardado dentro de uma <em>collection</em> (o equivalente
-                aproximado de uma tabela, mas sem exigir que todo documento tenha as mesmas colunas).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Guardar dados cujo formato varia de registro pra registro, ou que mudam de forma com frequência
-                durante o desenvolvimento — sem precisar de uma migração de schema toda vez que um campo novo
-                aparece. Também é comum quando o "objeto" da aplicação já é naturalmente aninhado (ex.: um
-                pedido com uma lista de itens dentro dele) e faz sentido guardar tudo junto, em vez de espalhar
-                em várias tabelas relacionadas.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Catálogos de produto com atributos variáveis por categoria, conteúdo de CMS, logs/eventos,
-                protótipos em fase inicial (schema ainda incerto), ou sistemas que precisam escalar
-                horizontalmente (adicionar mais servidores) com muita facilidade. Quando os dados são
-                fortemente relacionais e a integridade entre eles importa muito (ex.: sistema financeiro), um
-                relacional tradicional costuma ser mais seguro — o próprio MongoDB recomenda isso.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Não existe <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> — a collection é criada sozinha no primeiro
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">insertOne</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">insertMany</code>. Pra atualizar um documento existente, usa-se <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">updateOne</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">updateMany</code>
-                com operadores como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$set</code> (troca só os campos indicados, não o documento inteiro).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>// Inserindo um documento (sintaxe do mongo shell/driver)
-db.alunos.insertOne({
-  nome: "Ana Silva",
-  email: "ana@exemplo.com",
-  cursos: ["Banco de Dados", "Redes"]
-});
-
-// Consultando com filtro
-db.alunos.find({ cursos: "Banco de Dados" });</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>// Atualiza só o campo indicado ($set), sem sobrescrever o resto do documento
-db.alunos.updateOne(
-  { email: "ana@exemplo.com" },
-  { $set: { nome: "Ana Paula Silva" } }
-);
-
-db.alunos.deleteOne({ email: "ana@exemplo.com" });</code></pre>
-        </div>
-    </div>
-
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                O <strong>aggregation pipeline</strong> — a forma do MongoDB de fazer o que em SQL seria
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JOIN</code>/agregação: uma sequência de "estágios" (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$match</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$group</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$lookup</code>...) que o documento
-                passa, um transformando o resultado do anterior.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$match</code></strong> — filtra documentos (equivalente ao <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code>).</li>
-                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$group</code></strong> — agrupa e agrega (equivalente ao <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> + funções como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SUM</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COUNT</code>).</li>
-                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$lookup</code></strong> — "junta" dado de outra collection (parecido com um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">LEFT JOIN</code>), usado com moderação — MongoDB é mais rápido quando o dado já vem embutido no próprio documento.</li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Aggregation pipeline pra relatórios e resumos sobre a mesma collection. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$lookup</code> quando é
-                realmente necessário combinar duas collections, mas sem abusar — se isso vira frequente e
-                pesado, geralmente é sinal de que o modelo de dado deveria embutir a informação junto (a
-                filosofia do MongoDB é "modele pro jeito que você consulta", diferente do relacional que modela
-                pra evitar repetição antes de mais nada).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Monte o pipeline de trás pra frente, mentalmente: comece pelo resultado que você quer no final
-                e vá pensando em qual estágio produz aquele formato a partir do anterior. Coloque <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">$match</code>
-                o mais cedo possível no pipeline — filtrar antes de agrupar/juntar processa muito menos
-                documento.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>// Quantos alunos por curso, só cursos com mais de 1 aluno
-db.alunos.aggregate([
-  { $unwind: "$cursos" },
-  { $group: { _id: "$cursos", total: { $sum: 1 } } },
-  { $match: { total: { $gt: 1 } } },
-  { $sort: { total: -1 } }
-]);</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>// Índice: acelera busca por email, e ainda garante unicidade
-db.alunos.createIndex({ email: 1 }, { unique: true });</code></pre>
-        </div>
+    <div class="card guia mt-8">
+        <h2>📖 Quando escolher o MongoDB?</h2>
+        <ul>
+            <li>Dados com formato que varia muito de um registro pro outro (catálogos de produtos com atributos diferentes, conteúdo de CMS, eventos).</li>
+            <li>Quando os dados são lidos "em blocos" que cabem bem num documento (um pedido com seus itens, um perfil com suas preferências).</li>
+            <li>Prototipação rápida, em que a estrutura ainda está mudando.</li>
+            <li><strong>Evite</strong> quando há muitas relações cruzadas e regras de integridade entre entidades (financeiro, estoque com muitas tabelas relacionadas): aí um relacional costuma ser mais simples e seguro.</li>
+        </ul>
     </div>
 {% endblock %}

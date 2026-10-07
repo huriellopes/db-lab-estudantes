@@ -1,229 +1,495 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">🧹</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Formas Normais (1FN, 2FN, 3FN)</h1>
-            <p class="mt-1 text-sm text-slate-500">Como organizar as tabelas pra evitar dado repetido e inconsistente.</p>
-        </div>
+    <div class="guia mb-6">
+        {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+            <p>
+                Imagine a agenda de contatos de alguém que anota tudo numa folha só: "Ana — (81) 9999-0000 — trabalha na
+                Loja X — Loja X fica na Rua A". Se a Loja X mudar de endereço, a pessoa precisa caçar e corrigir a rua em
+                todas as linhas de todo mundo que trabalha lá. Se esquecer uma, a agenda passa a dizer duas coisas
+                diferentes. <strong>Normalizar</strong> é organizar essa bagunça: cada informação mora num lugar só.
+            </p>
+        {% endblock %}{% endembed %}
+
+        <p>
+            As <strong>formas normais</strong> (1FN, 2FN, 3FN...) são uma lista de regras, uma em cima da outra, criadas por
+            Edgar Codd, o inventor do modelo relacional. Pra estar na 2FN a tabela precisa estar na 1FN; pra estar na 3FN,
+            na 2FN; e assim por diante. Na prática, <strong>chegar na 3FN</strong> resolve quase todos os problemas.
+        </p>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab'} %}{% block body %}
+            <p>
+                Os exemplos rodam no console SQL. Use um schema só pra esta página: os exemplos criam e apagam tabelas
+                como <code>venda_planilha</code>, <code>cliente_fn</code> e <code>produto_fn</code>.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div>
-            Isso aqui é o passo <strong>depois</strong> do DER — você já desenhou entidades e relacionamentos (ver
-            <a href="/guia/modelagem-er" class="font-medium text-indigo-600 hover:text-indigo-700">Modelagem de dados (MER/DER)</a>),
-            já sabe montar o <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> (ver
-            <a href="/guia/sql-ansi" class="font-medium text-indigo-600 hover:text-indigo-700">SQL ANSI</a>) — as formas
-            normais são o teste que você roda nesse resultado pra achar tabela mal desenhada antes que vire um
-            problema de verdade. Os exemplos usam o mesmo cenário aluno/curso/matrícula do resto do guia.
-        </div>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
+
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. O problema: a tabela "planilhão"</h2>
+                <p>Quem está começando costuma criar uma tabela só com tudo dentro, igual a uma planilha:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'A tabela problemática'} %}{% block code -%}
+CREATE TABLE venda_planilha (
+    venda_id       INT,
+    data_venda     DATE,
+    cliente_nome   VARCHAR(100),
+    cliente_cidade VARCHAR(60),
+    produtos       VARCHAR(200),     -- vários produtos num campo só!
+    total          DECIMAL(10,2)
+);
+
+INSERT INTO venda_planilha VALUES
+    (1, '2026-09-01', 'Ana Souza',  'Recife', 'Caderno, Caneta', 25.00),
+    (2, '2026-09-02', 'Ana Souza',  'Recife', 'Mochila',         120.00),
+    (3, '2026-09-02', 'Bruno Lima', 'Olinda', 'Caneta',          5.00);
+
+SELECT * FROM venda_planilha;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------+------------+--------------+----------------+-----------------+--------+
+| venda_id | data_venda | cliente_nome | cliente_cidade | produtos        |  total |
++----------+------------+--------------+----------------+-----------------+--------+
+|        1 | 2026-09-01 | Ana Souza    | Recife         | Caderno, Caneta |  25.00 |
+|        2 | 2026-09-02 | Ana Souza    | Recife         | Mochila         | 120.00 |
+|        3 | 2026-09-02 | Bruno Lima   | Olinda         | Caneta          |   5.00 |
++----------+------------+--------------+----------------+-----------------+--------+
+{%- endblock %}{% endembed %}
+
+                <p>Parece prático, mas ela causa três tipos de problema, chamados de <strong>anomalias</strong>:</p>
+                <table>
+                    <thead><tr><th>Anomalia</th><th>O que acontece aqui</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>De atualização</strong></td><td>A Ana mudou pra Olinda. É preciso alterar várias linhas; se esquecer uma, o banco passa a dizer que ela mora em duas cidades.</td></tr>
+                        <tr><td><strong>De inserção</strong></td><td>Não dá pra cadastrar um cliente novo que ainda não comprou nada: sem venda, não existe linha.</td></tr>
+                        <tr><td><strong>De exclusão</strong></td><td>Se apagarmos a venda 3, perdemos a informação de que o Bruno existe e mora em Olinda.</td></tr>
+                    </tbody>
+                </table>
+                <p>Veja a anomalia de atualização acontecendo:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Atualizamos só a venda 2 (esquecemos a venda 1)...
+UPDATE venda_planilha SET cliente_cidade = 'Olinda' WHERE venda_id = 2;
+
+-- ...e agora a Ana "mora" em dois lugares
+SELECT DISTINCT cliente_nome, cliente_cidade
+FROM venda_planilha
+WHERE cliente_nome = 'Ana Souza';
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------------+----------------+
+| cliente_nome | cliente_cidade |
++--------------+----------------+
+| Ana Souza    | Recife         |
+| Ana Souza    | Olinda         |
++--------------+----------------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. 1ª Forma Normal (1FN): um valor por célula</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'Regra da 1FN'} %}{% block body %}
+                    <p>Cada célula guarda <strong>um único valor</strong> (nada de listas) e não existem colunas repetidas como <code>produto1</code>, <code>produto2</code>, <code>produto3</code>.</p>
+                {% endblock %}{% endembed %}
+                <p>
+                    A coluna <code>produtos</code> com <code>'Caderno, Caneta'</code> quebra a 1FN. Com ela, perguntas simples
+                    ficam difíceis: "quantas canetas vendemos?" exigiria procurar texto dentro de texto. A solução é ter
+                    <strong>uma linha por produto vendido</strong>:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE TABLE venda_item_1fn (
+    venda_id     INT,
+    produto      VARCHAR(60),
+    quantidade   INT,
+    preco_unit   DECIMAL(10,2),
+    PRIMARY KEY (venda_id, produto)
+);
+
+INSERT INTO venda_item_1fn VALUES
+    (1, 'Caderno', 1, 20.00),
+    (1, 'Caneta',  1, 5.00),
+    (2, 'Mochila', 1, 120.00),
+    (3, 'Caneta',  1, 5.00);
+
+-- Agora a pergunta fica fácil
+SELECT produto, SUM(quantidade) AS vendidos
+FROM venda_item_1fn
+GROUP BY produto
+ORDER BY produto;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------+----------+
+| produto | vendidos |
++---------+----------+
+| Caderno |        1 |
+| Caneta  |        2 |
+| Mochila |        1 |
++---------+----------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. 2ª Forma Normal (2FN): depender da chave inteira</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'Regra da 2FN'} %}{% block body %}
+                    <p>Estar na 1FN e: quando a chave tem <strong>mais de uma coluna</strong>, cada outra coluna precisa depender da <strong>chave inteira</strong>, não só de um pedaço dela.</p>
+                {% endblock %}{% endembed %}
+                <p>
+                    Na <code>venda_item_1fn</code> a chave é <code>(venda_id, produto)</code>. A <code>quantidade</code>
+                    depende das duas coisas (quantas canetas <em>naquela venda</em>). Mas e o preço da caneta? Se ele é
+                    sempre o mesmo, depende só do <code>produto</code>, que é metade da chave. Isso quebra a 2FN: o preço da
+                    caneta fica repetido em toda venda que tem caneta.
+                </p>
+                <p><strong>Solução:</strong> o que depende só do produto vai pra uma tabela de produtos.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'Antes e depois'} %}{% block code -%}
+ANTES:  venda_item(venda_id, produto, quantidade, preco_unit)
+                                      └── preco depende só de "produto"
+
+DEPOIS: produto(produto, preco)
+        venda_item(venda_id, produto, quantidade)
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'Exceção importante: preço histórico'} %}{% block body %}
+                    <p>
+                        Se o preço muda com o tempo e você precisa saber <strong>por quanto foi vendido naquele dia</strong>,
+                        então <code>preco_unit</code> na venda depende da chave inteira (é o preço <em>daquela venda</em>) e
+                        deve ficar. Normalizar não é aplicar regra cega: é entender do que cada dado depende.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. 3ª Forma Normal (3FN): nada de "dependência de tabela"</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'Regra da 3FN'} %}{% block body %}
+                    <p>Estar na 2FN e: nenhuma coluna comum depende de <strong>outra coluna comum</strong>. Tudo depende da chave, e só da chave.</p>
+                {% endblock %}{% endembed %}
+                <p>
+                    Na planilha, <code>cliente_cidade</code> depende de quem é o cliente, e não da venda. A venda aponta pro
+                    cliente, e o cliente "aponta" pra cidade: é uma <strong>dependência transitiva</strong>
+                    (venda → cliente → cidade). Por isso a cidade se repetia e gerou a contradição lá em cima.
+                </p>
+                <p><strong>Solução:</strong> cliente vira tabela própria, e a venda guarda só o id do cliente.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE TABLE cliente_fn (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    nome   VARCHAR(100) NOT NULL,
+    cidade VARCHAR(60)
+);
+
+CREATE TABLE venda_fn (
+    id         INT PRIMARY KEY,
+    data_venda DATE NOT NULL,
+    cliente_id INT NOT NULL,
+    FOREIGN KEY (cliente_id) REFERENCES cliente_fn (id)
+);
+
+INSERT INTO cliente_fn (nome, cidade) VALUES ('Ana Souza', 'Recife'), ('Bruno Lima', 'Olinda');
+INSERT INTO venda_fn VALUES (1, '2026-09-01', 1), (2, '2026-09-02', 1), (3, '2026-09-02', 2);
+
+-- A Ana se muda: UMA linha alterada, impossível ficar contraditório
+UPDATE cliente_fn SET cidade = 'Olinda' WHERE id = 1;
+
+SELECT v.id AS venda, c.nome, c.cidade
+FROM venda_fn v
+JOIN cliente_fn c ON c.id = v.cliente_id
+ORDER BY v.id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------+------------+--------+
+| venda | nome       | cidade |
++-------+------------+--------+
+|     1 | Ana Souza  | Olinda |
+|     2 | Ana Souza  | Olinda |
+|     3 | Bruno Lima | Olinda |
++-------+------------+--------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>Resumo pra decorar</h2>
+                <table>
+                    <thead><tr><th>Forma</th><th>Pergunta pra fazer</th><th>Se a resposta for "não"...</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>1FN</strong></td><td>Cada célula tem um valor só?</td><td>Separe a lista em linhas (ou numa tabela nova).</td></tr>
+                        <tr><td><strong>2FN</strong></td><td>Cada coluna depende da chave <em>inteira</em>?</td><td>Leve a coluna pra tabela do pedaço de chave de que ela depende.</td></tr>
+                        <tr><td><strong>3FN</strong></td><td>Cada coluna depende <em>só</em> da chave?</td><td>Leve a coluna pra tabela da coisa de que ela depende de verdade.</td></tr>
+                    </tbody>
+                </table>
+                <p class="text-xs text-slate-500">Uma frase famosa resume: "cada coluna depende da chave, da chave inteira e de nada além da chave".</p>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. A tabela aluno(id, nome, telefones) guarda "8199990000, 8188880000" em telefones. Qual forma normal ela quebra e como corrigir?</summary>
+                    <p class="mt-2">Quebra a <strong>1FN</strong> (lista numa célula). Crie <code>telefone(aluno_id, numero)</code>, uma linha por telefone, com chave primária <code>(aluno_id, numero)</code>.</p>
+                </details>
+                <details>
+                    <summary>2. funcionario(id, nome, departamento_id, departamento_nome). Qual forma normal ela quebra?</summary>
+                    <p class="mt-2">A <strong>3FN</strong>: <code>departamento_nome</code> depende de <code>departamento_id</code>, que não é a chave. Crie <code>departamento(id, nome)</code> e deixe só <code>departamento_id</code> em funcionário.</p>
+                </details>
+            </div>
+        </section>
+
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Dependência funcional: a ideia por trás de tudo</h2>
+                <p>
+                    Dizemos que <strong>A determina B</strong> (escreve-se <code>A → B</code>) quando, sabendo A, existe um
+                    único B possível. Exemplos:
+                </p>
+                <ul>
+                    <li><code>cpf → nome</code>: sabendo o CPF, o nome é um só.</li>
+                    <li><code>cep → cidade</code>: sabendo o CEP, a cidade é uma só.</li>
+                    <li><code>nome → cpf</code> <strong>não vale</strong>: existem várias pessoas com o mesmo nome.</li>
+                </ul>
+                <p>Com essa ideia, as regras ficam precisas:</p>
+                <ul>
+                    <li><strong>2FN</strong>: nenhuma coluna depende de só <em>parte</em> da chave (dependência parcial).</li>
+                    <li><strong>3FN</strong>: nenhuma coluna depende de outra coluna que não é chave (dependência transitiva).</li>
+                </ul>
+                <p>
+                    Dá pra testar uma suspeita de dependência com SQL: se <code>A → B</code>, nenhum valor de A aparece com
+                    dois valores de B diferentes.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- "cliente_nome -> cliente_cidade" vale nos dados da planilha?
+SELECT cliente_nome, COUNT(DISTINCT cliente_cidade) AS cidades_diferentes
+FROM venda_planilha
+GROUP BY cliente_nome
+HAVING COUNT(DISTINCT cliente_cidade) > 1;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------------+--------------------+
+| cliente_nome | cidades_diferentes |
++--------------+--------------------+
+| Ana Souza    |                  2 |
++--------------+--------------------+
+{%- endblock %}{% endembed %}
+                <p>A Ana aparece com 2 cidades: a dependência deveria valer, mas a anomalia do nível Iniciante quebrou os dados. É exatamente o que a 3FN evita.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Normalizando de verdade: migrando os dados</h2>
+                <p>
+                    No mundo real, você raramente começa do zero: precisa <strong>migrar</strong> uma tabela ruim pra tabelas
+                    normalizadas. O truque é <code>INSERT ... SELECT</code>: inserir o resultado de uma consulta.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- 1) Produtos distintos que aparecem nos itens viram a tabela produto
+CREATE TABLE produto_fn (
+    id    INT AUTO_INCREMENT PRIMARY KEY,
+    nome  VARCHAR(60) NOT NULL UNIQUE,
+    preco DECIMAL(10,2) NOT NULL
+);
+
+INSERT INTO produto_fn (nome, preco)
+SELECT produto, MAX(preco_unit)
+FROM venda_item_1fn
+GROUP BY produto;
+
+-- 2) Os itens passam a apontar pro id do produto
+CREATE TABLE item_fn (
+    venda_id   INT NOT NULL,
+    produto_id INT NOT NULL,
+    quantidade INT NOT NULL,
+    PRIMARY KEY (venda_id, produto_id),
+    FOREIGN KEY (venda_id)   REFERENCES venda_fn (id),
+    FOREIGN KEY (produto_id) REFERENCES produto_fn (id)
+);
+
+INSERT INTO item_fn (venda_id, produto_id, quantidade)
+SELECT i.venda_id, p.id, i.quantidade
+FROM venda_item_1fn i
+JOIN produto_fn p ON p.nome = i.produto;
+
+-- 3) Conferindo: dá pra remontar a "planilha" com JOINs, sem nada repetido no armazenamento
+SELECT v.id AS venda, c.nome AS cliente, p.nome AS produto, i.quantidade, p.preco
+FROM venda_fn v
+JOIN cliente_fn c ON c.id = v.cliente_id
+JOIN item_fn i    ON i.venda_id = v.id
+JOIN produto_fn p ON p.id = i.produto_id
+ORDER BY v.id, p.nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------+------------+---------+------------+--------+
+| venda | cliente    | produto | quantidade |  preco |
++-------+------------+---------+------------+--------+
+|     1 | Ana Souza  | Caderno |          1 |  20.00 |
+|     1 | Ana Souza  | Caneta  |          1 |   5.00 |
+|     2 | Ana Souza  | Mochila |          1 | 120.00 |
+|     3 | Bruno Lima | Caneta  |          1 |   5.00 |
++-------+------------+---------+------------+--------+
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+                    <p>
+                        Normalizar é <strong>desmontar</strong> a planilha em peças sem repetição. O <code>JOIN</code> é
+                        <strong>remontar</strong> na hora de ler. Você guarda arrumado e monta do jeito que quiser na consulta.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Forma Normal de Boyce-Codd (FNBC)</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'Regra da FNBC'} %}{% block body %}
+                    <p>Em toda dependência <code>A → B</code>, A precisa ser uma chave (candidata) da tabela. É uma 3FN "mais rígida".</p>
+                {% endblock %}{% endembed %}
+                <p>
+                    Os casos em que a 3FN não basta são raros e aparecem quando há mais de uma chave possível sobrepostas.
+                    Exemplo clássico: <code>aula(aluno, disciplina, professor)</code>, onde cada professor ensina uma única
+                    disciplina (<code>professor → disciplina</code>) e cada aluno tem um professor por disciplina. A chave é
+                    <code>(aluno, disciplina)</code>, mas <code>professor</code> determina <code>disciplina</code> sem ser
+                    chave. Resultado: se o professor mudar de disciplina, várias linhas precisam mudar.
+                </p>
+                <p>
+                    <strong>Solução:</strong> <code>professor(professor, disciplina)</code> e
+                    <code>aula(aluno, professor)</code>.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>⚠️ Erros comuns ao normalizar</h2>
+                <ul>
+                    <li><strong>Normalizar demais</strong>: criar uma tabela pra "sexo" ou "UF" com dois campos e nenhum ganho. Uma coluna com <code>CHECK</code> ou <code>ENUM</code> resolve.</li>
+                    <li><strong>Separar o que nunca muda junto</strong>: dividir uma tabela só porque ela tem muitas colunas não é normalização.</li>
+                    <li><strong>Apagar o histórico</strong>: preço da venda, endereço de entrega do pedido, nome do produto na nota fiscal são fotografias daquele momento e devem ser copiados, não referenciados.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Normalize até a 3FN: pedido(num_pedido, data, cod_cliente, nome_cliente, cod_produto, descricao_produto, qtd, preco_produto).</summary>
+                    <ul class="mt-2">
+                        <li><code>cliente(cod_cliente, nome_cliente)</code></li>
+                        <li><code>produto(cod_produto, descricao_produto, preco_produto)</code></li>
+                        <li><code>pedido(num_pedido, data, cod_cliente)</code></li>
+                        <li><code>item_pedido(num_pedido, cod_produto, qtd)</code> (mais <code>preco_unit</code> se precisar do preço histórico)</li>
+                    </ul>
+                </details>
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. 4FN e 5FN: quando existem listas independentes</h2>
+                <p>
+                    A <strong>4FN</strong> trata de <em>dependências multivaloradas</em>: duas listas independentes sobre a
+                    mesma coisa guardadas juntas. Exemplo: <code>professor(nome, idioma, hobby)</code>. Se a Ana fala
+                    inglês e espanhol e gosta de xadrez e corrida, a tabela precisa de 4 linhas (todas as combinações), e
+                    adicionar um hobby obriga a inserir uma linha por idioma.
+                </p>
+                <p><strong>Solução (4FN):</strong> <code>professor_idioma(nome, idioma)</code> e <code>professor_hobby(nome, hobby)</code>.</p>
+                <p>
+                    A <strong>5FN</strong> trata de casos em que uma tabela de três (ou mais) colunas pode ser reconstruída
+                    exatamente juntando tabelas menores. É raríssima no dia a dia e costuma ser assunto de prova, não de projeto.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Desnormalização: quebrar a regra de propósito</h2>
+                <p>
+                    Normalização otimiza pra <strong>escrita correta</strong>: cada dado num lugar só. Mas alguns sistemas
+                    leem muito mais do que escrevem (relatórios, painéis), e muitos JOINs em tabelas enormes custam caro.
+                    Nesses casos, guardar uma informação repetida <strong>de propósito</strong> pode valer a pena:
+                </p>
+                <table>
+                    <thead><tr><th>Técnica</th><th>Exemplo</th><th>Custo</th></tr></thead>
+                    <tbody>
+                        <tr><td>Coluna calculada guardada</td><td><code>pedido.total</code> em vez de somar os itens sempre</td><td>Precisa ser atualizada quando os itens mudam</td></tr>
+                        <tr><td>Cópia de um campo de outra tabela</td><td><code>pedido.cliente_nome</code></td><td>Pode ficar desatualizada (às vezes é o que você quer: histórico)</td></tr>
+                        <tr><td>Tabela de resumo</td><td><code>vendas_por_dia(dia, total)</code> atualizada à noite</td><td>Os números ficam "atrasados" até a próxima atualização</td></tr>
+                    </tbody>
+                </table>
+                <p>A regra: normalize primeiro, meça, e só desnormalize o que o desempenho exigir, sabendo quem mantém a cópia em dia.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Total guardado, mantido por trigger'} %}{% block code -%}
+ALTER TABLE venda_fn ADD COLUMN total DECIMAL(10,2) NOT NULL DEFAULT 0;
+
+-- Preenche o total das vendas que já existem
+UPDATE venda_fn v
+SET total = (
+    SELECT COALESCE(SUM(i.quantidade * p.preco), 0)
+    FROM item_fn i JOIN produto_fn p ON p.id = i.produto_id
+    WHERE i.venda_id = v.id
+);
+
+-- Mantém atualizado sozinho a cada item novo
+CREATE TRIGGER item_fn_soma_total
+AFTER INSERT ON item_fn
+FOR EACH ROW
+UPDATE venda_fn
+SET total = total + NEW.quantidade * (SELECT preco FROM produto_fn WHERE id = NEW.produto_id)
+WHERE id = NEW.venda_id;
+
+INSERT INTO item_fn (venda_id, produto_id, quantidade)
+SELECT 3, id, 2 FROM produto_fn WHERE nome = 'Caderno';
+
+SELECT id, total FROM venda_fn ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+--------+
+| id |  total |
++----+--------+
+|  1 |  25.00 |
+|  2 | 120.00 |
+|  3 |  45.00 |
++----+--------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. OLTP x OLAP: dois mundos</h2>
+                <table>
+                    <thead><tr><th></th><th>OLTP (sistema do dia a dia)</th><th>OLAP (análise / data warehouse)</th></tr></thead>
+                    <tbody>
+                        <tr><td>Uso</td><td>Muitas operações pequenas: cadastrar, vender</td><td>Poucas consultas enormes: "vendas por mês e região nos últimos 5 anos"</td></tr>
+                        <tr><td>Modelo</td><td>Normalizado (3FN)</td><td>Desnormalizado: <strong>esquema estrela</strong></td></tr>
+                        <tr><td>Prioridade</td><td>Consistência na escrita</td><td>Velocidade na leitura</td></tr>
+                    </tbody>
+                </table>
+                <p>
+                    No <strong>esquema estrela</strong>, uma tabela <em>fato</em> no centro guarda os números (vendas: valor,
+                    quantidade) e tabelas <em>dimensão</em> em volta guardam as descrições (tempo, produto, loja), repetindo
+                    informação de propósito pra que os relatórios precisem de poucos JOINs.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'text', titulo: 'Esquema estrela'} %}{% block code -%}
+              dim_tempo (dia, mes, ano, trimestre)
+                         │
+dim_produto ── fato_vendas (tempo_id, produto_id, loja_id, quantidade, valor) ── dim_loja
+(nome, categoria)                                                                 (cidade, regiao)
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Um sistema de e-commerce está lento na tela "Meus pedidos", que soma os itens de cada pedido. Proponha uma desnormalização e diga o risco dela.</summary>
+                    <p class="mt-2">
+                        Guardar <code>pedido.total</code> (e talvez <code>pedido.quantidade_itens</code>), atualizado na
+                        mesma transação em que os itens são gravados (ou por trigger). Risco: se algum caminho alterar
+                        itens sem atualizar o total, o valor fica errado. Mitigação: um único ponto do código grava itens,
+                        e uma verificação periódica compara o total guardado com a soma real.
+                    </p>
+                </details>
+            </div>
+        </section>
     </div>
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante — 1FN e 2FN</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                <strong>Forma normal</strong> é uma regra que uma tabela deveria seguir pra ficar bem desenhada — "1FN",
-                "2FN" e "3FN" são níveis, cada um mais rigoroso que o anterior (pra estar na 2FN, a tabela já precisa
-                estar na 1FN; pra estar na 3FN, já precisa estar na 2FN). São regras sobre <strong>dependência</strong>:
-                o que cada coluna realmente descreve.
-            </p>
-            <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li>
-                    <strong>1FN (Primeira Forma Normal)</strong> — cada coluna guarda um único valor atômico (nunca uma
-                    lista, nunca "Cálculo I, Física I" numa célula só) e não existe coluna repetida (tipo
-                    <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso1</code>,
-                    <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso2</code>,
-                    <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso3</code>).
-                </li>
-                <li>
-                    <strong>2FN (Segunda Forma Normal)</strong> — além de estar na 1FN, toda coluna que não é chave
-                    precisa depender da <strong>chave primária inteira</strong>, não só de um pedaço dela. Só é um problema
-                    real quando a chave primária é <strong>composta</strong> (mais de uma coluna) — com chave simples
-                    (um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">id</code> só), 2FN já vem de graça.
-                </li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Pra evitar <strong>anomalias</strong> — nome chique pra "o banco deixa um estado que não faz sentido
-                acontecer". Três clássicas: anomalia de <strong>atualização</strong> (o mesmo dado repetido em várias
-                linhas, e uma delas fica desatualizada se você esquecer de mudar todas), de <strong>inserção</strong>
-                (não dá pra cadastrar um curso novo até ter um aluno matriculado nele, porque o nome do curso só existe
-                dentro da linha de matrícula) e de <strong>exclusão</strong> (apagar a última matrícula de um curso
-                apaga junto a única informação que restava sobre esse curso).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Sempre, como uma checagem rápida em cima de cada tabela nova (ou de uma tabela antiga que "cresceu
-                torta") — não é uma etapa isolada que só acontece uma vez. Pergunte, coluna por coluna:
-                "esse valor é atômico?" (1FN) e, se a chave for composta, "essa coluna depende das duas partes da
-                chave, ou só de uma?" (2FN).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                <strong>1FN</strong> — uma tabela <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code>
-                guardando os cursos numa lista dentro da mesma célula:
-            </p>
-            <div class="mt-2 overflow-x-auto rounded-lg border border-red-100">
-                <table class="w-full text-left text-xs">
-                    <thead>
-                        <tr class="border-b border-red-100 bg-red-50 text-red-700">
-                            <th class="px-3 py-2 font-medium">id</th>
-                            <th class="px-3 py-2 font-medium">nome</th>
-                            <th class="px-3 py-2 font-medium">cursos</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2">Ana</td><td class="px-3 py-2">Cálculo I, Física I</td></tr>
-                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2">Bruno</td><td class="px-3 py-2">Álgebra Linear</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="mt-2 text-sm text-slate-600">
-                "cursos" não é atômico — viola 1FN. A correção é a mesma coisa que uma relação N:N já pede (ver o guia
-                de modelagem): uma linha por matrícula, numa tabela própria.
-            </p>
-            <div class="mt-2 overflow-x-auto rounded-lg border border-emerald-100">
-                <table class="w-full text-left text-xs">
-                    <thead>
-                        <tr class="border-b border-emerald-100 bg-emerald-50 text-emerald-700">
-                            <th class="px-3 py-2 font-medium">aluno_id</th>
-                            <th class="px-3 py-2 font-medium">curso_id</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2 font-mono">10</td></tr>
-                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2 font-mono">11</td></tr>
-                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2 font-mono">12</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <p class="mt-4 text-sm text-slate-600">
-                <strong>2FN</strong> — uma tabela <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">matricula</code>
-                com chave composta <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">(aluno_id, curso_id)</code>,
-                guardando também o nome do curso:
-            </p>
-            <div class="mt-2 overflow-x-auto rounded-lg border border-red-100">
-                <table class="w-full text-left text-xs">
-                    <thead>
-                        <tr class="border-b border-red-100 bg-red-50 text-red-700">
-                            <th class="px-3 py-2 font-medium">aluno_id</th>
-                            <th class="px-3 py-2 font-medium">curso_id</th>
-                            <th class="px-3 py-2 font-medium">nota</th>
-                            <th class="px-3 py-2 font-medium">nome_curso</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">8.5</td><td class="px-3 py-2">Cálculo I</td></tr>
-                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">7.0</td><td class="px-3 py-2">Cálculo I</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="mt-2 text-sm text-slate-600">
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">nome_curso</code> depende só de
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso_id</code> — metade da chave, não da
-                chave inteira — <strong>dependência parcial</strong>, viola 2FN (repare que "Cálculo I" já aparece
-                duplicado). A correção: tira o que depende só de uma parte da chave e manda pra tabela dessa parte.
-            </p>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- nome_curso sai de matricula e vira coluna de curso, onde ele realmente pertence
-ALTER TABLE curso ADD COLUMN nome VARCHAR(100) NOT NULL;
-ALTER TABLE matricula DROP COLUMN nome_curso;
--- matricula fica só com o que depende das DUAS colunas da chave junto: a nota</code></pre>
-        </div>
-    </div>
-
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário — 3FN</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                <strong>3FN (Terceira Forma Normal)</strong> — além de estar na 2FN, nenhuma coluna que não é chave pode
-                depender de <strong>outra coluna que também não é chave</strong>. Esse encadeamento (a chave determina
-                uma coluna comum, e essa coluna comum determina outra) se chama <strong>dependência transitiva</strong>.
-                Existe ainda a <strong>BCNF</strong> (Boyce-Codd), uma versão um pouco mais rigorosa da 3FN — na prática,
-                pra maioria dos casos do dia a dia, tabela em 3FN já resolve; BCNF só muda de verdade em casos raros com
-                mais de uma chave candidata se sobrepondo.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Mesma motivação da 1FN/2FN — evitar redundância e anomalia — só que pegando um tipo de problema que
-                sobra mesmo depois de resolver as duas primeiras: informação guardada "no lugar errado" porque ela
-                descreve outra coisa, não a entidade da linha em si.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Depois de já garantir 1FN e 2FN, pergunte de cada coluna que não é chave: "esse valor descreve
-                <em>essa</em> linha, ou descreve alguma outra coisa que só está aqui de carona?" Se a resposta for "outra
-                coisa", é dependência transitiva. Na prática: normalize até 3FN quase sempre — só vale considerar abrir
-                mão de parte disso (desnormalizar de propósito) quando performance de leitura for um problema medido de
-                verdade, não uma suposição.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Uma tabela <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code> já em 2FN (chave
-                simples, sem lista em coluna nenhuma), mas guardando também quem coordena o curso:
-            </p>
-            <div class="mt-2 overflow-x-auto rounded-lg border border-red-100">
-                <table class="w-full text-left text-xs">
-                    <thead>
-                        <tr class="border-b border-red-100 bg-red-50 text-red-700">
-                            <th class="px-3 py-2 font-medium">id</th>
-                            <th class="px-3 py-2 font-medium">nome</th>
-                            <th class="px-3 py-2 font-medium">curso_id</th>
-                            <th class="px-3 py-2 font-medium">coordenador_curso</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr><td class="px-3 py-2 font-mono">1</td><td class="px-3 py-2">Ana</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">Profa. Silva</td></tr>
-                        <tr><td class="px-3 py-2 font-mono">2</td><td class="px-3 py-2">Bruno</td><td class="px-3 py-2 font-mono">10</td><td class="px-3 py-2">Profa. Silva</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="mt-2 text-sm text-slate-600">
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">coordenador_curso</code> não depende de
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno.id</code> — depende de
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso_id</code>, que por sua vez é só
-                mais uma coluna comum de <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aluno</code>
-                (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">id → curso_id → coordenador_curso</code>)
-                — dependência transitiva, viola 3FN. Se a coordenadora do curso trocar, precisa lembrar de atualizar a
-                linha de <strong>todo</strong> aluno matriculado nele.
-            </p>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- coordenador_curso sai de aluno e vira coluna de curso, que é quem ele
--- realmente descreve — trocar a coordenadora agora é 1 UPDATE, não N
-ALTER TABLE curso ADD COLUMN coordenador VARCHAR(100);
-ALTER TABLE aluno DROP COLUMN coordenador_curso;
--- pra saber quem coordena o curso de um aluno, agora é um JOIN
-SELECT a.nome, c.coordenador
-FROM aluno a
-JOIN curso c ON c.id = a.curso_id;</code></pre>
-        </div>
+    <div class="card guia mt-8">
+        <h2>📖 Glossário rápido</h2>
+        <table>
+            <tbody>
+                <tr><td><strong>Anomalia</strong></td><td>Problema causado por dado repetido: atualização, inserção ou exclusão.</td></tr>
+                <tr><td><strong>Dependência funcional</strong></td><td><code>A → B</code>: sabendo A, B é um só.</td></tr>
+                <tr><td><strong>Dependência parcial</strong></td><td>Coluna que depende de só uma parte de uma chave composta (quebra a 2FN).</td></tr>
+                <tr><td><strong>Dependência transitiva</strong></td><td>Coluna que depende de outra coluna não-chave (quebra a 3FN).</td></tr>
+                <tr><td><strong>Desnormalização</strong></td><td>Repetir dado de propósito pra ganhar velocidade de leitura.</td></tr>
+            </tbody>
+        </table>
     </div>
 {% endblock %}

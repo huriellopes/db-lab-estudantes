@@ -34,7 +34,7 @@ cria os próprios schemas e pratica SQL no navegador, no phpMyAdmin ou no SGBD f
 | 🧱 **Schemas isolados** | Cada um cria os próprios databases (`<prefixo>__nome`) e **só enxerga os seus**. Quem garante é o `GRANT` do MySQL, não a app. |
 | 💻 **Console SQL no navegador** | Roda scripts com vários comandos usando a conta da própria pessoa, com consultas salvas e limites de tempo e memória. |
 | 🧩 **Laboratório de modelagem ER** | Diagramas arrastáveis, salvos por usuário. |
-| 📚 **Guia de estudos** | SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis, formas normais, modelagem ER. |
+| 📚 **Guia de estudos** | 9 tópicos (modelagem, formas normais, SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis), cada um em 3 níveis, com 155 exemplos executados e conferidos em bancos reais e botão "Testar no console". |
 | 👩‍🏫 **Gestão de turma** | Professores administram alunos; o admin administra tudo, inclusive a lixeira com restauração. |
 | 🐳 **Mesma imagem em dev e produção** | `php:8.5-fpm` + nginx + supervisord, com migrations automáticas no boot. |
 
@@ -403,6 +403,25 @@ Cobrem a lógica pura em `App\Support` (sem tocar o banco): geração e validaç
 nomes e patterns de schema (`GRANT`/`LIKE`), expiração de sessão, teto de linhas do console
 (SQLite em memória), IP do cliente, CSRF, paginação/filtros, o enum `Role`,
 `AuthenticatedUser::shortName()` e as regras de autorização por papel.
+
+### Exemplos do guia (`/guia`)
+
+Cada exemplo de código do guia roda de verdade, no banco correspondente, e o "Resultado"
+mostrado na página é conferido contra a saída real:
+
+```bash
+php bin/validate-guide-examples.php              # todas as páginas (MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis)
+php bin/validate-guide-examples.php mysql redis  # só algumas páginas
+php bin/validate-guide-examples.php --fill mysql # preenche resultados marcados como PENDENTE com a saída real
+php bin/validate-guide-examples.php --stop       # remove os containers de validação
+```
+
+Precisa de Docker: cada engine sobe num container descartável (`guia-validacao-*`), nunca no
+MySQL do laboratório. A primeira execução baixa as imagens (Oracle e SQL Server são grandes).
+Ao escrever exemplo novo, use os partials `partials/guide/code.twig` (com `engine:`) e
+`partials/guide/output.twig` com `PENDENTE` e rode `--fill`: o resultado mostrado ao aluno é
+sempre uma saída real, nunca digitado à mão. O teste `GuideTemplatesTest` (Pest) garante que
+toda página renderiza e que nenhum resultado ficou `PENDENTE`.
 
 ### Antes do push
 
