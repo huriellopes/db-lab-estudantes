@@ -10,7 +10,7 @@ RUN composer install --no-dev --no-interaction --no-progress --optimize-autoload
 
 # ---- Stage 2: build dos assets (Tailwind v4 + Alpine + Axios via Vite) ----
 # Node 22 (LTS): o 20 saiu de suporte em abril de 2026.
-FROM node:22.23.3-alpine AS assets
+FROM node:26.10.0-alpine AS assets
 WORKDIR /assets
 COPY package.json package-lock.json ./
 # npm ci, não npm install: instala exatamente o package-lock.json (e falha se ele estiver
