@@ -89,25 +89,33 @@ final class SchemaRecord
 
     /**
      * Sincroniza os registros de um usuário com o que realmente existe no MySQL pro
-     * prefixo dele — necessário porque o console SQL (ver SqlConsoleController) permite
-     * criar/apagar schema com `CREATE`/`DROP DATABASE` direto, fora do formulário oficial
-     * "Criar novo schema" (o único lugar que fazia o INSERT/DELETE nessa tabela antes).
+     * prefixo dele — necessário porque o console SQL (ver App\Actions\SqlConsole\RunSqlAction)
+     * permite criar/apagar schema com `CREATE`/`DROP DATABASE` direto, fora do formulário
+     * oficial "Criar novo schema" (o único lugar que fazia o INSERT/DELETE nessa tabela antes).
      * Sem isso, um schema criado assim não apareceria em "Meus schemas", e um apagado
      * assim ficaria como registro fantasma.
      *
+     * Só remove registros DENTRO do prefixo: um registro fora dele (conta antiga, de antes
+     * de users.schema_prefix existir, que renomeou o login) não aparece no SHOW DATABASES
+     * LIKE do prefixo e seria apagado por engano. E não registra um nome que já é de outra
+     * pessoa (db_name é UNIQUE — o INSERT falharia e derrubaria a sincronização inteira).
+     *
      * @param list<string> $actualDbNames Nomes de database do prefixo do usuário que existem agora no MySQL.
      */
-    public static function reconcileForUser(int $userId, array $actualDbNames): void
+    public static function reconcileForUser(int $userId, string $schemaPrefix, array $actualDbNames): void
     {
         $tracked = self::allForUser($userId);
         $trackedNames = array_map(static fn (Schema $s): string => $s->dbName, $tracked);
 
         foreach (array_diff($actualDbNames, $trackedNames) as $newName) {
-            self::create($userId, $newName);
+            if (!self::nameTaken($newName)) {
+                self::create($userId, $newName);
+            }
         }
 
         foreach ($tracked as $schema) {
-            if (!in_array($schema->dbName, $actualDbNames, true)) {
+            $withinPrefix = str_starts_with($schema->dbName, $schemaPrefix . '__');
+            if ($withinPrefix && !in_array($schema->dbName, $actualDbNames, true)) {
                 self::delete($schema->id);
             }
         }

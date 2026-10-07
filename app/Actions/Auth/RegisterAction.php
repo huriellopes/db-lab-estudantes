@@ -48,7 +48,7 @@ final class RegisterAction extends Action
                 $password,
                 $passwordConfirm,
                 User::emailExists($email),
-                User::mysqlLoginExists($username),
+                User::isLoginTaken($username),
             );
 
             if (!$errors) {

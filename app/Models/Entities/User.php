@@ -16,6 +16,7 @@ final readonly class User
         public string $passwordHash,
         public Role $role,
         public string $mysqlLogin,
+        public string $schemaPrefix,
         public bool $active,
         public DateTimeImmutable $createdAt,
         public ?DateTimeImmutable $deletedAt,
@@ -38,6 +39,8 @@ final readonly class User
             passwordHash: (string) $row['password_hash'],
             role: Role::from((string) $row['role']),
             mysqlLogin: (string) $row['mysql_login'],
+            // NULL só numa linha ainda "pending" (cadastro no meio) — ver UserManager::provisionNewUser.
+            schemaPrefix: (string) ($row['schema_prefix'] ?? $row['mysql_login']),
             active: (bool) $row['active'],
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             deletedAt: $row['deleted_at'] !== null ? new DateTimeImmutable((string) $row['deleted_at']) : null,
