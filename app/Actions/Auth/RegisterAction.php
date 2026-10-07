@@ -7,6 +7,7 @@ namespace App\Actions\Auth;
 use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Flash;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\RateLimiter;
 use App\Services\UserManager;
@@ -57,6 +58,7 @@ final class RegisterAction extends Action
                     // cria professores/admins é o próprio admin, pelo painel.
                     UserManager::provisionNewUser($name, $email, $username, $password, Role::registrable());
 
+                    AuditLog::record('auth.registered', 'user', $username, ['email' => $email], ['id' => null, 'name' => $name]);
                     Flash::set(FlashType::Success, 'Cadastro realizado com sucesso! Faça login para continuar.');
                     $this->redirect('/login');
                 } catch (Throwable $e) {

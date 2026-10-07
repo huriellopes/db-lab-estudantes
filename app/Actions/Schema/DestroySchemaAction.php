@@ -6,6 +6,7 @@ namespace App\Actions\Schema;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\SchemaRecord;
 use App\Services\SchemaProvisioner;
 use App\Support\SchemaNameBuilder;
@@ -34,6 +35,7 @@ final class DestroySchemaAction extends Action
         try {
             SchemaProvisioner::dropDatabase($dbName);
             SchemaRecord::delete($schema->id);
+            AuditLog::record('schema.deleted', 'schema', $dbName);
             $this->respond(true, "Schema \"{$dbName}\" removido.", '/dashboard');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('remover o schema', $e), '/dashboard');

@@ -6,6 +6,7 @@ namespace App\Actions\Admin;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User as UserModel;
 use App\Services\UserManager;
 use App\Support\RegistrationValidator;
@@ -46,6 +47,7 @@ final class StoreAdminUserAction extends Action
             try {
                 UserManager::provisionNewUser($name, $email, $username, $password, $role);
 
+                AuditLog::record('user.created', 'user', $username, ['email' => $email, 'papel' => $role->value]);
                 $this->respond(true, "Usuário \"{$name}\" criado.", '/admin/usuarios');
             } catch (Throwable $e) {
                 $errors[] = $this->genericError('criar o usuário', $e);

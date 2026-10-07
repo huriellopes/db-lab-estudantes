@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Student;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User as UserModel;
 use App\Support\ProfileFields;
 
@@ -31,6 +32,7 @@ final class UpdateStudentAction extends StudentAction
 
         UserModel::updateAccount($student->id, $name, $email);
 
+        AuditLog::record('student.updated', 'user', $student->id);
         $this->respond(true, 'Dados do aluno atualizados.', '/professor/alunos');
     }
 }

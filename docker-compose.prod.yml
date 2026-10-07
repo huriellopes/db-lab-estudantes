@@ -103,6 +103,10 @@ services:
     container_name: dblab-app
     restart: unless-stopped
     env_file: .env
+    # Logs de erro e backups gerados pelo /admin sobrevivem a rebuild/recreate do container.
+    volumes:
+      - dblab-app-logs:/var/www/html/storage/logs
+      - dblab-app-backups:/var/www/html/storage/backups
     logging:
       driver: json-file
       options:
@@ -114,6 +118,8 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASS: ${MYSQL_PASSWORD}
       PMA_URL: ${PMA_URL:-}
+      # Endereço interno (rede docker) só pro health check — nunca exibido na UI.
+      PMA_INTERNAL_URL: ${PMA_INTERNAL_URL:-http://phpmyadmin}
       APP_KEY: ${APP_KEY}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -153,6 +159,10 @@ services:
 volumes:
   dblab-mysql-data:
     name: dblab-mysql-data
+  dblab-app-logs:
+    name: dblab-app-logs
+  dblab-app-backups:
+    name: dblab-app-backups
 
 networks:
   dblab-net:

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Admin;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User as UserModel;
 use App\Support\Role;
 
@@ -24,6 +25,7 @@ final class UpdateAdminUserRoleAction extends AdminUserAction
 
         UserModel::updateRole($target->id, $role);
 
+        AuditLog::record('user.role_changed', 'user', $target->id, ['de' => $target->role->value, 'para' => $role->value]);
         $this->respond(true, "Papel de {$target->name} atualizado para {$role->label()}.", '/admin/usuarios');
     }
 }

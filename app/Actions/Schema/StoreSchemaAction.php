@@ -6,6 +6,7 @@ namespace App\Actions\Schema;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\SchemaRecord;
 use App\Models\User;
 use App\Services\SchemaProvisioner;
@@ -51,6 +52,7 @@ final class StoreSchemaAction extends Action
 
             SchemaRecord::create(Auth::id(), $dbName);
 
+            AuditLog::record('schema.created', 'schema', $dbName);
             $this->respond(true, "Schema \"{$dbName}\" criado com sucesso.", '/dashboard');
         } catch (Throwable $e) {
             if ($databaseCreated) {

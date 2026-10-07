@@ -36,6 +36,8 @@ cria os próprios schemas e pratica SQL no navegador, no phpMyAdmin ou no SGBD f
 | 🧩 **Laboratório de modelagem ER** | Diagramas arrastáveis, salvos por usuário. |
 | 📚 **Guia de estudos** | 9 tópicos (modelagem, formas normais, SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis), cada um em 3 níveis, com 155 exemplos executados e conferidos em bancos reais e botão "Testar no console". |
 | 👩‍🏫 **Gestão de turma** | Professores administram alunos; o admin administra tudo, inclusive a lixeira com restauração. |
+| 📊 **Painel do admin observável** | Métricas de uso, saúde dos serviços, auditoria global, logs de erro e backups — tudo em `/admin`. |
+| 🚦 **Status do lab para todos** | O painel de cada pessoa mostra se aplicação, MySQL e phpMyAdmin estão no ar. |
 | 🐳 **Mesma imagem em dev e produção** | `php:8.5-fpm` + nginx + supervisord, com migrations automáticas no boot. |
 
 ```mermaid
@@ -100,6 +102,19 @@ de cada achado e do que ainda está pendente fica no **[SECURITY.md](SECURITY.md
 | 🎓 **Aluno** | Cadastrar-se (só alunos se autocadastram), logar com e-mail **ou** username, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/username). |
 | 👩‍🏫 **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (soft delete) contas de aluno (`/professor/alunos`). |
 | 🛡️ **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `php bin/console.php user:promote-admin <email>`. Não aparece em `/admin/usuarios` (contas admin não entram nessa lista). |
+
+## 🛡️ Painel do admin e observabilidade
+
+| Rota | O que tem |
+|---|---|
+| `/admin` | Contas por papel, ativos em 7/30 dias, nunca logaram, desativados, lixeira, erros nas últimas 24h, schemas e espaço ocupado, top 5 maiores schemas, consultas salvas, diagramas ER, cadastros por dia (14 dias) e saúde detalhada (versão, latência, conexões do MySQL). |
+| `/admin/auditoria` | Trilha global (tabela `audit_logs`): login/falha de login/logout, cadastro, reset de senha, criação/edição/papel/status/senha/exclusão/restauração de contas, ações do professor sobre alunos, criação/exclusão de schemas e backups. Busca, filtro por ação e período. Senhas, tokens e afins nunca são gravados (`App\Support\AuditMeta`). Retenção: `php bin/console.php audit:prune --days=180`. |
+| `/admin/logs` | Erros/avisos da aplicação (`storage/logs/app-AAAA-MM-DD.log`, JSON-lines, 14 dias), agrupados por recorrência + entradas recentes com stack trace. Continua tudo também no `docker logs`. |
+| `/admin/backups` | Gera dump `.sql.gz` do banco da aplicação ou de qualquer schema, baixa e exclui. Guarda os 10 mais recentes em `storage/backups`. Restauração é manual (phpMyAdmin ou `gunzip < arquivo.sql.gz \| mysql ...`). Não inclui triggers/rotinas — para um dump completo de produção use `mysqldump` no host. |
+
+**Status do lab** (`/dashboard`, todos os usuários): aplicação, MySQL e phpMyAdmin com indicador online/offline — sem versão, host ou porta (isso só o admin vê). O resultado fica em cache por 30s (`storage/cache/health.json`). O phpMyAdmin é checado pela rede interna do Docker em `PMA_INTERNAL_URL` (padrão `http://phpmyadmin`).
+
+Logs e backups ficam em volumes nomeados (`dblab_app_logs`/`dblab_app_backups` em dev, `dblab-app-logs`/`dblab-app-backups` em produção), então sobrevivem a rebuilds. Lembre de copiar `dblab-app-backups` para fora do servidor — backup no mesmo disco não protege de perda do disco.
 
 ## ⚙️ Como funciona
 

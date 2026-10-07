@@ -7,13 +7,19 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 use App\Actions\Admin\CreateAdminUserAction;
 use App\Actions\Admin\DestroyAdminSchemaAction;
 use App\Actions\Admin\DestroyAdminUserAction;
+use App\Actions\Admin\DestroyBackupAction;
+use App\Actions\Admin\DownloadBackupAction;
 use App\Actions\Admin\EditAdminUserAction;
 use App\Actions\Admin\IndexAdminUsersAction;
+use App\Actions\Admin\IndexAuditLogsAction;
+use App\Actions\Admin\IndexBackupsAction;
 use App\Actions\Admin\ResetAdminUserPasswordAction;
 use App\Actions\Admin\RestoreAdminUserAction;
 use App\Actions\Admin\ShowAdminDashboardAction;
+use App\Actions\Admin\ShowAdminLogsAction;
 use App\Actions\Admin\ShowAdminSchemasAction;
 use App\Actions\Admin\StoreAdminUserAction;
+use App\Actions\Admin\StoreBackupAction;
 use App\Actions\Admin\ToggleAdminUserActiveAction;
 use App\Actions\Admin\TrashAdminUsersAction;
 use App\Actions\Admin\UpdateAdminUserAction;
@@ -58,6 +64,7 @@ use App\Core\Auth;
 use App\Core\Router;
 use App\Core\View;
 use App\Support\Csrf;
+use App\Support\ErrorLogger;
 use App\Support\RequestScheme;
 use Dotenv\Dotenv;
 
@@ -68,8 +75,20 @@ use Dotenv\Dotenv;
 // logs`), nunca pra resposta.
 set_exception_handler(static function (Throwable $e): void {
     error_log('Exceção não capturada: ' . $e);
+    ErrorLogger::exception($e, 'critical');
     http_response_code(500);
     echo View::render('errors/500');
+});
+
+// Warnings/notices não derrubam a requisição, mas costumam ser o primeiro sinal de bug —
+// vão pro log que o admin vê em /admin/logs. Retorna false: o tratamento padrão do PHP
+// (error_log pro stderr) continua acontecendo.
+set_error_handler(static function (int $errno, string $message, string $file, int $line): bool {
+    if ((error_reporting() & $errno) !== 0) {
+        ErrorLogger::message($errno & (E_WARNING | E_USER_WARNING) ? 'warning' : 'notice', $message, "{$file}:{$line}");
+    }
+
+    return false;
 });
 
 // Só é usado fora do Docker (ex.: `php -S localhost:8000 -t public`), já que em
@@ -191,6 +210,12 @@ $router->post('/admin/usuarios/{id}/excluir', DestroyAdminUserAction::class);
 $router->post('/admin/usuarios/{id}/restaurar', RestoreAdminUserAction::class);
 $router->get('/admin/schemas', ShowAdminSchemasAction::class);
 $router->post('/admin/schemas/excluir', DestroyAdminSchemaAction::class);
+$router->get('/admin/auditoria', IndexAuditLogsAction::class);
+$router->get('/admin/logs', ShowAdminLogsAction::class);
+$router->get('/admin/backups', IndexBackupsAction::class);
+$router->post('/admin/backups', StoreBackupAction::class);
+$router->get('/admin/backups/{name}', DownloadBackupAction::class);
+$router->post('/admin/backups/{name}/excluir', DestroyBackupAction::class);
 
 // parse_url() pode devolver null/false para uma REQUEST_URI malformada; com
 // strict_types, isso não pode ser passado direto para o parâmetro string do dispatch().

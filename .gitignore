@@ -17,3 +17,6 @@ mysql_data/
 
 # Notas privadas de segurança/infra (pendências, endereços de produção) — nunca versionar
 *.private.md
+/storage/cache/
+/storage/logs/
+/storage/backups/

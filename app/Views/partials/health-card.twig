@@ -1,0 +1,28 @@
+{# Status do lab. `detailed` (só admin) mostra latência e detalhe técnico; o card público
+   mostra só online/offline, pra não expor versão/infra a qualquer usuário logado. #}
+{% set detailed = detailed|default(false) %}
+{% set allOk = health|filter(s => not s.ok)|length == 0 %}
+<div class="card {{ class|default('') }}">
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-base font-semibold text-slate-900">Status do lab</h2>
+        {% if allOk %}
+            <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Tudo operando</span>
+        {% else %}
+            <span class="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700">Instabilidade</span>
+        {% endif %}
+    </div>
+    <ul class="grid gap-2 {{ detailed ? '' : 'sm:grid-cols-3' }}">
+        {% for s in health %}
+            <li class="flex items-center gap-2 text-sm">
+                <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ s.ok ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
+                <span class="text-slate-700">{{ s.name }}</span>
+                <span class="text-xs {{ s.ok ? 'text-slate-400' : 'text-rose-600' }}">{{ s.ok ? 'online' : 'offline' }}</span>
+                {% if detailed %}
+                    <span class="ml-auto text-right text-xs text-slate-400">
+                        {{ s.detail }}{% if s.latencyMs is not null %} · {{ s.latencyMs }} ms{% endif %}
+                    </span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Student;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Services\UserManager;
 use Throwable;
 
@@ -19,6 +20,7 @@ final class DestroyStudentAction extends StudentAction
 
         try {
             UserManager::softDelete($student);
+            AuditLog::record('student.deleted', 'user', $student->id, ['email' => $student->email]);
             $this->respond(true, "Conta de {$student->name} excluída (um admin pode restaurar na lixeira).", '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('excluir a conta', $e), '/professor/alunos');

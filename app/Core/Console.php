@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\Role;
 use Database\Seeders\DatabaseSeeder;
@@ -25,6 +26,7 @@ final class Console
             'migrate:status' => $this->status(),
             'db:seed' => $this->seed(),
             'user:promote-admin' => $this->promoteAdmin($argv[2] ?? null),
+            'audit:prune' => $this->pruneAudit($argv[2] ?? null),
             default => $this->usage(),
         };
     }
@@ -144,9 +146,28 @@ final class Console
         return 0;
     }
 
+    /** Apaga registros de auditoria mais velhos que N dias (padrão 180). Uso: audit:prune [--days=180]. */
+    private function pruneAudit(?string $option): int
+    {
+        $days = 180;
+        if ($option !== null) {
+            if (preg_match('/^--days=(\d+)$/', $option, $m) !== 1 || (int) $m[1] < 1) {
+                $this->line('Uso: php bin/console.php audit:prune [--days=180]', true);
+
+                return 1;
+            }
+            $days = (int) $m[1];
+        }
+
+        $deleted = AuditLog::prune($days);
+        $this->line("{$deleted} registro(s) de auditoria com mais de {$days} dias removido(s).");
+
+        return 0;
+    }
+
     private function usage(): int
     {
-        $this->line('Uso: php bin/console.php <migrate|migrate:rollback|migrate:status|db:seed|user:promote-admin <email>>');
+        $this->line('Uso: php bin/console.php <migrate|migrate:rollback|migrate:status|db:seed|user:promote-admin <email>|audit:prune [--days=N]>');
 
         return 1;
     }
