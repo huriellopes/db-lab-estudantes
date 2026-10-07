@@ -15,7 +15,7 @@ num SGBD local.
 |---|---|
 | **Aluno** | Cadastrar-se (só alunos se autocadastram), logar com e-mail **ou** username, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/username). |
 | **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (soft delete) contas de aluno (`/professor/alunos`). |
-| **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `composer db:seed` + `ADMIN_EMAIL` no `.env` — não listado em `/admin/usuarios` (contas admin não aparecem nessa lista). |
+| **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `php bin/console.php user:promote-admin <email>` — não listado em `/admin/usuarios` (contas admin não aparecem nessa lista). |
 
 ## Como funciona
 
@@ -42,16 +42,17 @@ num SGBD local.
 composer migrate            # roda as migrations pendentes (também roda sozinho ao subir o container)
 composer migrate:status      # lista o que já rodou
 composer migrate:rollback     # desfaz o último lote
-composer db:seed               # roda database/seeders/DatabaseSeeder (promove ADMIN_EMAIL a admin)
+composer db:seed               # roda database/seeders/DatabaseSeeder (hoje sem seeders padrão)
 ```
 
 - `database/migrations/*.php`: cada arquivo devolve uma classe anônima `extends
   App\Core\Migration` com `up()`/`down()` — igual ao estilo de migration do Laravel 8+.
   `App\Core\Migrator` roda as pendentes e registra em uma tabela `migrations` (com `batch`,
   pra dar pra reverter o último lote).
-- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada; hoje só chama
-  `AdminUserSeeder`, que promove `ADMIN_EMAIL` (do `.env`) a admin se a conta já existir —
-  idempotente, seguro rodar de novo.
+- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada; hoje sem seeders padrão. A
+  promoção a admin, que era o `AdminUserSeeder` (promovia sozinho quem tivesse o e-mail de
+  `ADMIN_EMAIL`, sem conferir de quem era a conta), virou o comando
+  `user:promote-admin <email>` — ver "Promover a admin" abaixo.
 - `database/factories/UserFactory.php`: no estilo das factories do Laravel, com
   [`fakerphp/faker`](https://fakerphp.org/) (`require-dev` — só disponível localmente, não
   na imagem Docker de produção). `create()`/`createMany()` usam
@@ -80,7 +81,7 @@ docker/
 .github/workflows/
   ci.yml                    # testes, padrão de código, build (toda branch/PR pra dev e main)
   deploy.yml                 # SSH no Contabo + deploy.sh (só depois do CI passar na main)
-bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed)
+bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed, user:promote-admin)
 phpunit.xml, tests/          # Pest
 .php-cs-fixer.php             # padrão de código PHP (PSR-12 + regras extra)
 .prettierrc.json                # padrão de código JS/CSS
@@ -89,7 +90,7 @@ SECURITY.md                       # avaliação de SQL injection e como é mitig
 
 database/
   migrations/    # classes anônimas com up()/down() — fonte da verdade do schema
-  seeders/        # DatabaseSeeder, AdminUserSeeder
+  seeders/        # DatabaseSeeder
   factories/       # UserFactory (Faker)
 
 app/
@@ -270,9 +271,18 @@ Serviços (portas padrão, configuráveis no `.env`):
 | phpMyAdmin  | http://localhost:8081         |
 | MySQL       | localhost:3307 (root: ver `.env`) |
 
-Depois de se cadastrar como o e-mail que você quer que seja admin, defina `ADMIN_EMAIL` no
-`.env` e rode `docker compose exec app php bin/console.php db:seed` (ou `composer db:seed`
-localmente) pra promover essa conta.
+### Promover a admin
+
+Cadastre-se normalmente pela app e depois rode:
+
+```bash
+docker compose exec app php bin/console.php user:promote-admin voce@exemplo.com
+```
+
+O comando mostra os dados da conta (nome, username, criação, último login) e pede pra você
+digitar o username dela antes de promover. Confira: o cadastro não verifica e-mail, então se
+o username mostrado não for o seu, alguém se cadastrou com o seu e-mail antes. Não confirme
+nesse caso.
 
 ## Produção (Contabo)
 

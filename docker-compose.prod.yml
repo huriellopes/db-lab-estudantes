@@ -122,7 +122,6 @@ services:
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DB Lab Estudantes}
       MYSQL_EXTERNAL_PORT: ${MYSQL_PORT}
       DB_PUBLIC_HOST: ${DB_PUBLIC_HOST}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
     depends_on:
       mysql:
         condition: service_healthy

@@ -11,6 +11,7 @@ use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\UserManager;
 use App\Support\FlashType;
+use App\Support\PasswordPolicy;
 use Throwable;
 
 /** POST /redefinir-senha. */
@@ -39,8 +40,10 @@ final class ResetPasswordAction extends Action
         }
 
         $errors = [];
-        if (strlen($password) < 6) {
-            $errors[] = 'A senha deve ter pelo menos 6 caracteres.';
+        $owner = User::find($record->userId);
+        $passwordError = PasswordPolicy::validate($password, $owner?->mysqlLogin ?? '', $owner?->email ?? '');
+        if ($passwordError !== null) {
+            $errors[] = $passwordError;
         }
         if ($password !== $passwordConfirm) {
             $errors[] = 'As senhas não conferem.';
