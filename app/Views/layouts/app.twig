@@ -86,6 +86,8 @@
         {% include 'partials/flash.twig' %}
         {% block content %}{% endblock %}
     </main>
+
+    {% include 'partials/credits.twig' with { class: 'border-t border-slate-200 px-4 py-6' } %}
 </div>
 {% include 'partials/toaster.twig' %}
 {% include 'partials/confirm-modal.twig' %}
