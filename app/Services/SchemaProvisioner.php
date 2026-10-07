@@ -30,19 +30,30 @@ use App\Support\SchemaNameBuilder;
  */
 final class SchemaProvisioner
 {
+    /**
+     * Conexões simultâneas por conta de aluno/professor. Cobre com folga o uso normal
+     * (phpMyAdmin + console SQL + um SGBD local, que costuma abrir 2–3 conexões), mas impede
+     * uma conta só, com a porta do MySQL pública, de esgotar o max_connections do servidor
+     * inteiro — e com isso derrubar a app e a turma toda.
+     */
+    public const MAX_USER_CONNECTIONS = 10;
+
     public static function createMysqlAccount(string $login, string $password, string $schemaPrefix): void
     {
         $pdo = Database::connection();
         $quotedPassword = $pdo->quote($password);
 
-        $pdo->exec("CREATE USER IF NOT EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}");
+        $pdo->exec(
+            "CREATE USER IF NOT EXISTS '{$login}'@'%' IDENTIFIED BY {$quotedPassword}"
+            . ' WITH MAX_USER_CONNECTIONS ' . self::MAX_USER_CONNECTIONS,
+        );
 
         // Escopo idêntico ao prefixo (users.schema_prefix) que a app usa pros schemas
         // "oficiais" (ver App\Support\SchemaNameBuilder) — deixa a própria conta MySQL do
         // aluno rodar CREATE DATABASE dentro do próprio namespace direto pelo console SQL
         // (ver App\Actions\SqlConsole\RunSqlAction), sem passar pelo formulário. Fora desse
-        // prefixo a conta continua sem NENHUM privilégio: não é uma conta mais poderosa, só move
-        // onde o CREATE é concedido. ALL PRIVILEGES pra ficar idêntico ao que já é
+        // prefixo a conta continua sem NENHUM privilégio: não é uma conta mais poderosa, só
+        // move onde o CREATE é concedido. ALL PRIVILEGES pra ficar idêntico ao que já é
         // concedido por schema em createDatabase() abaixo.
         $pdo->exec('GRANT ALL PRIVILEGES ON `' . SchemaNameBuilder::grantPattern($schemaPrefix) . "`.* TO '{$login}'@'%'");
     }

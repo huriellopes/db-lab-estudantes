@@ -288,7 +288,7 @@
                             </div>
                             <p x-show="result.rows.length === 0" class="px-3 py-3 text-sm text-slate-400">Nenhuma linha retornada.</p>
                             <p x-show="result.truncated" class="border-t border-slate-100 px-3 py-2 text-xs text-amber-600">
-                                Mostrando as primeiras <span x-text="result.rows.length"></span> de <span x-text="result.total"></span> linhas.
+                                Mostrando só as primeiras <span x-text="result.rows.length"></span> linhas — o resultado tem mais. Use <code>WHERE</code>/<code>LIMIT</code> pra refinar.
                             </p>
                         </div>
                     </template>
