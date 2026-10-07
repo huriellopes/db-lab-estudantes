@@ -1,0 +1,12 @@
+{# Cabeçalho comum das páginas do guia: navegação entre tópicos + título/resumo do tópico atual.
+   Espera 'topics' (App\Support\GuideTopics::ALL) e 'currentSlug' no contexto. #}
+{% include 'partials/guide-topic-nav.twig' %}
+
+{% set topic = topics[currentSlug] %}
+<div class="mb-6 flex items-center gap-3">
+    <span class="text-4xl">{{ topic.icon }}</span>
+    <div>
+        <h1 class="text-2xl font-semibold text-slate-900">{{ topic.title }}</h1>
+        <p class="mt-1 text-sm text-slate-500">{{ topic.summary }}</p>
+    </div>
+</div>

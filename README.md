@@ -19,7 +19,7 @@ cria os próprios schemas e pratica SQL no navegador, no phpMyAdmin ou no SGBD f
 [🔐 Segurança](#-segurança-em-destaque) ·
 [👥 Papéis](#-papéis) ·
 [🏗️ Arquitetura](#️-arquitetura) ·
-[☁️ Produção](#️-produção-contabo) ·
+[☁️ Produção](#️-produção) ·
 [🧪 Testes](#-testes)
 
 </div>
@@ -34,14 +34,14 @@ cria os próprios schemas e pratica SQL no navegador, no phpMyAdmin ou no SGBD f
 | 🧱 **Schemas isolados** | Cada um cria os próprios databases (`<prefixo>__nome`) e **só enxerga os seus**. Quem garante é o `GRANT` do MySQL, não a app. |
 | 💻 **Console SQL no navegador** | Roda scripts com vários comandos usando a conta da própria pessoa, com consultas salvas e limites de tempo e memória. |
 | 🧩 **Laboratório de modelagem ER** | Diagramas arrastáveis, salvos por usuário. |
-| 📚 **Guia de estudos** | SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis, formas normais, modelagem ER. |
+| 📚 **Guia de estudos** | 9 tópicos (modelagem, formas normais, SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis), cada um em 3 níveis, com 155 exemplos executados e conferidos em bancos reais e botão "Testar no console". |
 | 👩‍🏫 **Gestão de turma** | Professores administram alunos; o admin administra tudo, inclusive a lixeira com restauração. |
 | 🐳 **Mesma imagem em dev e produção** | `php:8.5-fpm` + nginx + supervisord, com migrations automáticas no boot. |
 
 ```mermaid
 flowchart LR
-    A[👩‍🎓 Navegador] -->|HTTPS| NPM[Nginx Proxy Manager<br/>TLS]
-    NPM --> NG[nginx do container<br/>real_ip + CSP]
+    A[👩‍🎓 Navegador] -->|HTTPS| RP[Proxy reverso<br/>TLS]
+    RP --> NG[nginx do container<br/>real_ip + CSP]
     NG --> PHP[PHP-FPM 8.5<br/>Actions + Twig]
     PHP -->|appuser<br/>tabelas da app| DB[(MySQL 8.0)]
     PHP -->|conta do aluno<br/>console SQL| DB
@@ -150,7 +150,7 @@ package.json              # Vite, Tailwind v4, Alpine.js, Axios, Prettier
 vite.config.js
 Dockerfile                # multi-stage: composer -> npm/vite -> php:8.5-fpm + nginx + supervisord
 docker-compose.yml           # dev — MESMA imagem/Dockerfile da produção (paridade de ambiente)
-docker-compose.prod.yml       # produção (Contabo) — sem porta pública na app, rede própria
+docker-compose.prod.yml       # produção — sem porta pública na app, atrás do proxy reverso
 docker/
   nginx.conf                    # site do nginx (fastcgi -> php-fpm)
   supervisord.conf                # gerencia nginx + php-fpm dentro do container
@@ -159,7 +159,7 @@ docker/
   deploy.sh                          # roda NO SERVIDOR — git pull + docker compose up --build
 .github/workflows/
   ci.yml                    # testes, padrão de código, build (toda branch/PR pra dev e main)
-  deploy.yml                 # SSH no Contabo + deploy.sh (só depois do CI passar na main)
+  deploy.yml                 # SSH no servidor + deploy.sh (só depois do CI passar na main)
 .github/dependabot.yml       # PRs automáticos de atualização (composer, npm, imagens, actions)
 bin/console.php             # CLI (migrate, migrate:rollback, migrate:status, db:seed, user:promote-admin)
 phpunit.xml, tests/          # Pest
@@ -295,7 +295,7 @@ Manual de auto-ajuda pra quem prefere um cliente de banco na própria máquina (
 DBeaver, MySQL Workbench, DataGrip/PhpStorm, HeidiSQL...) em vez do phpMyAdmin: destaque pro
 link público do phpMyAdmin quando `PMA_URL` está configurada, comando `mysql -h ... -P ...`
 pronto pra copiar (conexão **direta, sem túnel** — o MySQL é público de propósito, ver
-"Produção (Contabo)" abaixo), passo a passo por ferramenta e uma seção de erros comuns.
+"Produção" abaixo), passo a passo por ferramenta e uma seção de erros comuns.
 Host/porta exibidos vêm de `DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`).
 
 ### Console SQL (`POST /dashboard/sql`)
@@ -344,52 +344,30 @@ subir o supervisord. **Essa é a mesma imagem usada em produção**: dev e prod 
 Todas as versões são fixas (imagens no `Dockerfile`/`docker-compose*.yml`, actions por SHA),
 e o Dependabot abre PR contra a `dev` quando sai versão nova.
 
-## ☁️ Produção (Contabo)
+## ☁️ Produção
 
-Segue o mesmo padrão dos outros projetos no servidor (`/apps/<projeto>/`, Nginx Proxy
-Manager como proxy reverso já existente pra app/phpMyAdmin).
+A produção roda a **mesma imagem** do `docker-compose.yml`, com o `docker-compose.prod.yml`:
+a app não publica porta própria e fica atrás de um **proxy reverso** que termina o TLS (o
+nginx do container só confia no `X-Forwarded-For` vindo de rede privada — ver `docker/nginx.conf`).
 
-- **URL**: `https://dblab.217.76.60.113.sslip.io` (domínio `sslip.io` — resolve sozinho pro
-  IP do servidor, sem precisar configurar DNS; é o mesmo padrão usado por `bookid-api`,
-  `fintrack-admin` etc. nesse Contabo). phpMyAdmin público em
-  `https://pma.dblab.217.76.60.113.sslip.io` (mesmo domínio sslip.io, subdomínio próprio).
-- **MySQL é público** (porta `MYSQL_PORT` no `.env`, `0.0.0.0`) — decisão explícita, pra
-  qualquer aluno/professor conectar direto por um SGBD local sem precisar de túnel SSH (a
-  própria página `/conectar` da app ensina isso). Isolamento entre contas continua
-  garantido pelos `GRANT`s do MySQL (cada login só enxerga os próprios schemas — testado
-  ativamente, ver `SECURITY.md`), mas isso é uma superfície pública de verdade: senha forte
-  em cada conta importa bem mais agora. Trade-off registrado em `SECURITY.md`.
-- **Deploy**: `git push` numa PR de `dev` → `main`; depois que o CI passar, o workflow
-  **Deploy** roda `deploy.sh` no servidor via SSH (`git pull` + `docker compose -f
-  docker-compose.prod.yml up -d --build`, migrations automáticas no entrypoint). A rede
-  `proxy` (Nginx Proxy Manager) é declarada como `external: true` no compose — `app` e
-  `phpmyadmin` entram nela sozinhos no `up`, sem `docker network connect` manual.
-- **Chaves de deploy** (geradas dedicadas pra esse projeto, nenhuma reaproveitada):
-  - Contabo → GitHub: deploy key só leitura, registrada no repo, guardada em
-    `~/.ssh/id_ed25519_db-lab-estudantes` no servidor (com um alias `github.com-db-lab-estudantes`
-    no `~/.ssh/config` do servidor, no mesmo padrão que este projeto já usa localmente).
-  - GitHub Actions → Contabo: chave restrita via `authorized_keys` com
-    `command="/apps/db-lab-estudantes/deploy.sh"` — mesmo que vaze, só executa esse script,
-    nada mais. Guardada nos secrets do repo (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
-- **`.env` de produção** fica só no servidor (`/apps/db-lab-estudantes/.env`, nunca no git)
-  — veja `.env.production.example` pro formato (inclui `PMA_URL` e `APP_KEY`).
-- **phpMyAdmin público**: `https://pma.dblab.217.76.60.113.sslip.io` (proxy host próprio no
-  NPM, Let's Encrypt) — login com o mesmo usuário/senha MySQL de cada pessoa. A UI do NPM em
-  si (pra mexer nos proxy hosts) continua só via túnel SSH: `ssh -L 8181:127.0.0.1:81 contaboo`,
-  depois `http://localhost:8181` — não é algo que a automação de deploy cobre, é feito uma vez
-  na mão quando um novo proxy host precisa ser criado.
+- **Deploy contínuo**: PR de `dev` → `main`; quando o CI passa na `main`, o workflow
+  **Deploy** conecta por SSH e roda `deploy.sh` no servidor (`git reset` pro commit da `main` +
+  `docker compose -f docker-compose.prod.yml up -d --build`, com as migrations rodando no boot).
+- **Chave de deploy restrita**: a chave usada pelo GitHub Actions é dedicada e, no
+  `authorized_keys` do servidor, tem `command="..."` apontando pro script de deploy (mais
+  `no-port-forwarding`, `no-agent-forwarding`, `no-X11-forwarding`). Mesmo que vaze, ela só
+  consegue disparar um deploy — o comando enviado pelo workflow é ignorado. O servidor, por
+  sua vez, lê o repositório com uma *deploy key* só de leitura.
+- **Segredos**: host, usuário e chave do deploy ficam nos *secrets* do repositório; o `.env` de
+  produção existe só no servidor (formato em `.env.production.example`), nunca no git.
+- **MySQL acessível diretamente**, de propósito, pra alunos usarem o SGBD que preferirem — as
+  camadas que protegem isso estão no [SECURITY.md](SECURITY.md#mysql-acessível-diretamente-decisão-de-projeto).
 
-> [!IMPORTANT]
-> **Checklist manual depois do deploy da revisão de segurança de 2026-10-07** (o que a
-> automação não faz sozinha):
-> 1. Remover o root aberto no volume existente do MySQL (o `MYSQL_ROOT_HOST=localhost` só
->    vale em volume novo):
->    `SELECT user, host FROM mysql.user WHERE user = 'root';` (precisa listar `localhost`) e
->    depois `DROP USER 'root'@'%';`
-> 2. Rodar as queries de auditoria da descrição do [PR #51](https://github.com/huriellopes/db-lab-estudantes/pull/51)
->    pra conferir se alguma conta foi afetada pela falha de isolamento antes da correção.
-> 3. Ligar **HSTS** e uma **Access List** (basic auth/allowlist) no proxy host do
->    phpMyAdmin, no Nginx Proxy Manager.
+> [!TIP]
+> **Ao fazer o deploy de uma instalação existente**, confira o que a automação não faz sozinha:
+> o `MYSQL_ROOT_HOST=localhost` só vale em volume novo (em volume antigo, revise as contas
+> `root` em `mysql.user`), e cabeçalhos/autenticação extra no proxy reverso (HSTS, proteção do
+> phpMyAdmin) são configurados nele, fora deste repositório.
 
 ## 🧪 Testes
 
@@ -403,6 +381,31 @@ Cobrem a lógica pura em `App\Support` (sem tocar o banco): geração e validaç
 nomes e patterns de schema (`GRANT`/`LIKE`), expiração de sessão, teto de linhas do console
 (SQLite em memória), IP do cliente, CSRF, paginação/filtros, o enum `Role`,
 `AuthenticatedUser::shortName()` e as regras de autorização por papel.
+
+### Exemplos do guia (`/guia`)
+
+Cada exemplo de código do guia roda de verdade, no banco correspondente, e o "Resultado"
+mostrado na página é conferido contra a saída real:
+
+```bash
+php bin/validate-guide-examples.php              # todas as páginas (MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis)
+php bin/validate-guide-examples.php mysql redis  # só algumas páginas
+php bin/validate-guide-examples.php --fill mysql # preenche resultados marcados como PENDENTE com a saída real
+php bin/validate-guide-examples.php --stop       # remove os containers de validação
+```
+
+Precisa de Docker: cada engine sobe num container descartável (`guia-validacao-*`), nunca no
+MySQL do laboratório. A primeira execução baixa as imagens (Oracle e SQL Server são grandes).
+Ao escrever exemplo novo, use os partials `partials/guide/code.twig` (com `engine:`) e
+`partials/guide/output.twig` com `PENDENTE` e rode `--fill`: o resultado mostrado ao aluno é
+sempre uma saída real, nunca digitado à mão. O teste `GuideTemplatesTest` (Pest) garante que
+toda página renderiza e que nenhum resultado ficou `PENDENTE`.
+
+### Antes do push
+
+`composer install` ativa um hook de **pre-push** (`.githooks/pre-push`) que roda, só pro que
+mudou, as mesmas verificações do CI e barra push direto em `main`/`dev` e segredos no diff —
+detalhes e proteções de branch do GitHub no [CONTRIBUTING.md](CONTRIBUTING.md).
 
 O CI (`.github/workflows/ci.yml`) roda em todo PR pra `dev` e `main`:
 

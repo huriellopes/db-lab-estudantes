@@ -1,10 +1,12 @@
 #!/bin/sh
-# Roda NO SERVIDOR (Contabo), disparado pelo workflow de deploy via SSH. Cópia de
-# referência aqui no repo — o arquivo que realmente executa fica em
-# /apps/db-lab-estudantes/deploy.sh (mesmo conteúdo).
+# Roda NO SERVIDOR, disparado pelo workflow de deploy via SSH. Cópia de referência: no
+# servidor, o arquivo que executa fica na raiz do projeto (fora do git, pra o próprio deploy
+# nunca sobrescrever o script que está rodando) e é o "command=" da chave de deploy no
+# authorized_keys.
 set -e
 
-cd /apps/db-lab-estudantes
+# Entra na pasta onde o script está (a raiz do projeto no servidor), sem caminho fixo.
+cd "$(dirname "$(readlink -f "$0")")"
 
 echo "== Atualizando código (git) =="
 git fetch origin main

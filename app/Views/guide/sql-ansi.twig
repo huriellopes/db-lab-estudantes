@@ -1,190 +1,1100 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">📐</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">SQL ANSI</h1>
-            <p class="mt-1 text-sm text-slate-500">O padrão por trás de praticamente todo banco relacional.</p>
-        </div>
-    </div>
-
-    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div>
-            <strong>Como conectar</strong> não é algo que o padrão SQL define — isso é sempre específico do
-            banco que você escolher (protocolo, porta, driver...). Veja a seção "Como conectar" na página de
-            <a href="/guia/mysql" class="font-medium text-indigo-600 hover:text-indigo-700">MySQL</a>,
-            <a href="/guia/postgresql" class="font-medium text-indigo-600 hover:text-indigo-700">PostgreSQL</a>,
-            <a href="/guia/oracle" class="font-medium text-indigo-600 hover:text-indigo-700">Oracle</a> ou
-            <a href="/guia/sql-server" class="font-medium text-indigo-600 hover:text-indigo-700">SQL Server</a> —
-            o SQL que você escreve depois de conectado é o mesmo assunto desta página.
-        </div>
-    </div>
-
-    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <svg class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div>
-            Antes de sair criando tabela, vale desenhar a estrutura no papel — veja o guia de
-            <a href="/guia/modelagem-er" class="font-medium text-indigo-600 hover:text-indigo-700">Modelagem de dados (MER/DER)</a>,
-            que usa o mesmo cenário de aluno/curso/matrícula dos exemplos abaixo.
-        </div>
-    </div>
-
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                SQL (<em>Structured Query Language</em>) é a linguagem usada pra conversar com bancos de dados
-                <strong>relacionais</strong> — aqueles organizados em tabelas, com linhas e colunas, tipo uma
-                planilha com regras. "ANSI SQL" é o padrão oficial (ANSI, depois adotado pela ISO) que define
-                como essa linguagem deveria funcionar. Na prática, cada banco (MySQL, PostgreSQL, Oracle, SQL
-                Server...) segue esse padrão só até certo ponto e adiciona seus próprios extras — por isso se fala
-                em "dialetos" de SQL, meio como sotaques de uma mesma língua.
+    <div class="guia mb-6">
+        {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+            <p>
+                Pense num banco de dados como um <strong>armário de pastas</strong>. Cada pasta é uma
+                <strong>tabela</strong> (alunos, cursos, matrículas), cada folha dentro dela é uma <strong>linha</strong>
+                (um aluno) e cada campo da folha é uma <strong>coluna</strong> (nome, e-mail, cidade).
+                <strong>SQL</strong> é a língua que você usa pra pedir coisas ao "arquivista": "me traga todos os
+                alunos de Recife", "guarde este aluno novo", "apague essa matrícula".
             </p>
-        </div>
+        {% endblock %}{% endembed %}
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Quatro grupos de comando, cada um com uma sigla própria:
+        <p>
+            SQL (<em>Structured Query Language</em>, "linguagem de consulta estruturada") existe desde os anos 1970.
+            O <strong>padrão ANSI/ISO</strong> é a versão "oficial" da língua. Cada banco (MySQL, PostgreSQL, SQL
+            Server, Oracle) fala esse padrão com o seu próprio <strong>sotaque</strong>, os chamados
+            <em>dialetos</em>: 90% é igual em todos, e o resto muda um pouco. Aprendendo o padrão aqui, você
+            consegue se virar em qualquer um deles.
+        </p>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Prepare os dados de exemplo (faça isso primeiro)'} %}{% block body %}
+            <p>
+                Todos os exemplos desta página usam as mesmas três tabelas: <code>aluno</code>, <code>curso</code> e
+                <code>matricula</code>. Crie um schema no seu <a href="/dashboard" class="font-medium underline">painel</a>
+                (por exemplo <code>escola</code>), clique em <strong>▶ Testar no console</strong> abaixo, escolha o
+                schema e execute. Pronto: todos os outros exemplos vão funcionar.
             </p>
-            <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>DDL</strong> (Data Definition Language) — cria/altera/apaga a estrutura: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ALTER</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DROP</code>.</li>
-                <li><strong>DML</strong> (Data Manipulation Language) — mexe nos dados: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code>.</li>
-                <li><strong>DQL</strong> (Data Query Language) — só consulta: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SELECT</code>.</li>
-                <li><strong>DCL</strong> (Data Control Language) — permissões: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GRANT</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">REVOKE</code> (é literalmente o que o console SQL deste laboratório usa por baixo dos panos).</li>
-            </ul>
-        </div>
+        {% endblock %}{% endembed %}
 
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Sempre que os dados têm estrutura clara e relacionamentos entre si — cadastro de alunos e
-                matrículas, estoque com produtos e pedidos, financeiro com contas e lançamentos. Se dá pra
-                desenhar as informações como tabelas relacionadas por uma chave (ex.: "cada matrícula pertence a
-                um aluno"), SQL relacional tende a ser a escolha mais natural.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                O fluxo básico de qualquer tabela nova costuma ser sempre esse: (1) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">CREATE TABLE</code> define a
-                estrutura uma vez; (2) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code> vai populando linha por linha (ou em lote); (3) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SELECT</code> é o
-                comando que você mais vai usar no dia a dia, pra consultar; (4) <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code> corrigem/removem
-                depois. Uma regra que evita desastre: <strong>sempre</strong> escreva o <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code> de um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code>
-                antes de rodar — sem <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code>, os dois afetam a tabela <strong>inteira</strong>.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- DDL: cria a tabela
-CREATE TABLE aluno (
-    id    INT PRIMARY KEY AUTO_INCREMENT,
-    nome  VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE
+        {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Dados de exemplo — escola'} %}{% block code -%}
+CREATE TABLE curso (
+    id            INT PRIMARY KEY,
+    nome          VARCHAR(60)  NOT NULL,
+    carga_horaria INT          NOT NULL,
+    preco         DECIMAL(8,2) NOT NULL
 );
 
--- DML: insere um registro
-INSERT INTO aluno (nome, email) VALUES ('Ana Silva', 'ana@exemplo.com');
+CREATE TABLE aluno (
+    id         INT PRIMARY KEY,
+    nome       VARCHAR(100) NOT NULL,
+    email      VARCHAR(150) NOT NULL UNIQUE,
+    cidade     VARCHAR(60),
+    nascimento DATE
+);
 
--- DQL: consulta com filtro e ordenação
-SELECT nome, email
-FROM aluno
-WHERE nome LIKE 'A%'
-ORDER BY nome ASC;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- UPDATE e DELETE sempre com WHERE — sem ele, mexe na tabela inteira
-UPDATE aluno SET email = 'ana.silva@exemplo.com' WHERE id = 1;
+CREATE TABLE matricula (
+    id             INT PRIMARY KEY,
+    aluno_id       INT  NOT NULL,
+    curso_id       INT  NOT NULL,
+    data_matricula DATE NOT NULL,
+    nota           DECIMAL(4,1),
+    FOREIGN KEY (aluno_id) REFERENCES aluno (id),
+    FOREIGN KEY (curso_id) REFERENCES curso (id)
+);
 
-DELETE FROM aluno WHERE id = 1;</code></pre>
-        </div>
+INSERT INTO curso VALUES
+    (1, 'Banco de Dados', 60, 450.00),
+    (2, 'Python',         80, 520.00),
+    (3, 'Excel',          20, 150.00),
+    (4, 'Redes',          40, 380.00);
+
+INSERT INTO aluno VALUES
+    (1, 'Ana Souza',   'ana@exemplo.com',   'Recife',  '2003-04-12'),
+    (2, 'Bruno Lima',  'bruno@exemplo.com', 'Olinda',  '2001-09-30'),
+    (3, 'Carla Dias',  'carla@exemplo.com', 'Recife',  '2004-01-05'),
+    (4, 'Diego Rocha', 'diego@exemplo.com', NULL,      '1999-11-20'),
+    (5, 'Elisa Melo',  'elisa@exemplo.com', 'Caruaru', '2002-07-18');
+
+INSERT INTO matricula VALUES
+    (1, 1, 1, '2026-02-01', 9.5),
+    (2, 1, 2, '2026-02-03', 8.0),
+    (3, 2, 1, '2026-02-05', 6.5),
+    (4, 3, 3, '2026-03-10', NULL),
+    (5, 5, 1, '2026-03-12', 7.0),
+    (6, 5, 4, '2026-03-15', 5.5);
+{%- endblock %}{% endembed %}
     </div>
 
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
 
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Além dos comandos básicos, o padrão SQL cobre formas de <strong>combinar dados de várias
-                tabelas</strong> (JOINs), <strong>resumir</strong> grandes conjuntos de linhas (agregação) e
-                garantir que várias operações aconteçam <strong>tudo ou nada</strong> (transações) — é aqui que
-                "saber SQL básico" vira "saber modelar e consultar um banco de verdade".
-            </p>
-        </div>
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Tabela, linha, coluna e chave</h2>
+                <p>Olhe a tabela <code>aluno</code> que você acabou de criar. Ela é igual a uma planilha:</p>
+                <table>
+                    <thead><tr><th>Termo</th><th>O que é</th><th>No exemplo</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Tabela</strong></td><td>Um conjunto de dados do mesmo tipo</td><td><code>aluno</code></td></tr>
+                        <tr><td><strong>Coluna</strong> (campo)</td><td>Uma informação que todo registro tem</td><td><code>nome</code>, <code>email</code>, <code>cidade</code></td></tr>
+                        <tr><td><strong>Linha</strong> (registro)</td><td>Um item da tabela</td><td>a aluna Ana Souza</td></tr>
+                        <tr><td><strong>Chave primária</strong></td><td>A coluna que identifica cada linha sem repetir — o "CPF" da linha</td><td><code>id</code></td></tr>
+                        <tr><td><strong>Chave estrangeira</strong></td><td>Uma coluna que aponta pra chave de outra tabela</td><td><code>matricula.aluno_id</code> → <code>aluno.id</code></td></tr>
+                    </tbody>
+                </table>
+                <p>
+                    Cada coluna tem um <strong>tipo</strong>: <code>INT</code> (número inteiro), <code>VARCHAR(100)</code>
+                    (texto de até 100 letras), <code>DECIMAL(8,2)</code> (número com 2 casas decimais, ótimo pra dinheiro),
+                    <code>DATE</code> (data no formato <code>AAAA-MM-DD</code>). <code>NOT NULL</code> quer dizer "obrigatório"
+                    e <code>UNIQUE</code> quer dizer "não pode repetir".
+                </p>
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>JOIN</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INNER</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">LEFT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RIGHT</code>) — junta linhas de tabelas diferentes que se relacionam por uma chave.</li>
-                <li><strong><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> + <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">HAVING</code></strong> — agrupa linhas e filtra grupos (não linhas individuais) com funções como <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COUNT</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SUM</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">AVG</code>.</li>
-                <li><strong>Subquery</strong> — uma consulta dentro da outra, pra usar o resultado de uma como filtro/fonte da outra.</li>
-                <li><strong>Transação</strong> (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">BEGIN</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">COMMIT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ROLLBACK</code>) — agrupa vários comandos como uma unidade só: ou todos aplicam, ou nenhum aplica (essencial pra não deixar dado "pela metade" se algo falhar no meio).</li>
-                <li><strong>Índice</strong> — estrutura auxiliar que acelera busca por uma coluna, ao custo de um pouco mais de espaço/escrita mais lenta.</li>
-            </ul>
-        </div>
+                <h3>Os 4 grupos de comandos</h3>
+                <table>
+                    <thead><tr><th>Grupo</th><th>Serve pra</th><th>Comandos</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>DDL</strong> — definir</td><td>Criar e mudar a <em>estrutura</em> (as pastas)</td><td><code>CREATE</code>, <code>ALTER</code>, <code>DROP</code></td></tr>
+                        <tr><td><strong>DML</strong> — manipular</td><td>Mexer nos <em>dados</em> (as folhas)</td><td><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code></td></tr>
+                        <tr><td><strong>DQL</strong> — consultar</td><td>Ler dados sem alterar nada</td><td><code>SELECT</code></td></tr>
+                        <tr><td><strong>DCL</strong> — controlar</td><td>Dar e tirar permissões</td><td><code>GRANT</code>, <code>REVOKE</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                JOIN e agregação viram necessários assim que os dados são normalizados (separados em tabelas
-                pra evitar repetição — ex.: "curso" numa tabela, "matrícula" em outra, ligadas por
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">curso_id</code>). Transação é obrigatória sempre que uma ação de negócio envolve mais de um
-                <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code> que precisam acontecer juntos (ex.: transferência entre contas: debitar
-                de uma e creditar na outra — se só a primeira parte rodar, o dinheiro "some").
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>2. Consultando com SELECT</h2>
+                <p>
+                    <code>SELECT</code> é o comando que você mais vai usar. A estrutura é sempre
+                    <strong>"SELECIONE estas colunas DE esta tabela"</strong>. O asterisco <code>*</code> significa "todas as colunas".
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT * FROM curso;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+----------------+---------------+--------+
+| id | nome           | carga_horaria | preco  |
++----+----------------+---------------+--------+
+|  1 | Banco de Dados |            60 | 450.00 |
+|  2 | Python         |            80 | 520.00 |
+|  3 | Excel          |            20 | 150.00 |
+|  4 | Redes          |            40 | 380.00 |
++----+----------------+---------------+--------+
+{%- endblock %}{% endembed %}
 
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Pensando em passos: primeiro normalize (separe os dados em tabelas ligadas por chave, evitando
-                repetir informação); depois escreva <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">JOIN</code>s pra reconectar essas tabelas na hora de consultar;
-                use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">GROUP BY</code> quando precisar de um resumo (total, média) em vez das linhas individuais; e
-                embrulhe numa transação qualquer sequência de <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">INSERT</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code> que só faz sentido acontecer
-                junto. Rode um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SELECT</code> com o mesmo <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code> antes de um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">UPDATE</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">DELETE</code> em produção — é a forma
-                mais simples de conferir quais linhas vão ser afetadas antes de afetar de verdade.
-            </p>
-        </div>
+                <p>Na prática, é melhor pedir só as colunas que você precisa — fica mais rápido e mais fácil de ler:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT nome, cidade FROM aluno ORDER BY id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------------+---------+
+| nome        | cidade  |
++-------------+---------+
+| Ana Souza   | Recife  |
+| Bruno Lima  | Olinda  |
+| Carla Dias  | Recife  |
+| Diego Rocha | NULL    |
+| Elisa Melo  | Caruaru |
++-------------+---------+
+{%- endblock %}{% endembed %}
+                <p>
+                    Repare no <code>NULL</code> do Diego: significa <strong>"sem valor / não informado"</strong>.
+                    Não é zero nem texto vazio — é a <em>ausência</em> de valor.
+                </p>
 
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- JOIN + agregação: quantas matrículas por curso
-SELECT c.nome AS curso, COUNT(m.id) AS total_matriculas
+                <h3>Dando apelidos com AS</h3>
+                <p>Você pode renomear colunas no resultado e até fazer contas:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT nome AS curso,
+       preco,
+       preco * 0.9 AS preco_com_desconto
+FROM curso;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+--------------------+
+| curso          | preco  | preco_com_desconto |
++----------------+--------+--------------------+
+| Banco de Dados | 450.00 |            405.000 |
+| Python         | 520.00 |            468.000 |
+| Excel          | 150.00 |            135.000 |
+| Redes          | 380.00 |            342.000 |
++----------------+--------+--------------------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Filtrando com WHERE</h2>
+                <p><code>WHERE</code> é o filtro: só voltam as linhas em que a condição for verdadeira.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT nome, cidade
+FROM aluno
+WHERE cidade = 'Recife';
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+--------+
+| nome       | cidade |
++------------+--------+
+| Ana Souza  | Recife |
+| Carla Dias | Recife |
++------------+--------+
+{%- endblock %}{% endembed %}
+
+                <p>Os operadores de comparação mais usados:</p>
+                <table>
+                    <thead><tr><th>Operador</th><th>Significa</th><th>Exemplo</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>=</code> / <code>&lt;&gt;</code></td><td>igual / diferente</td><td><code>cidade &lt;&gt; 'Recife'</code></td></tr>
+                        <tr><td><code>&gt;</code> <code>&lt;</code> <code>&gt;=</code> <code>&lt;=</code></td><td>maior, menor...</td><td><code>preco &gt;= 400</code></td></tr>
+                        <tr><td><code>BETWEEN a AND b</code></td><td>entre a e b (inclusive)</td><td><code>preco BETWEEN 150 AND 400</code></td></tr>
+                        <tr><td><code>IN (...)</code></td><td>qualquer um da lista</td><td><code>cidade IN ('Recife', 'Olinda')</code></td></tr>
+                        <tr><td><code>LIKE</code></td><td>parecido com (<code>%</code> = qualquer texto)</td><td><code>nome LIKE 'C%'</code> (começa com C)</td></tr>
+                        <tr><td><code>IS NULL</code> / <code>IS NOT NULL</code></td><td>sem valor / com valor</td><td><code>cidade IS NULL</code></td></tr>
+                    </tbody>
+                </table>
+
+                <p>Dá pra combinar condições com <code>AND</code> (as duas precisam ser verdade) e <code>OR</code> (basta uma):</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT nome, preco
+FROM curso
+WHERE preco BETWEEN 150 AND 450
+  AND carga_horaria >= 40;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+
+| nome           | preco  |
++----------------+--------+
+| Banco de Dados | 450.00 |
+| Redes          | 380.00 |
++----------------+--------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Quem não informou a cidade?
+SELECT nome FROM aluno WHERE cidade IS NULL;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------------+
+| nome        |
++-------------+
+| Diego Rocha |
++-------------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'NULL não se compara com ='} %}{% block body %}
+                    <p>
+                        <code>WHERE cidade = NULL</code> <strong>nunca</strong> retorna nada, nem a linha do Diego. Como NULL é
+                        "desconhecido", o banco não sabe dizer se um valor desconhecido é igual a outro. Use sempre
+                        <code>IS NULL</code> ou <code>IS NOT NULL</code>.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Ordenando e limitando</h2>
+                <p>
+                    <code>ORDER BY</code> ordena o resultado: <code>ASC</code> é crescente (o padrão) e <code>DESC</code>
+                    é decrescente. Pra pegar só as primeiras linhas, o MySQL usa <code>LIMIT</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Os 2 cursos mais caros
+SELECT nome, preco
+FROM curso
+ORDER BY preco DESC
+LIMIT 2;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+
+| nome           | preco  |
++----------------+--------+
+| Python         | 520.00 |
+| Banco de Dados | 450.00 |
++----------------+--------+
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'Sotaques diferentes pra mesma coisa'} %}{% block body %}
+                    <p>
+                        O padrão ANSI escreve <code>FETCH FIRST 2 ROWS ONLY</code>. PostgreSQL e Oracle aceitam essa forma,
+                        o MySQL usa <code>LIMIT 2</code> e o SQL Server usa <code>SELECT TOP 2 ...</code>. A ideia é a mesma,
+                        só muda o jeito de escrever.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. Inserindo, alterando e apagando</h2>
+                <p><code>INSERT</code> adiciona uma linha nova. Liste as colunas e depois os valores, na mesma ordem:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+INSERT INTO aluno (id, nome, email, cidade, nascimento)
+VALUES (6, 'Fábio Nunes', 'fabio@exemplo.com', 'Paulista', '2000-05-25');
+
+SELECT id, nome, cidade FROM aluno WHERE id = 6;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+-------------+----------+
+| id | nome        | cidade   |
++----+-------------+----------+
+|  6 | Fábio Nunes | Paulista |
++----+-------------+----------+
+{%- endblock %}{% endembed %}
+
+                <p><code>UPDATE</code> altera linhas que já existem. <code>SET</code> diz o que mudar e <code>WHERE</code> diz <em>em quem</em>:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+UPDATE aluno
+SET cidade = 'Recife'
+WHERE id = 6;
+
+SELECT id, nome, cidade FROM aluno WHERE id = 6;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+-------------+--------+
+| id | nome        | cidade |
++----+-------------+--------+
+|  6 | Fábio Nunes | Recife |
++----+-------------+--------+
+{%- endblock %}{% endembed %}
+
+                <p><code>DELETE</code> apaga linhas:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+DELETE FROM aluno WHERE id = 6;
+
+SELECT COUNT(*) AS total_de_alunos FROM aluno;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------------+
+| total_de_alunos |
++-----------------+
+|               5 |
++-----------------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/box.twig' with {tipo: 'atencao', titulo: 'A regra de ouro: nunca esqueça o WHERE'} %}{% block body %}
+                    <p>
+                        <code>UPDATE aluno SET cidade = 'Recife';</code> sem <code>WHERE</code> muda a cidade de
+                        <strong>todos</strong> os alunos. <code>DELETE FROM aluno;</code> apaga <strong>a tabela inteira</strong>.
+                        Antes de rodar um UPDATE ou DELETE, rode um <code>SELECT</code> com o mesmo WHERE e confira quais
+                        linhas vão ser afetadas.
+                    </p>
+                {% endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>⚠️ Erros comuns de quem está começando</h2>
+                <ul>
+                    <li><strong>Texto com aspas duplas.</strong> Em SQL, texto vai entre <strong>aspas simples</strong>: <code>'Recife'</code>. Aspas duplas são pra nome de coluna em alguns bancos.</li>
+                    <li><strong>Vírgula sobrando</strong> antes do <code>FROM</code>: <code>SELECT nome, email, FROM aluno</code> dá erro de sintaxe.</li>
+                    <li><strong>Esquecer o ponto e vírgula</strong> ao rodar vários comandos juntos: é o <code>;</code> que separa um comando do outro.</li>
+                    <li><strong>Comparar com NULL usando <code>=</code></strong>: use <code>IS NULL</code>.</li>
+                    <li><strong>Data no formato brasileiro</strong>: o banco espera <code>'2026-03-15'</code> (ano-mês-dia), não <code>'15/03/2026'</code>.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Liste o nome e o preço dos cursos que custam menos de R$ 400.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT nome, preco FROM curso WHERE preco < 400;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------+--------+
+| nome  | preco  |
++-------+--------+
+| Excel | 150.00 |
+| Redes | 380.00 |
++-------+--------+
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Liste os alunos cujo nome termina com "a", em ordem alfabética.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT nome FROM aluno WHERE nome LIKE '%a' ORDER BY nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------------+
+| nome        |
++-------------+
+| Ana Souza   |
+| Bruno Lima  |
+| Diego Rocha |
++-------------+
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>3. Quais matrículas ainda não têm nota?</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT id, aluno_id, curso_id FROM matricula WHERE nota IS NULL;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++----+----------+----------+
+| id | aluno_id | curso_id |
++----+----------+----------+
+|  4 |        3 |        3 |
++----+----------+----------+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Resumindo dados: funções de agregação</h2>
+                <p>
+                    Às vezes você não quer as linhas, quer um <strong>resumo</strong> delas: quantas são, a soma, a média.
+                    As funções de agregação "espremem" várias linhas num número só.
+                </p>
+                <table>
+                    <thead><tr><th>Função</th><th>Devolve</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>COUNT(*)</code></td><td>quantas linhas existem</td></tr>
+                        <tr><td><code>COUNT(coluna)</code></td><td>quantas linhas têm valor (ignora NULL)</td></tr>
+                        <tr><td><code>SUM(coluna)</code></td><td>a soma</td></tr>
+                        <tr><td><code>AVG(coluna)</code></td><td>a média (ignora NULL)</td></tr>
+                        <tr><td><code>MIN</code> / <code>MAX</code></td><td>o menor / o maior valor</td></tr>
+                    </tbody>
+                </table>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT COUNT(*)    AS matriculas,
+       COUNT(nota) AS com_nota,
+       AVG(nota)   AS media,
+       MAX(nota)   AS maior_nota
+FROM matricula;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+----------+---------+------------+
+| matriculas | com_nota | media   | maior_nota |
++------------+----------+---------+------------+
+|          6 |        5 | 7.30000 |        9.5 |
++------------+----------+---------+------------+
+{%- endblock %}{% endembed %}
+                <p>
+                    São 6 matrículas, mas só 5 têm nota: <code>COUNT(nota)</code> e <code>AVG(nota)</code> ignoram a
+                    matrícula sem nota. A média é das 5 notas, não das 6.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. GROUP BY e HAVING: resumo por grupo</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+                    <p>
+                        <code>GROUP BY</code> é como separar as folhas em montinhos (um por curso, por exemplo) e depois
+                        contar ou somar cada montinho. <code>HAVING</code> é um filtro que olha pros <strong>montinhos</strong>,
+                        enquanto o <code>WHERE</code> olha pras <strong>folhas</strong>.
+                    </p>
+                {% endblock %}{% endembed %}
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Quantas matrículas e qual a média de nota em cada curso
+SELECT curso_id,
+       COUNT(*)  AS matriculas,
+       AVG(nota) AS media
+FROM matricula
+GROUP BY curso_id
+ORDER BY curso_id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------+------------+---------+
+| curso_id | matriculas |   media |
++----------+------------+---------+
+|        1 |          3 | 7.66667 |
+|        2 |          1 | 8.00000 |
+|        3 |          1 |    NULL |
+|        4 |          1 | 5.50000 |
++----------+------------+---------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Só os cursos com mais de 1 matrícula
+SELECT curso_id, COUNT(*) AS matriculas
+FROM matricula
+GROUP BY curso_id
+HAVING COUNT(*) > 1;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------+------------+
+| curso_id | matriculas |
++----------+------------+
+|        1 |          3 |
++----------+------------+
+{%- endblock %}{% endembed %}
+
+                <p><strong>A ordem em que o banco executa</strong> uma consulta ajuda a entender por que WHERE e HAVING são diferentes:</p>
+                <ol>
+                    <li><code>FROM</code> / <code>JOIN</code> — pega as tabelas</li>
+                    <li><code>WHERE</code> — filtra as linhas</li>
+                    <li><code>GROUP BY</code> — junta em grupos</li>
+                    <li><code>HAVING</code> — filtra os grupos</li>
+                    <li><code>SELECT</code> — escolhe as colunas e calcula os apelidos</li>
+                    <li><code>ORDER BY</code> — ordena</li>
+                    <li><code>LIMIT</code> — corta</li>
+                </ol>
+            </div>
+
+            <div class="card guia">
+                <h2>3. JOIN: juntando tabelas</h2>
+                <p>
+                    A tabela <code>matricula</code> só tem números (<code>aluno_id</code>, <code>curso_id</code>). Pra ver o
+                    <em>nome</em> do aluno e do curso, você precisa <strong>juntar</strong> as tabelas usando essas chaves.
+                    É pra isso que serve o <code>JOIN</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT a.nome AS aluno,
+       c.nome AS curso,
+       m.nota
+FROM matricula m
+INNER JOIN aluno a ON a.id = m.aluno_id
+INNER JOIN curso c ON c.id = m.curso_id
+ORDER BY a.nome, c.nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+----------------+------+
+| aluno      | curso          | nota |
++------------+----------------+------+
+| Ana Souza  | Banco de Dados |  9.5 |
+| Ana Souza  | Python         |  8.0 |
+| Bruno Lima | Banco de Dados |  6.5 |
+| Carla Dias | Excel          | NULL |
+| Elisa Melo | Banco de Dados |  7.0 |
+| Elisa Melo | Redes          |  5.5 |
++------------+----------------+------+
+{%- endblock %}{% endembed %}
+                <p>
+                    <code>m</code>, <code>a</code> e <code>c</code> são <strong>apelidos</strong> das tabelas, pra não escrever o
+                    nome inteiro toda hora. O <code>ON</code> diz <em>como</em> as linhas se encaixam: "a matrícula
+                    combina com o aluno cujo id é igual ao aluno_id dela".
+                </p>
+
+                <h3>INNER JOIN x LEFT JOIN</h3>
+                <table>
+                    <thead><tr><th>Tipo</th><th>Traz</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>INNER JOIN</code></td><td>Só as linhas que têm par nas duas tabelas</td></tr>
+                        <tr><td><code>LEFT JOIN</code></td><td>Todas as linhas da tabela da esquerda, mesmo sem par (o que faltar vem como NULL)</td></tr>
+                        <tr><td><code>RIGHT JOIN</code></td><td>O contrário do LEFT (quase ninguém usa, é só inverter as tabelas)</td></tr>
+                    </tbody>
+                </table>
+                <p>O Diego não tem matrícula. No INNER JOIN ele some; no LEFT JOIN ele aparece com o curso vazio:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT a.nome, m.curso_id
+FROM aluno a
+LEFT JOIN matricula m ON m.aluno_id = a.id
+ORDER BY a.nome, m.curso_id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------------+----------+
+| nome        | curso_id |
++-------------+----------+
+| Ana Souza   |        1 |
+| Ana Souza   |        2 |
+| Bruno Lima  |        1 |
+| Carla Dias  |        3 |
+| Diego Rocha |     NULL |
+| Elisa Melo  |        1 |
+| Elisa Melo  |        4 |
++-------------+----------+
+{%- endblock %}{% endembed %}
+
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Truque clássico: LEFT JOIN + IS NULL = "quem não tem"
+SELECT a.nome AS aluno_sem_matricula
+FROM aluno a
+LEFT JOIN matricula m ON m.aluno_id = a.id
+WHERE m.id IS NULL;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++---------------------+
+| aluno_sem_matricula |
++---------------------+
+| Diego Rocha         |
++---------------------+
+{%- endblock %}{% endembed %}
+
+                <h3>JOIN + GROUP BY: o combo mais usado no dia a dia</h3>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Faturamento por curso (preço x número de matrículas)
+SELECT c.nome,
+       COUNT(m.id)           AS matriculas,
+       COUNT(m.id) * c.preco AS faturamento
 FROM curso c
 LEFT JOIN matricula m ON m.curso_id = c.id
-GROUP BY c.nome
-HAVING COUNT(m.id) > 0
-ORDER BY total_matriculas DESC;
+GROUP BY c.id, c.nome, c.preco
+ORDER BY faturamento DESC;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+------------+-------------+
+| nome           | matriculas | faturamento |
++----------------+------------+-------------+
+| Banco de Dados |          3 |     1350.00 |
+| Python         |          1 |      520.00 |
+| Redes          |          1 |      380.00 |
+| Excel          |          1 |      150.00 |
++----------------+------------+-------------+
+{%- endblock %}{% endembed %}
+            </div>
 
--- Transação: só confirma se as duas operações derem certo
+            <div class="card guia">
+                <h2>4. Subconsultas e CTE (WITH)</h2>
+                <p>Uma <strong>subconsulta</strong> é um SELECT dentro de outro. O de dentro roda primeiro e o resultado vira filtro do de fora:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Cursos mais caros que a média de preço
+SELECT nome, preco
+FROM curso
+WHERE preco > (SELECT AVG(preco) FROM curso)
+ORDER BY preco DESC;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+
+| nome           | preco  |
++----------------+--------+
+| Python         | 520.00 |
+| Banco de Dados | 450.00 |
+| Redes          | 380.00 |
++----------------+--------+
+{%- endblock %}{% endembed %}
+                <p>
+                    Quando a consulta cresce, a <strong>CTE</strong> (<code>WITH nome AS (...)</code>) deixa tudo mais
+                    legível: você dá um nome pra um resultado intermediário e usa como se fosse uma tabela.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+WITH media_por_aluno AS (
+    SELECT aluno_id, AVG(nota) AS media
+    FROM matricula
+    WHERE nota IS NOT NULL
+    GROUP BY aluno_id
+)
+SELECT a.nome, mpa.media
+FROM media_por_aluno mpa
+JOIN aluno a ON a.id = mpa.aluno_id
+WHERE mpa.media >= 7
+ORDER BY mpa.media DESC;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------+---------+
+| nome      | media   |
++-----------+---------+
+| Ana Souza | 8.75000 |
++-----------+---------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. CASE: o "se... então..." do SQL</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+SELECT a.nome,
+       m.nota,
+       CASE
+           WHEN m.nota IS NULL THEN 'Sem nota'
+           WHEN m.nota >= 7    THEN 'Aprovado'
+           WHEN m.nota >= 5    THEN 'Recuperação'
+           ELSE 'Reprovado'
+       END AS situacao
+FROM matricula m
+JOIN aluno a ON a.id = m.aluno_id
+ORDER BY m.id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+------+-------------+
+| nome       | nota | situacao    |
++------------+------+-------------+
+| Ana Souza  |  9.5 | Aprovado    |
+| Ana Souza  |  8.0 | Aprovado    |
+| Bruno Lima |  6.5 | Recuperação |
+| Carla Dias | NULL | Sem nota    |
+| Elisa Melo |  7.0 | Aprovado    |
+| Elisa Melo |  5.5 | Recuperação |
++------------+------+-------------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>6. Transações: tudo ou nada</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+                    <p>
+                        Uma transferência bancária tem duas partes: tirar o dinheiro de uma conta e colocar na outra. Se a
+                        luz acabar no meio, o dinheiro não pode sumir. A <strong>transação</strong> garante que ou as duas
+                        partes acontecem, ou nenhuma acontece.
+                    </p>
+                {% endblock %}{% endembed %}
+                <ul>
+                    <li><code>START TRANSACTION</code> — começa (no padrão ANSI e no PostgreSQL também <code>BEGIN</code>)</li>
+                    <li><code>COMMIT</code> — confirma tudo de uma vez</li>
+                    <li><code>ROLLBACK</code> — desfaz tudo desde o início da transação</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
 START TRANSACTION;
-UPDATE conta SET saldo = saldo - 100 WHERE id = 1;
-UPDATE conta SET saldo = saldo + 100 WHERE id = 2;
-COMMIT;</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>-- Subquery: alunos que nunca fizeram nenhuma matrícula
+UPDATE curso SET preco = preco * 2;   -- ops, dobrou o preço de TODOS!
+SELECT nome, preco FROM curso WHERE id = 1;
+ROLLBACK;                            -- desfaz
+SELECT nome, preco FROM curso WHERE id = 1;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+
+| nome           | preco  |
++----------------+--------+
+| Banco de Dados | 900.00 |
++----------------+--------+
++----------------+--------+
+| nome           | preco  |
++----------------+--------+
+| Banco de Dados | 450.00 |
++----------------+--------+
+{%- endblock %}{% endembed %}
+                <p>As propriedades que uma transação garante têm até sigla: <strong>ACID</strong>.</p>
+                <table>
+                    <tbody>
+                        <tr><td><strong>A</strong>tomicidade</td><td>Tudo ou nada.</td></tr>
+                        <tr><td><strong>C</strong>onsistência</td><td>O banco sai de um estado válido pra outro válido (regras como chave estrangeira são respeitadas).</td></tr>
+                        <tr><td><strong>I</strong>solamento</td><td>Uma transação não enxerga o trabalho pela metade de outra.</td></tr>
+                        <tr><td><strong>D</strong>urabilidade</td><td>Depois do COMMIT, o dado não se perde nem se o servidor desligar.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card guia">
+                <h2>⚠️ Erros comuns no intermediário</h2>
+                <ul>
+                    <li><strong>Coluna no SELECT que não está no GROUP BY</strong> (e nem dentro de uma função de agregação). O banco não sabe qual valor mostrar daquele grupo.</li>
+                    <li><strong>JOIN sem ON</strong> (ou com o ON errado): cada linha de uma tabela se combina com todas da outra — o "produto cartesiano". 5 alunos × 6 matrículas viram 30 linhas sem sentido.</li>
+                    <li><strong>Filtrar agregação no WHERE</strong>: <code>WHERE COUNT(*) &gt; 1</code> dá erro. Filtro de grupo vai no <code>HAVING</code>.</li>
+                    <li><strong>LEFT JOIN anulado pelo WHERE</strong>: <code>LEFT JOIN matricula m ... WHERE m.nota &gt; 5</code> descarta quem não tem matrícula, e o LEFT vira INNER sem você perceber. Coloque essa condição no <code>ON</code>.</li>
+                </ul>
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Mostre o nome de cada curso e quantos alunos ele tem (inclusive os cursos com zero).</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT c.nome, COUNT(m.id) AS alunos
+FROM curso c
+LEFT JOIN matricula m ON m.curso_id = c.id
+GROUP BY c.id, c.nome
+ORDER BY c.nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+
+| nome           | alunos |
++----------------+--------+
+| Banco de Dados |      3 |
+| Excel          |      1 |
+| Python         |      1 |
+| Redes          |      1 |
++----------------+--------+
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Qual cidade tem mais alunos? (ignore quem não informou a cidade)</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+SELECT cidade, COUNT(*) AS alunos
+FROM aluno
+WHERE cidade IS NOT NULL
+GROUP BY cidade
+ORDER BY alunos DESC
+LIMIT 1;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------+--------+
+| cidade | alunos |
++--------+--------+
+| Recife |      2 |
++--------+--------+
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>3. Liste os alunos que fazem o curso "Banco de Dados" usando uma subconsulta.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
 SELECT nome
 FROM aluno
-WHERE id NOT IN (SELECT aluno_id FROM matricula);
-
--- A mesma ideia com CTE (WITH), mais legível quando a consulta cresce
-WITH alunos_matriculados AS (
-    SELECT DISTINCT aluno_id FROM matricula
+WHERE id IN (
+    SELECT aluno_id FROM matricula
+    WHERE curso_id = (SELECT id FROM curso WHERE nome = 'Banco de Dados')
 )
-SELECT a.nome
-FROM aluno a
-LEFT JOIN alunos_matriculados am ON am.aluno_id = a.id
-WHERE am.aluno_id IS NULL;</code></pre>
-        </div>
+ORDER BY nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+
+| nome       |
++------------+
+| Ana Souza  |
+| Bruno Lima |
+| Elisa Melo |
++------------+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Funções de janela (window functions)</h2>
+                <p>
+                    O <code>GROUP BY</code> espreme as linhas: depois dele, você só vê o resumo. As <strong>funções de
+                    janela</strong> calculam sobre um grupo de linhas <em>sem juntar as linhas</em>: cada linha continua lá,
+                    ganhando uma coluna extra com a conta. A palavra mágica é <code>OVER (...)</code>.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Cada matrícula, ao lado da média do curso e da posição do aluno no curso
+SELECT c.nome AS curso,
+       a.nome AS aluno,
+       m.nota,
+       AVG(m.nota) OVER (PARTITION BY m.curso_id)                    AS media_do_curso,
+       RANK()      OVER (PARTITION BY m.curso_id ORDER BY m.nota DESC) AS posicao
+FROM matricula m
+JOIN aluno a ON a.id = m.aluno_id
+JOIN curso c ON c.id = m.curso_id
+WHERE m.nota IS NOT NULL
+ORDER BY c.nome, posicao;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+------------+------+----------------+---------+
+| curso          | aluno      | nota | media_do_curso | posicao |
++----------------+------------+------+----------------+---------+
+| Banco de Dados | Ana Souza  |  9.5 |        7.66667 |       1 |
+| Banco de Dados | Elisa Melo |  7.0 |        7.66667 |       2 |
+| Banco de Dados | Bruno Lima |  6.5 |        7.66667 |       3 |
+| Python         | Ana Souza  |  8.0 |        8.00000 |       1 |
+| Redes          | Elisa Melo |  5.5 |        5.50000 |       1 |
++----------------+------------+------+----------------+---------+
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>PARTITION BY</code> — define os grupos (as "janelas"), parecido com o GROUP BY.</li>
+                    <li><code>ORDER BY</code> dentro do OVER — define a ordem dentro de cada janela.</li>
+                    <li><code>ROW_NUMBER()</code> numera 1, 2, 3...; <code>RANK()</code> repete a posição em caso de empate e pula a seguinte; <code>DENSE_RANK()</code> repete sem pular.</li>
+                    <li><code>LAG()</code>/<code>LEAD()</code> leem a linha anterior/seguinte; <code>SUM(...) OVER (ORDER BY ...)</code> faz soma acumulada.</li>
+                </ul>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Faturamento acumulado ao longo das matrículas
+SELECT m.data_matricula,
+       c.preco,
+       SUM(c.preco) OVER (ORDER BY m.data_matricula) AS acumulado
+FROM matricula m
+JOIN curso c ON c.id = m.curso_id
+ORDER BY m.data_matricula;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------------+--------+-----------+
+| data_matricula | preco  | acumulado |
++----------------+--------+-----------+
+| 2026-02-01     | 450.00 |    450.00 |
+| 2026-02-03     | 520.00 |    970.00 |
+| 2026-02-05     | 450.00 |   1420.00 |
+| 2026-03-10     | 150.00 |   1570.00 |
+| 2026-03-12     | 450.00 |   2020.00 |
+| 2026-03-15     | 380.00 |   2400.00 |
++----------------+--------+-----------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>2. CTE recursiva</h2>
+                <p>
+                    Uma CTE pode <strong>chamar a si mesma</strong>. Isso serve pra percorrer estruturas em árvore
+                    (categorias e subcategorias, organograma) ou gerar sequências.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE TABLE categoria (
+    id      INT PRIMARY KEY,
+    nome    VARCHAR(40) NOT NULL,
+    pai_id  INT NULL,
+    FOREIGN KEY (pai_id) REFERENCES categoria (id)
+);
+INSERT INTO categoria VALUES
+    (1, 'Tecnologia', NULL),
+    (2, 'Programação', 1),
+    (3, 'Banco de Dados', 2),
+    (4, 'Python', 2),
+    (5, 'Infraestrutura', 1);
+
+WITH RECURSIVE arvore AS (
+    SELECT id, nome, pai_id, 0 AS nivel, CAST(nome AS CHAR(200)) AS caminho
+    FROM categoria
+    WHERE pai_id IS NULL                 -- ponto de partida: a raiz
+    UNION ALL
+    SELECT c.id, c.nome, c.pai_id, a.nivel + 1, CONCAT(a.caminho, ' > ', c.nome)
+    FROM categoria c
+    JOIN arvore a ON c.pai_id = a.id     -- passo recursivo: os filhos
+)
+SELECT nivel, caminho FROM arvore ORDER BY caminho;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-------+-------------------------------------------+
+| nivel | caminho                                   |
++-------+-------------------------------------------+
+|     0 | Tecnologia                                |
+|     1 | Tecnologia &gt; Infraestrutura               |
+|     1 | Tecnologia &gt; Programação                  |
+|     2 | Tecnologia &gt; Programação &gt; Banco de Dados |
+|     2 | Tecnologia &gt; Programação &gt; Python         |
++-------+-------------------------------------------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>3. Operações de conjunto e VIEW</h2>
+                <p>
+                    <code>UNION</code> junta resultados de dois SELECTs (removendo repetidos), <code>UNION ALL</code> junta
+                    mantendo repetidos (é mais rápido), <code>INTERSECT</code> traz o que está nos dois e <code>EXCEPT</code>
+                    o que está no primeiro mas não no segundo.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Alunos matriculados em Banco de Dados (1) MAS NÃO em Python (2)
+SELECT aluno_id FROM matricula WHERE curso_id = 1
+EXCEPT
+SELECT aluno_id FROM matricula WHERE curso_id = 2
+ORDER BY aluno_id;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++----------+
+| aluno_id |
++----------+
+|        2 |
+|        5 |
++----------+
+{%- endblock %}{% endembed %}
+                <p>
+                    Uma <strong>VIEW</strong> é uma consulta salva com nome, que você usa como se fosse uma tabela. Ela não
+                    guarda dados: toda vez que você consulta a view, a consulta original roda de novo.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE VIEW boletim AS
+SELECT a.nome AS aluno, c.nome AS curso, m.nota
+FROM matricula m
+JOIN aluno a ON a.id = m.aluno_id
+JOIN curso c ON c.id = m.curso_id;
+
+SELECT * FROM boletim WHERE nota >= 8;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++-----------+----------------+------+
+| aluno     | curso          | nota |
++-----------+----------------+------+
+| Ana Souza | Banco de Dados |  9.5 |
+| Ana Souza | Python         |  8.0 |
++-----------+----------------+------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>4. Índices e desempenho</h2>
+                {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+                    <p>
+                        Um <strong>índice</strong> é o índice remissivo no fim de um livro: em vez de ler o livro inteiro
+                        procurando "transação", você vai direto na página. Sem índice, o banco lê a tabela inteira
+                        (<em>full scan</em>).
+                    </p>
+                {% endblock %}{% endembed %}
+                <ul>
+                    <li>Crie índice nas colunas usadas em <code>WHERE</code>, <code>JOIN ... ON</code> e <code>ORDER BY</code> de consultas frequentes.</li>
+                    <li>Chave primária e <code>UNIQUE</code> já criam índice automaticamente.</li>
+                    <li>Índice tem custo: ocupa espaço e deixa <code>INSERT</code>/<code>UPDATE</code> um pouco mais lentos. Não indexe tudo.</li>
+                    <li><strong>Índice composto</strong> <code>(cidade, nome)</code> serve pra filtros por <code>cidade</code> e por <code>cidade + nome</code>, mas não só por <code>nome</code>. A ordem das colunas importa.</li>
+                    <li><strong>Função na coluna atrapalha o índice</strong>: <code>WHERE YEAR(nascimento) = 2003</code> não usa o índice de <code>nascimento</code>. Prefira <code>WHERE nascimento &gt;= '2003-01-01' AND nascimento &lt; '2004-01-01'</code>.</li>
+                </ul>
+                <p><code>EXPLAIN</code> mostra o plano: como o banco pretende executar a consulta (não é padrão ANSI, mas quase todo banco tem):</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+CREATE INDEX idx_aluno_cidade ON aluno (cidade);
+
+EXPLAIN SELECT nome FROM aluno WHERE cidade = 'Recife';
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (resumido) — repare na coluna key'} %}{% block out -%}
++----+-------------+-------+------+------------------+------------------+------+-------+
+| id | select_type | table | type | possible_keys    | key              | rows | Extra |
++----+-------------+-------+------+------------------+------------------+------+-------+
+|  1 | SIMPLE      | aluno | ref  | idx_aluno_cidade | idx_aluno_cidade |    2 | NULL  |
++----+-------------+-------+------+------------------+------------------+------+-------+
+{%- endblock %}{% endembed %}
+                <p>
+                    <code>key = idx_aluno_cidade</code> e <code>type = ref</code> mostram que o índice foi usado. Se aparecer
+                    <code>type = ALL</code>, o banco está lendo a tabela inteira.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>5. Concorrência: níveis de isolamento</h2>
+                <p>
+                    Quando muitas pessoas usam o banco ao mesmo tempo, uma transação pode "enxergar" mudanças de outra em
+                    momentos estranhos. O padrão SQL define quatro níveis de isolamento. Quanto mais alto, mais seguro e
+                    mais lento:
+                </p>
+                <table>
+                    <thead><tr><th>Nível</th><th>Leitura suja</th><th>Leitura não repetível</th><th>Fantasma</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>READ UNCOMMITTED</code></td><td>pode</td><td>pode</td><td>pode</td></tr>
+                        <tr><td><code>READ COMMITTED</code> <span class="text-xs text-slate-500">(padrão no PostgreSQL, SQL Server, Oracle)</span></td><td>não</td><td>pode</td><td>pode</td></tr>
+                        <tr><td><code>REPEATABLE READ</code> <span class="text-xs text-slate-500">(padrão no MySQL/InnoDB)</span></td><td>não</td><td>não</td><td>pode*</td></tr>
+                        <tr><td><code>SERIALIZABLE</code></td><td>não</td><td>não</td><td>não</td></tr>
+                    </tbody>
+                </table>
+                <ul>
+                    <li><strong>Leitura suja</strong>: ler um dado que outra transação ainda não confirmou (e que pode ser desfeito).</li>
+                    <li><strong>Leitura não repetível</strong>: ler a mesma linha duas vezes e ver valores diferentes, porque alguém alterou no meio.</li>
+                    <li><strong>Fantasma</strong>: repetir uma consulta e aparecerem linhas novas que alguém inseriu no meio.</li>
+                </ul>
+                <p class="text-xs text-slate-500">* O InnoDB do MySQL evita a maioria dos fantasmas no REPEATABLE READ usando travas de intervalo (<em>gap locks</em>).</p>
+            </div>
+
+            <div class="card guia">
+                <h2>6. A lógica de três valores do NULL</h2>
+                <p>
+                    Com NULL, uma condição pode ser <strong>verdadeira</strong>, <strong>falsa</strong> ou
+                    <strong>desconhecida</strong>. O <code>WHERE</code> só deixa passar o que é verdadeiro. Isso gera uma
+                    pegadinha famosa com <code>NOT IN</code>:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- "Cursos cujo id não está na lista (1, NULL)": parece que deveria trazer 2, 3 e 4...
+SELECT nome FROM curso WHERE id NOT IN (1, NULL);
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {titulo: 'Resultado: nenhuma linha (o console mostra o resultado vazio)'} %}{% block out -%}
+
+{%- endblock %}{% endembed %}
+                <p>
+                    <code>2 NOT IN (1, NULL)</code> vira "2 ≠ 1 <em>e</em> 2 ≠ NULL", e "2 ≠ NULL" é desconhecido. Então a
+                    condição inteira fica desconhecida e nada passa. Se uma subconsulta dentro de um <code>NOT IN</code> puder
+                    devolver NULL, use <code>NOT EXISTS</code>:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+-- Cursos sem nenhuma matrícula com nota abaixo de 7
+SELECT c.nome
+FROM curso c
+WHERE NOT EXISTS (
+    SELECT 1 FROM matricula m
+    WHERE m.curso_id = c.id AND m.nota < 7
+)
+ORDER BY c.nome;
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
++--------+
+| nome   |
++--------+
+| Excel  |
+| Python |
++--------+
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>✍️ Exercícios</h2>
+                <details>
+                    <summary>1. Para cada aluno, mostre a nota mais alta dele e em qual curso foi (use ROW_NUMBER).</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+WITH ranking AS (
+    SELECT m.aluno_id, m.curso_id, m.nota,
+           ROW_NUMBER() OVER (PARTITION BY m.aluno_id ORDER BY m.nota DESC) AS rn
+    FROM matricula m
+    WHERE m.nota IS NOT NULL
+)
+SELECT a.nome AS aluno, c.nome AS curso, r.nota
+FROM ranking r
+JOIN aluno a ON a.id = r.aluno_id
+JOIN curso c ON c.id = r.curso_id
+WHERE r.rn = 1
+ORDER BY a.nome;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++------------+----------------+------+
+| aluno      | curso          | nota |
++------------+----------------+------+
+| Ana Souza  | Banco de Dados |  9.5 |
+| Bruno Lima | Banco de Dados |  6.5 |
+| Elisa Melo | Banco de Dados |  7.0 |
++------------+----------------+------+
+{%- endblock %}{% endembed %}
+                </details>
+                <details>
+                    <summary>2. Gere os números de 1 a 5 com uma CTE recursiva.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true, titulo: 'Resposta'} %}{% block code -%}
+WITH RECURSIVE numeros AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numeros WHERE n < 5
+)
+SELECT n FROM numeros;
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' %}{% block out -%}
++---+
+| n |
++---+
+| 1 |
+| 2 |
+| 3 |
+| 4 |
+| 5 |
++---+
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
+    </div>
+
+    <div class="card guia mt-8">
+        <h2>📖 Glossário rápido</h2>
+        <table>
+            <tbody>
+                <tr><td><strong>Schema / database</strong></td><td>Um "banco" dentro do servidor, que agrupa tabelas. No laboratório, cada schema que você cria no painel.</td></tr>
+                <tr><td><strong>Consulta (query)</strong></td><td>Um comando que pede dados, normalmente um SELECT.</td></tr>
+                <tr><td><strong>Registro / tupla</strong></td><td>Outros nomes pra "linha".</td></tr>
+                <tr><td><strong>Constraint</strong></td><td>Uma regra que o banco garante: <code>PRIMARY KEY</code>, <code>FOREIGN KEY</code>, <code>UNIQUE</code>, <code>NOT NULL</code>, <code>CHECK</code>.</td></tr>
+                <tr><td><strong>Integridade referencial</strong></td><td>A garantia de que uma chave estrangeira sempre aponta pra algo que existe (não dá pra matricular o aluno 99 se ele não existe).</td></tr>
+                <tr><td><strong>Dialeto</strong></td><td>O "sotaque" de SQL de cada banco.</td></tr>
+            </tbody>
+        </table>
+        <p>
+            Próximo passo: veja como tudo isso funciona no <a href="/guia/mysql" class="font-medium text-indigo-600 hover:text-indigo-700">MySQL</a>,
+            o banco deste laboratório.
+        </p>
     </div>
 {% endblock %}

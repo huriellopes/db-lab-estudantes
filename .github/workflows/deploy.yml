@@ -10,7 +10,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy em produção (Contabo)
+    name: Deploy em produção
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
     environment: production
@@ -21,4 +21,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: /apps/db-lab-estudantes/deploy.sh
+          # O servidor ignora este comando: a chave de deploy tem command="..." no
+          # authorized_keys, fixando qual script roda (ver README, "Produção"). Por isso o
+          # caminho real do script não precisa (nem deve) aparecer aqui.
+          script: deploy

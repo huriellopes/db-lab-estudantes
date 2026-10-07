@@ -1,4 +1,17 @@
-# Avaliação de segurança
+# Segurança
+
+## Como reportar uma vulnerabilidade
+
+Encontrou uma falha? **Não abra uma issue pública.** Use o botão **"Report a vulnerability"**
+na aba **Security** deste repositório (relato privado do GitHub). Descreva o problema, como
+reproduzir e o impacto que você enxerga. A resposta inicial costuma sair em poucos dias, e o
+crédito pela descoberta entra no PR da correção, se você quiser.
+
+Este documento explica **como a aplicação se protege** e as decisões de projeto por trás
+disso. Pendências e detalhes do ambiente de produção não ficam aqui de propósito: não faz
+sentido publicar um mapa pra quem quer atacar.
+
+## Histórico
 
 Começou como auditoria de SQL injection (2026-08-12) de toda a superfície de acesso ao MySQL
 (`app/Models`, `app/Services`, `app/Actions`) e virou o registro vivo das decisões de
@@ -14,11 +27,10 @@ teste automatizado e/ou E2E no `docker compose` descritos no PR:
 | [#51](https://github.com/huriellopes/db-lab-estudantes/pull/51) | Login MySQL liberado num rename podia ser cadastrado por outra pessoa, que herdava (via GRANT com wildcard) os schemas antigos | 🔴 Alta | Prefixo de schema fixo por conta (`users.schema_prefix`); login sem `__`/`_` no fim |
 | [#52](https://github.com/huriellopes/db-lab-estudantes/pull/52) | Rate limit de login/cadastro contornável forjando `X-Forwarded-For` | 🔴 Alta | IP real resolvido no nginx (`real_ip`); `ClientIp` só lê `REMOTE_ADDR` |
 | [#53](https://github.com/huriellopes/db-lab-estudantes/pull/53) | Sessão não sentia desativação/rebaixamento; trocar a senha não derrubava sessões nem "lembrar de mim" | 🔴 Alta | Revalidação por request, `session_version`, timeouts, reset de senha atômico |
-| [#54](https://github.com/huriellopes/db-lab-estudantes/pull/54) | MySQL público sem trava de força bruta, sem limite de conexões, `root@'%'`; console sem limite de memória/tempo | 🔴 Alta | `connection_control`, `MAX_USER_CONNECTIONS`, `MYSQL_ROOT_HOST`, console com teto de linhas/tempo/execuções |
+| [#54](https://github.com/huriellopes/db-lab-estudantes/pull/54) | MySQL acessível sem trava de força bruta nem limite de conexões; console sem limite de memória/tempo | 🔴 Alta | `connection_control`, `MAX_USER_CONNECTIONS`, root só local, console com teto de linhas/tempo/execuções |
 | [#55](https://github.com/huriellopes/db-lab-estudantes/pull/55) | Senha mínima de 6 caracteres; seeder promovia a admin quem tivesse o e-mail certo; erro de conexão vazava detalhes | 🟠 Média | `PasswordPolicy`, `user:promote-admin` com confirmação, 500 genérico |
-| este PR | Axios com advisories altas no bundle; imagens/actions sem versão fixa; Node 20 (EOL); código gravável pelo PHP | 🟡 Média/baixa | `npm audit fix`, versões fixas + SHA, Dependabot, `composer`/`npm audit` no CI, código só leitura |
+| [#56](https://github.com/huriellopes/db-lab-estudantes/pull/56) | Axios com advisories altas no bundle; imagens/actions sem versão fixa; Node 20 (EOL); código gravável pelo PHP | 🟡 Média/baixa | `npm audit fix`, versões fixas + SHA, Dependabot, `composer`/`npm audit` no CI, código só leitura |
 
-Pendências conhecidas estão em "Não coberto por esta auditoria", no fim deste arquivo.
 
 ## Resumo
 
@@ -161,136 +173,48 @@ descartável, tentei violar o isolamento na mão:
 | `SHOW DATABASES` | Só `information_schema`/`performance_schema` — nem `schoolapp` nem schema de outra pessoa aparece |
 | `SHOW PROCESSLIST` / `performance_schema.processlist` | Só a própria sessão — não vê query de outros usuários |
 
-## MySQL público (decisão explícita — sem túnel SSH)
+## MySQL acessível diretamente (decisão de projeto)
 
-A partir desta sessão, o MySQL de produção é público (`0.0.0.0:${MYSQL_PORT}`) — decisão
-pedida explicitamente, pra qualquer aluno/professor conectar direto por um SGBD local
-(TablePlus, DBeaver etc.) sem precisar abrir túnel SSH antes. Isso **reverte** uma decisão
-de segurança anterior (documentada nas sessões passadas) e reabre, de fato, riscos que
-antes eram só teóricos:
+O MySQL aceita conexão direta, de propósito: alunos e professores usam o SGBD que preferirem
+(DBeaver, TablePlus, Workbench), sem túnel SSH. Isso torna a porta uma superfície pública,
+então a segurança não pode depender da rede. Ela se apoia em camadas que valem de qualquer
+lugar:
 
-- **Tráfego sem criptografia por padrão**: sem o túnel SSH, a conexão MySQL não é mais
-  automaticamente criptografada. O servidor aceita TLS (certificado autoassinado que o
-  próprio MySQL gera sozinho) se o cliente pedir, mas não é obrigatório — não forcei
-  (`require_secure_transport`) porque isso quebraria a conexão interna da própria app
-  (`Database.php`) sem retrabalho considerável. Quem usar "Use SSL" no cliente fica
-  protegido contra bisbilhotagem passiva; quem não usar, não.
-- **`@'%'` (qualquer host) agora importa de verdade** — antes um risco só teórico
-  (mitigado 100% pela rede), agora é a única barreira de rede que resta. A senha de cada
-  conta é a defesa real.
-- **Força bruta direto na porta 3306** — o `RateLimiter` da app não vê essas tentativas.
-  ~~O MySQL em si não tem lockout nativo~~ (corrigido em 2026-10-07: tem, ver
-  "Endurecimento do MySQL público" abaixo).
+- **Isolamento pelo próprio MySQL**: cada conta pessoal só tem `GRANT` nos próprios schemas
+  (padrão `<prefixo>\_\_%`, com todo `_` literal escapado — sem o escape, `ana_costa`
+  alcançaria também `anaXcosta__...`). Nenhuma conta pessoal tem privilégio sobre o banco
+  interno da aplicação. Testado ativamente: `USE` em schema alheio ou no banco da app volta
+  `1044 Access denied` do servidor.
+- **Prefixo de schema fixo por conta** (`users.schema_prefix`): trocar o login MySQL não libera
+  o prefixo antigo pra outra pessoa herdar os schemas (ver a revisão de 2026-10-07).
+- **Força bruta**: plugin `connection_control` — depois de 5 senhas erradas seguidas pro mesmo
+  usuário vindo do mesmo host, cada nova tentativa espera 1s, 2s, 3s... até 30s. Escolhido no
+  lugar de `FAILED_LOGIN_ATTEMPTS`/`PASSWORD_LOCK_TIME`, que trava a **conta** inteira por no
+  mínimo 1 dia: aí qualquer pessoa travaria o console e o phpMyAdmin de um colega só errando a
+  senha dele de propósito. As opções vão com o prefixo `--loose-`, sem o qual o MySQL aborta na
+  criação de um volume novo (o plugin ainda não está carregado no `--initialize`).
+- **Senha forte**: a mesma senha abre a conta MySQL, por isso a `PasswordPolicy` (mínimo de 10
+  caracteres, lista de senhas comuns, não pode conter username/e-mail).
+- **Recursos**: `MAX_USER_CONNECTIONS 10` por conta e, no console SQL, `max_execution_time` de
+  10s por SELECT, leitura unbuffered com teto de 300 linhas (`App\Support\CappedResult`) e 60
+  execuções por minuto por usuário. `LOAD DATA LOCAL INFILE` desligado (erro 3948).
+- **Root só local**: `MYSQL_ROOT_HOST=localhost` — a imagem oficial cria `root@'%'` por padrão.
+  O `appuser` não consegue alterar o root: root tem `SYSTEM_USER`, e o `CREATE USER` do
+  `appuser` não alcança contas com esse privilégio.
+- **`log-bin-trust-function-creators=1`**: com o binary log ligado (padrão do MySQL 8), só
+  contas com `SUPER` criam `TRIGGER`/`FUNCTION` (erro 1419), então nenhum aluno conseguia
+  praticar triggers. A trava protege replicação baseada em comandos (`binlog_format=STATEMENT`);
+  aqui o formato é `ROW`. O trigger roda com as permissões do próprio aluno (`DEFINER` = ele
+  mesmo, sem `SET_USER_ID`), só nos schemas dele.
+- **TLS**: o servidor aceita conexão criptografada (certificado gerado pelo próprio MySQL)
+  quando o cliente marca "Use SSL" — recomendado pra quem conecta por rede pública.
 
-**Mitigado**: isolamento entre contas continua garantido pelos `GRANT`s do MySQL (testado
-ativamente, ver acima) — isso nunca dependeu da rede, só de cada conta só ter privilégio
-no próprio schema. Então mesmo com a porta pública, ninguém lê schema alheio.
+### Por que `mysql_native_password`
 
-**Recomendação pra quem usa a conta**: senha forte de verdade agora importa mais do que
-antes — vale reforçar isso pros alunos/professores.
-
-## Isolamento do banco da app (`schoolapp`) com o MySQL público — avaliado
-
-Pedido explícito: com a porta pública, garantir que só os schemas de aluno/usuário ficam
-alcançáveis por conexão direta, nunca o database interno da aplicação.
-
-**Já garantido pelo modelo de GRANT, testado ativamente** (ver tabela em "Modelo de dados
-e acessos ao banco" acima) — nenhuma conta pessoal (`'login'@'%'`) jamais recebeu privilégio
-nenhum sobre `schoolapp`; só o `appuser` acessa. Isso nunca dependeu da rede, e continua
-valendo com a porta pública: `USE schoolapp` ou `SELECT` direto de uma conta pessoal
-continuam voltando `Access denied` do próprio servidor.
-
-**Mudança desta sessão — GRANT com wildcard pro console SQL criar schema**: cada conta
-pessoal agora recebe, na criação (`SchemaProvisioner::createMysqlAccount`), um
-`GRANT ALL PRIVILEGES ON `<login>\_\_%`.* TO '<login>'@'%'` — escopo idêntico ao prefixo que
-`SchemaNameBuilder` já exige pros schemas criados pelo formulário, só que concedido de
-antemão em vez de schema por schema. Motivo: permite `CREATE DATABASE <login>__algo;` **via
-o próprio console SQL** (ver seção abaixo), sem abrir acesso a mais nada — o pattern nunca
-bate com `schoolapp` (nome fixo, não tem esse prefixo) nem com o prefixo de outro usuário
-(todo `_` literal do login é escapado como `\_` na hora de montar o pattern, senão o `_`
-seria wildcard de 1 caractere e poderia colidir com o prefixo de um login "vizinho" — ex.:
-sem o escape, `ana_costa` bateria também com `anaXcosta__`).
-
-**Avaliado e não aplicado: restringir o host do `appuser`.** A mitigação "de manual" pra
-esse cenário seria trocar `'appuser'@'%'` por `'appuser'@'<subnet interna>'`, deixando essa
-conta (a única com alcance total) impossível de autenticar vindo de fora do Docker.
-Não apliquei porque, nesse ambiente especificamente, é mais arriscado do que parece:
-
-- As redes do Compose (`dblab`/`dblab-net`) não têm subnet fixa — o Docker aloca uma faixa
-  livre a cada `up`, então um IP/netmask fixo no `mysql/init/01-grants.sql` quebraria (ou
-  passaria a não restringir nada) na primeira vez que a faixa mudasse.
-- Mesmo fixando a subnet (`ipam.config.subnet` no compose), se o host tiver o
-  `userland-proxy` do Docker ativo (padrão em várias instalações), conexões chegando pela
-  porta publicada — de dentro **ou de fora** do host — aparecem pro MySQL com o IP do
-  gateway da bridge, não o IP real do cliente. Ou seja, a restrição por subnet interna
-  correria o risco de **não bloquear ninguém de fora** (falso senso de segurança) em vez de
-  só bloquear.
-- Errar isso pra pior (restringir demais) derruba a conexão da própria app com o banco —
-  o `appuser` é usado por tudo, incluindo o login.
-
-Dado o risco de regressão sem conseguir validar o comportamento real do host de produção
-primeiro, isso fica como recomendação futura (não como item pendente urgente): confirmar
-se `userland-proxy` está desligado no host, fixar a subnet do `dblab-net`, e só então trocar
-`'appuser'@'%'` por `'appuser'@'<subnet>/<netmask>'` via `RENAME USER` (preserva o hash de
-senha, não precisa saber a senha em texto puro pra fazer a troca).
-
-**Mitigação que já existe hoje** pro cenário "credencial do appuser vazou": ela não aparece
-em nenhuma tela nem resposta de API — só vive no `.env` do servidor —, e o
-`appuser` já teve o privilégio reduzido de "equivalente a root" pro conjunto mínimo (ver
-"Modelo de dados e acessos ao banco"). Continua sendo o ponto de maior impacto em caso de
-vazamento, é só o host-restriction específico que não foi possível aplicar com segurança
-agora.
-
-## Endurecimento do MySQL público (2026-10-07)
-
-- **Força bruta: plugin `connection_control`** (já vem com o MySQL 8.0; ligado no `command:`
-  dos dois `docker-compose*.yml`). Depois de 5 senhas erradas seguidas pro mesmo usuário
-  vindo do mesmo host, cada tentativa nova espera 1s, 2s, 3s... até 30s. Escolhido no lugar
-  de `FAILED_LOGIN_ATTEMPTS`/`PASSWORD_LOCK_TIME` (existe desde a 8.0.19), que trava a
-  **conta** inteira por no mínimo 1 dia: aí qualquer pessoa travaria o console SQL e o
-  phpMyAdmin de um colega só errando a senha dele de propósito. Limite conhecido: a conta
-  atrasada é contada por usuário+host, e o phpMyAdmin conecta sempre do mesmo host (o
-  container) — quem errar a senha de alguém pelo phpMyAdmin atrasa (até 30s, sem bloquear)
-  o phpMyAdmin dessa pessoa enquanto continuar errando.
-- **`MAX_USER_CONNECTIONS 10`** por conta de aluno/professor (`SchemaProvisioner::MAX_USER_CONNECTIONS`,
-  backfill na migration `2026_10_07_000003`) — uma conta só não esgota o `max_connections`
-  do servidor inteiro.
-- **Console SQL**: `max_execution_time` de 10s por SELECT, leitura unbuffered com teto de
-  300 linhas (`App\Support\CappedResult` — antes era `fetchAll()` e só depois o corte), 60
-  execuções por minuto por usuário. `LOAD DATA LOCAL INFILE` continua desligado (padrão do
-  PDO, testado: erro 3948).
-- **`root@'%'`**: a imagem oficial cria root aceitando qualquer host. `MYSQL_ROOT_HOST=localhost`
-  nos compose resolve **só em volume novo**. Em volume existente (produção), remover na mão,
-  depois de confirmar que `root@localhost` existe (o healthcheck usa o socket local):
-
-  ```sql
-  SELECT user, host FROM mysql.user WHERE user = 'root';  -- precisa listar 'localhost'
-  DROP USER 'root'@'%';
-  ```
-
-  O `appuser` não consegue fazer isso por conta própria (nem alterar o root): root tem
-  `SYSTEM_USER`, e o `CREATE USER` do `appuser` não alcança contas com esse privilégio.
-- **Ainda não aplicado: `REQUIRE SSL` nas contas de aluno.** Forçaria TLS nas conexões
-  externas, mas o console SQL (`Database::connectAs`) e o phpMyAdmin também entram com a
-  conta do aluno, e nenhum dos dois usa TLS hoje. Pra ligar sem quebrar nada: TLS no PDO do
-  console (`Pdo\Mysql::ATTR_SSL_CA` com o `ca.pem` do volume do MySQL), `PMA_SSL=1` no
-  phpMyAdmin, avisar a turma pra marcar "Use SSL" no SGBD local, e só então
-  `ALTER USER ... REQUIRE SSL`.
-
-## Outros pontos de configuração do MySQL
-
-- Todas as contas MySQL (`appuser` e as pessoais) usam `@'%'` (qualquer host) — ver seção
-  acima, agora é um risco ativo, não só teórico.
-- `mysql_native_password` em vez do padrão mais atual do MySQL 8
-  (`caching_sha2_password`) — algoritmo de hash mais antigo, oficialmente deprecated desde
-  a 8.0.34. **Tentativa de migração feita e revertida nesta sessão**: contas novas com
-  `IDENTIFIED WITH caching_sha2_password` funcionam pra logar na app, mas **quebram o
-  console SQL** — a conexão por usuário (`Database::connectAs()`) roda sem TLS entre os
-  containers, e `caching_sha2_password` exige troca de chave RSA que falha nesse cenário
-  (`Access denied`, mesmo com a senha certa — testado e confirmado). Corrigir de verdade
-  exigiria TLS entre app/phpMyAdmin e o MySQL (gerar/gerenciar certificado, configurar o
-  servidor) — mudança de infraestrutura maior que o escopo desta sessão, fica pra decisão
-  futura.
+`caching_sha2_password` (padrão mais novo) exige TLS ou troca de chave RSA na conexão. A
+conexão por usuário do console SQL (`Database::connectAs()`) roda dentro da rede do Docker sem
+TLS, e com `caching_sha2_password` ela falha com `Access denied` mesmo com a senha certa
+(testado). A migração fica atrelada a ligar TLS entre os containers.
 
 ## Autenticação: proteções contra força bruta e CSRF
 
@@ -304,7 +228,7 @@ agora.
 - **Rate limiting** em `/login` (por IP **e** por identificador, ver `App\Services\
   RateLimiter`/`App\Support\RateLimitDecision`) e `/register` (por IP) — guardado no MySQL
   (tabela `rate_limit_hits`), sem depender de Redis. `App\Support\ClientIp` resolve o IP
-  real via `X-Forwarded-For` (a app fica atrás do Nginx Proxy Manager).
+  real via `X-Forwarded-For` (a app fica atrás de um proxy reverso que termina o TLS).
 - **Timing leak corrigido**: login com identificador inexistente agora roda
   `password_verify()` contra um hash fixo (`LoginAction::DUMMY_HASH`) mesmo sem usuário
   — antes, essa checagem era pulada inteira quando o usuário não existia, e dava pra
@@ -390,13 +314,10 @@ validação de entrada e o que cada uma expõe.
 
 **Observações que não são bugs, mas valem registrar:**
 
-- **Rate limit só existe nas 3 rotas públicas** (login, cadastro, esqueci-senha) — as
-  únicas alcançáveis sem estar autenticado. Rotas pós-login (trocar senha, resetar senha
-  de aluno, console SQL) não têm, mas todas exigem sessão válida antes — não são um alvo
-  de força bruta anônima. O console SQL em específico poderia, em teoria, ser usado pra
-  martelar o MySQL com queries repetidas num loop automatizado; como cada pessoa só afeta
-  o próprio schema/conexão, é mais um risco de recurso próprio que de terceiros, mas é o
-  candidato mais razoável a rate limit se isso virar problema na prática.
+- **Rate limit**: nas rotas públicas (login, cadastro, esqueci-senha), por IP real e por
+  conta; no console SQL, 60 execuções por minuto por usuário; e na confirmação de senha do
+  console, por usuário. As demais rotas pós-login exigem sessão válida e não são alvo de força
+  bruta anônima.
 - **Isolamento entre professores**: `IndexStudentsAction` lista **todos** os
   alunos do sistema (`UserModel::all(Role::Aluno)`) pra **qualquer** professor — não existe
   o conceito de turma/vínculo. Decisão de design (já sinalizada antes), não bug — mas
@@ -434,70 +355,17 @@ intencional) agora passam por `Controller::genericError($action, $e)`: loga o er
 ("Não foi possível {$action}. Tente de novo em instantes."). Detalhe de MySQL/PDO
 (estrutura de tabela, nome de constraint, etc.) não chega mais no navegador.
 
-## Disponibilidade (uptime) em produção — o que foi feito e o que não dá pra prometer
+## Disponibilidade (uptime)
 
-Pedido explícito: "garanta que essa aplicação jamais caia, fique sempre 24/7 no ar". Não
-tenho acesso SSH direto ao servidor (as credenciais de deploy existem só como secret do
-GitHub Actions, ver `.github/workflows/deploy.yml`) — tudo aqui é feito via mudança no
-repo, que só chega em produção no próximo deploy (`dev` → `main`, disparado por quem
-mergeia). E nenhum sistema consegue prometer 100% de uptime de verdade — o que dá pra
-fazer é reduzir bastante a chance e o tempo de uma queda:
+Nenhum sistema garante 100% de uptime; o que dá pra fazer é reduzir a chance e o tempo de uma
+queda:
 
-- **Rotação de log** (`docker-compose.prod.yml` e `docker-compose.yml`, todos os
-  serviços): sem isso, o log de cada container cresce sem limite — em meses/anos de
-  uptime, disco cheio já derrubou servidor inteiro em outros contextos (não só esse app —
-  o Contabo hospeda vários projetos em `/apps/*`). Limitado a 10MB × 3 arquivos por
-  serviço.
-- **`autoheal`** (container novo, `willfarrell/autoheal`): reinicia sozinho `mysql` ou
-  `app` se o `HEALTHCHECK` do Docker marcar "unhealthy" — cobre o caso de um processo
-  travado mas ainda "vivo" (php-fpm engasgado, por exemplo), que o `restart: unless-
-  stopped` sozinho não pega (só reage a o processo morrer de vez). Precisa de acesso ao
-  socket do Docker (`/var/run/docker.sock`) pra poder reiniciar containers — na prática
-  equivalente a root no host; aceito de propósito, decisão confirmada explicitamente
-  antes de aplicar.
-- **`restart: unless-stopped`** já existia em todos os serviços — cobre crash do processo
-  e reboot do host (volta sozinho, contanto que ninguém tenha parado manualmente antes).
-
-**Avaliado e não aplicado — precisa de mais informação**: limite de CPU/memória
-(`deploy.resources.limits`) em produção, pro contrário também valer (esse app sozinho não
-consumir todo o servidor e derrubar os outros projetos que moram lá, nem ser derrubado por
-eles). Não apliquei um número às cegas porque errar pra menos faria o próprio app cair sob
-uso normal — exatamente o oposto do pedido. Falta saber o tamanho real do VPS (RAM/CPU
-total) pra calibrar isso direito; documentado aqui como pendência.
-
-**Fora do alcance de uma mudança no repo** (dependem de acesso direto ao servidor ou de
-serviço externo — nenhum dos dois eu tenho aqui):
-- Confirmar se o `docker.service` inicia sozinho no boot do host (normalmente já vem
-  assim numa instalação padrão do Docker, mas não dá pra confirmar sem acessar a máquina).
-- Monitoramento/alerta externo (ex.: UptimeRobot, Better Uptime) — avisa alguém quando o
-  site sai do ar de verdade, o que nenhuma das medidas acima faz sozinha. Precisa de uma
-  conta/serviço terceiro escolhido por quem administra.
-- Nginx Proxy Manager (fora deste repo) é quem termina o TLS e expõe o app pro público —
-  se ele cair, o app fica inacessível mesmo saudável por dentro; a resiliência dele não
-  está coberta aqui.
-
-## Não coberto por esta auditoria (próximos passos recomendados)
-
-- **`REQUIRE SSL` nas contas de aluno** — passo a passo em "Endurecimento do MySQL público"
-  (precisa de TLS no console SQL e no phpMyAdmin antes, senão os dois param de funcionar).
-- **phpMyAdmin público** — superfície grande e com histórico de CVEs. Recomendado: Access
-  List no Nginx Proxy Manager (basic auth ou allowlist de IP) na frente do proxy host do
-  `pma.`; a versão da imagem agora é fixa (`phpmyadmin:5.2.3`) e o Dependabot avisa quando
-  sair correção.
-- **CSP com `'unsafe-eval'`** — exigido pelo Alpine.js padrão. Tirar exige migrar pro build
-  CSP do Alpine (`@alpinejs/csp`), que não aceita expressão inline nos atributos (`x-data=
-  "ajaxForm({...})"` etc.) — refatoração de todas as views, por isso ficou de fora.
-- **`appuser` com DML em `*.*`** — inclui o schema `mysql`. Restringir o host do `appuser` à
-  subnet do Docker (avaliado e adiado antes, ver acima) segue sendo o maior ganho por linha
-  alterada agora que o MySQL é público.
-- **Log de auditoria** — troca de papel, reset de senha por admin/professor e DROP de schema
-  pelo admin não deixam rastro além do log do container.
-- **Cadastro aberto + sem verificação de e-mail** — qualquer pessoa ganha uma conta MySQL
-  num servidor público. Convite/código de turma ou allowlist de domínio resolveriam.
-- **MySQL 8.0 saiu de suporte (abril de 2026)** — migrar pra 8.4 LTS (e, junto, de
-  `mysql_native_password` pra `caching_sha2_password`) num PR próprio, com backup antes.
-- 2FA / MFA — fora de escopo pra esse tamanho de lab, mas vale considerar se crescer.
-- `Strict-Transport-Security` (HSTS) não configurado — dá pra habilitar direto no Nginx
-  Proxy Manager (toggle "HSTS Enabled" na tela de SSL do proxy host), preferível a
-  configurar aqui: é o NPM que efetivamente termina o TLS, e HSTS mal configurado
-  (`max-age` longo) é chato de reverter rápido se algo mudar.
+- **Rotação de log** em todos os serviços (10 MB × 3 arquivos): sem isso, o log de cada
+  container cresce sem limite até encher o disco.
+- **`autoheal`**: reinicia sozinho `mysql` ou `app` se o `HEALTHCHECK` marcar "unhealthy" —
+  cobre um processo travado mas ainda "vivo", que o `restart: unless-stopped` não pega.
+  Precisa do socket do Docker (equivalente a root no host); aceito de propósito em troca de
+  resiliência.
+- **`restart: unless-stopped`** em todos os serviços: volta sozinho depois de crash ou reboot.
+- **Migrations no boot com retry** (`docker/app-entrypoint.sh`): a app só sobe depois que o
+  banco responde e as migrations rodam.

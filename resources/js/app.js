@@ -1002,6 +1002,76 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
+  /**
+   * Abas de nível do guia (Iniciante / Intermediário / Avançado — ver app/Views/guide/*).
+   * Lembra o último nível escolhido neste navegador (localStorage, só conveniência — sem ele
+   * começa sempre em "iniciante") e aceita link direto pra um nível via #iniciante,
+   * #intermediario ou #avancado na URL.
+   */
+  Alpine.data('guideLevels', () => ({
+    levels: ['iniciante', 'intermediario', 'avancado'],
+    level: 'iniciante',
+    storageKey: 'db-lab:guia-nivel',
+
+    init() {
+      const fromHash = window.location.hash.replace('#', '');
+      if (this.levels.includes(fromHash)) {
+        this.level = fromHash;
+        return;
+      }
+      try {
+        const saved = localStorage.getItem(this.storageKey);
+        if (this.levels.includes(saved)) {
+          this.level = saved;
+        }
+      } catch (_) {
+        // localStorage indisponível (aba anônima etc.) — fica no padrão.
+      }
+    },
+
+    choose(level) {
+      this.level = level;
+      try {
+        localStorage.setItem(this.storageKey, level);
+      } catch (_) {
+        // idem
+      }
+      history.replaceState(null, '', '#' + level);
+    },
+  }));
+
+  /**
+   * Bloco de código do guia (ver app/Views/guide/_code.twig): "Copiar" e, nos exemplos de
+   * MySQL, "Testar no console" — que reaproveita o mesmo rascunho local que o console SQL do
+   * painel já recupera sozinho ao carregar (mesmo caminho do `openInConsole` do laboratório).
+   * O texto vem do próprio <code> (x-ref), não de um atributo, pra não duplicar o exemplo.
+   */
+  Alpine.data('codeExample', () => ({
+    copy() {
+      navigator.clipboard
+        .writeText(this.$refs.code.innerText.trim())
+        .then(() => Alpine.store('toasts').push('success', 'Exemplo copiado.'))
+        .catch(() =>
+          Alpine.store('toasts').push(
+            'error',
+            'Não foi possível copiar. Selecione o texto manualmente.',
+          ),
+        );
+    },
+
+    openInConsole() {
+      try {
+        localStorage.setItem(
+          'db-lab:sql-console-draft',
+          JSON.stringify({ sql: this.$refs.code.innerText.trim(), schema: '' }),
+        );
+      } catch (_) {
+        // Sem localStorage, só não pré-preenche — a pessoa usa o "Copiar".
+      }
+      window.location.href = '/dashboard';
+    },
+  }));
+
   /** Botão de copiar texto (credenciais, comando de conexão do SGBD...) com feedback via toast. */
   Alpine.data('copyable', (text) => ({
     copy() {

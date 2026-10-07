@@ -1,168 +1,426 @@
 {% extends 'layouts/app.twig' %}
 
 {% block content %}
-    {% include 'partials/guide-topic-nav.twig' %}
+    {% include 'partials/guide/header.twig' %}
 
-    <div class="mb-8 flex items-center gap-3">
-        <span class="text-3xl">⚡</span>
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Redis</h1>
-            <p class="mt-1 text-sm text-slate-500">Banco em memória, chave-valor — cache, filas, sessão.</p>
-        </div>
+    <div class="guia mb-6">
+        {% embed 'partials/guide/box.twig' with {tipo: 'analogia'} %}{% block body %}
+            <p>
+                Pense no banco relacional como o <strong>arquivo do escritório</strong>: guarda tudo, organizado, mas
+                buscar uma pasta leva um tempinho. O Redis é a <strong>mesa de trabalho</strong>: só fica em cima dela o que
+                você usa toda hora, e pegar algo ali é instantâneo. É por isso que ele é usado como <strong>cache</strong>:
+                uma cópia rápida do que é muito consultado.
+            </p>
+        {% endblock %}{% endembed %}
+
+        <p>
+            O <strong>Redis</strong> guarda os dados na <strong>memória RAM</strong> (por isso responde em
+            microssegundos), no formato <strong>chave → valor</strong>: você dá um nome (a chave) e guarda algo nele. O
+            valor pode ser um texto, um número, uma lista, um conjunto, um ranking... Usos clássicos: cache, sessão de
+            usuário logado, contadores, filas, ranking de jogo e limite de requisições (rate limit).
+        </p>
+        <table>
+            <thead><tr><th>Projeto</th><th>Situação (2026)</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Redis 8</strong></td><td>Voltou a ser open source em 2025, com a licença AGPLv3. Já vem com JSON, busca, séries temporais e <em>vector sets</em> (pra IA).</td></tr>
+                <tr><td><strong>Valkey</strong></td><td>Cópia (fork) do Redis criada em 2024 pela Linux Foundation, com licença BSD, depois que o Redis mudou de licença. É compatível nos comandos básicos e é o padrão em vários provedores de nuvem.</td></tr>
+            </tbody>
+        </table>
+
+        {% embed 'partials/guide/box.twig' with {tipo: 'lab', titulo: 'Como praticar'} %}{% block body %}
+            <p>
+                Com Docker: <code>docker run -p 6379:6379 redis:8</code>, e depois <code>redis-cli</code> no terminal (ou
+                o programa <strong>Redis Insight</strong>). Os resultados aqui são saídas reais do <code>redis-cli</code>
+                com Redis 8.
+            </p>
+        {% endblock %}{% endembed %}
     </div>
 
-    <div class="card mb-6">
-        <h2 class="mb-1 text-base font-semibold text-slate-900">Como conectar</h2>
-        <p class="mb-4 text-sm text-slate-500">A porta padrão é a 6379. Sem "schema" — é só o servidor e, no máximo, um número de banco (0 a 15, por padrão).</p>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <h3 class="field-label">Linha de comando (redis-cli)</h3>
-                <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>redis-cli -h HOST -p 6379 -a SENHA</code></pre>
+    <div x-data="guideLevels">
+        {% include 'partials/guide/levels.twig' %}
+
+        {# ============================== INICIANTE ============================== #}
+        <section x-show="level === 'iniciante'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Guardar e ler: SET e GET</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+SET usuario:1:nome "Ana Souza"
+GET usuario:1:nome
+EXISTS usuario:1:nome
+DEL usuario:1:nome
+GET usuario:1:nome
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+OK
+"Ana Souza"
+(integer) 1
+(integer) 1
+(nil)
+{%- endblock %}{% endembed %}
+                <ul>
+                    <li><code>OK</code> é a confirmação do SET.</li>
+                    <li><code>(integer) 1</code> é a resposta numérica: o EXISTS diz que a chave existe (1) e o DEL diz que apagou 1 chave.</li>
+                    <li><code>(nil)</code> significa "não existe".</li>
+                </ul>
+                {% embed 'partials/guide/box.twig' with {tipo: 'dica', titulo: 'Dando bons nomes às chaves'} %}{% block body %}
+                    <p>
+                        Não existem tabelas no Redis, então a organização vem do nome. A convenção é separar as partes com
+                        dois pontos: <code>usuario:1:nome</code>, <code>carrinho:42</code>, <code>cache:produto:7</code>.
+                    </p>
+                {% endblock %}{% endembed %}
             </div>
-            <div>
-                <h3 class="field-label">Ferramentas GUI comuns</h3>
-                <p class="text-sm text-slate-600">RedisInsight (oficial, gratuita), TablePlus, Another Redis Desktop Manager.</p>
+
+            <div class="card guia">
+                <h2>2. Dados que expiram sozinhos</h2>
+                <p>
+                    A coisa mais útil do Redis pra cache e sessão: uma chave pode ter um <strong>prazo de validade</strong>.
+                    Depois dele, ela some sozinha. <code>EX 60</code> = expira em 60 segundos; <code>TTL</code> mostra quanto
+                    tempo falta.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+SET sessao:abc123 "usuario 1" EX 3600
+TTL sessao:abc123
+PERSIST sessao:abc123
+TTL sessao:abc123
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (o TTL pode aparecer 1 segundo menor, conforme a hora em que você rodar)'} %}{% block out -%}
+OK
+(integer) 3600
+(integer) 1
+(integer) -1
+{%- endblock %}{% endembed %}
+                <p><code>PERSIST</code> tira a validade (o TTL vira <code>-1</code>, "nunca expira"). Uma chave que não existe tem TTL <code>-2</code>.</p>
             </div>
-        </div>
-        <div class="mt-4">
-            <h3 class="field-label">Via código (extensão Redis do PHP)</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>$redis = new Redis();
-$redis->connect('HOST', 6379);
-$redis->auth('SENHA');</code></pre>
-        </div>
-    </div>
 
-    <div class="card mb-6 space-y-4">
-        <span class="badge-indigo">Iniciante</span>
+            <div class="card guia">
+                <h2>3. Contadores</h2>
+                <p><code>INCR</code> soma 1 de forma <strong>atômica</strong>: mesmo com mil pessoas acessando ao mesmo tempo, nenhum acesso é perdido.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+INCR visitas:home
+INCR visitas:home
+INCRBY visitas:home 10
+DECR visitas:home
+GET visitas:home
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 1
+(integer) 2
+(integer) 12
+(integer) 11
+"11"
+{%- endblock %}{% endembed %}
+            </div>
 
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Um banco <strong>chave-valor</strong> que guarda tudo <strong>na memória RAM</strong> (com opção
-                de salvar uma cópia em disco de tempos em tempos, ou a cada escrita). Isso o torna extremamente
-                rápido — na casa dos microssegundos — mas com um limite claro: os dados cabem no tanto de RAM
-                que o servidor tem, bem menor que a capacidade de disco de um banco tradicional.
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>⚠️ Erros comuns</h2>
+                <ul>
+                    <li><strong>Usar Redis como banco principal sem pensar na persistência</strong>: ele guarda em memória. Se não estiver configurado pra salvar em disco, um reinício apaga tudo.</li>
+                    <li><strong>Rodar <code>KEYS *</code> em produção</strong>: ele percorre todas as chaves e trava o servidor enquanto isso. Use <code>SCAN</code>, que percorre aos poucos.</li>
+                    <li><strong>Cache sem expiração</strong>: sem <code>EX</code>, o cache nunca se renova e a memória enche.</li>
+                </ul>
+            </div>
 
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <p class="text-sm text-slate-600">
-                Guardar dado temporário ou que precisa ser lido/escrito muito rápido: cache de resultado caro
-                de calcular, sessão de usuário logado, contador de rate-limit, fila simples de tarefas,
-                ranking/leaderboard. Praticamente sempre usado <strong>ao lado</strong> de um banco relacional
-                (Redis pro que precisa ser rápido e temporário, o relacional pro dado "de verdade" e permanente)
-                — não como substituto dele.
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>✍️ Exercício</h2>
+                <details>
+                    <summary>Guarde o código de verificação "4821" do usuário 7, válido por 5 minutos, e confira quanto tempo falta.</summary>
+                    {% embed 'partials/guide/code.twig' with {engine: 'redis', titulo: 'Resposta'} %}{% block code -%}
+SET verificacao:7 "4821" EX 300
+TTL verificacao:7
+{%- endblock %}{% endembed %}
+                    {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (o TTL pode aparecer 1 segundo menor, conforme a hora em que você rodar)'} %}{% block out -%}
+OK
+(integer) 300
+{%- endblock %}{% endembed %}
+                </details>
+            </div>
+        </section>
 
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Quando uma informação é acessada com muita frequência e recalculá-la/buscá-la no banco principal
-                toda vez seria caro, ou quando ela naturalmente "expira" sozinha (sessão, código de verificação,
-                trava de rate-limit). Este próprio laboratório faz rate-limiting de login e cache de sessão —
-                mas usando MySQL/PHP puro em vez de Redis, de propósito, pra não precisar de mais uma peça de
-                infraestrutura num projeto desse tamanho (ver <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">App\Services\RateLimiter</code> se quiser comparar
-                as duas abordagens).
-            </p>
-        </div>
+        {# ============================ INTERMEDIÁRIO ============================ #}
+        <section x-show="level === 'intermediario'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Os tipos de dados</h2>
+                <table>
+                    <thead><tr><th>Tipo</th><th>Parece com</th><th>Bom pra</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>String</strong></td><td>uma variável</td><td>cache, contador, sessão</td></tr>
+                        <tr><td><strong>Hash</strong></td><td>um objeto com campos</td><td>perfil de usuário, carrinho</td></tr>
+                        <tr><td><strong>List</strong></td><td>uma fila (ou pilha)</td><td>fila de tarefas, últimas notícias</td></tr>
+                        <tr><td><strong>Set</strong></td><td>um conjunto sem repetição</td><td>tags, quem curtiu, visitantes únicos</td></tr>
+                        <tr><td><strong>Sorted set</strong></td><td>um ranking (cada item tem uma pontuação)</td><td>placar de jogo, "mais vendidos"</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Pense em Redis como um dicionário gigante: toda operação é "pega o valor dessa chave" ou "grava
-                esse valor nessa chave" — não tem <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">WHERE</code>, não tem consulta por "conteúdo" do valor (só
-                pelas estruturas de dado específicas, ver a seção intermediária). Um padrão comum de nome de
-                chave é <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">tipo:identificador</code> (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">sessao:abc123</code>), pra organizar sem precisar de "tabelas".
-                Sempre que a chave é temporária por natureza, defina um <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">EXPIRE</code> — senão ela fica pra sempre
-                na RAM.
-            </p>
-        </div>
+            <div class="card guia">
+                <h2>2. Hash: um "objeto" numa chave</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+HSET usuario:1 nome "Ana" cidade "Recife" pontos 10
+HGET usuario:1 cidade
+HINCRBY usuario:1 pontos 5
+HGETALL usuario:1
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 3
+"Recife"
+(integer) 15
+1) "nome"
+2) "Ana"
+3) "cidade"
+4) "Recife"
+5) "pontos"
+6) "15"
+{%- endblock %}{% endembed %}
+            </div>
 
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># SET/GET básico
-SET sessao:abc123 "usuario_id=42"
-GET sessao:abc123
-
-# EXPIRE: a chave some sozinha depois de 1800 segundos (30 min) — perfeito pra sessão/cache
-EXPIRE sessao:abc123 1800
-
-# INCR: contador atômico, base de qualquer rate-limit
-INCR tentativas_login:200.1.2.3</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># SET com expiração já embutida (equivalente a SET + EXPIRE, mas atômico)
-SET cache:ranking_prova42 "[...]" EX 300
-
-# DEL apaga uma chave; EXISTS confere se ela ainda está lá
-EXISTS sessao:abc123
-DEL sessao:abc123</code></pre>
-        </div>
-    </div>
-
-    <div class="card space-y-4">
-        <span class="badge-amber">Intermediário</span>
-
-        <div>
-            <h3 class="field-label">O que é</h3>
-            <p class="text-sm text-slate-600">
-                Redis não guarda só texto simples — tem <strong>estruturas de dado</strong> nativas: listas,
-                conjuntos (<em>sets</em>), conjuntos ordenados (<em>sorted sets</em>) e hashes (mapa de
-                campo → valor dentro de uma única chave). Cada uma resolve um problema comum de forma direta,
-                sem precisar montar a lógica na aplicação.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Pra que serve</h3>
-            <ul class="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
-                <li><strong>List</strong> — fila simples (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">LPUSH</code>/<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">RPOP</code>), tipo "processar na ordem que chegou".</li>
-                <li><strong>Sorted set</strong> — cada item tem uma pontuação; consulta por ordem/faixa é O(log n) — a base de praticamente todo leaderboard/ranking em tempo real.</li>
-                <li><strong>Hash</strong> — guarda um objeto inteiro (vários campos) numa chave só, em vez de várias chaves separadas pro mesmo "registro".</li>
-                <li><strong>Pub/Sub</strong> — publica uma mensagem num "canal" e qualquer cliente inscrito recebe na hora — base simples de notificação em tempo real.</li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="field-label">Quando usar</h3>
-            <p class="text-sm text-slate-600">
-                Sorted set pra ranking/leaderboard (nota de prova, pontuação de jogo). Hash quando faz sentido
-                tratar vários campos relacionados como uma unidade só (ex.: perfil de sessão com vários dados).
-                Pub/Sub pra notificação em tempo real simples — pra filas que precisam de garantia de entrega
-                mais forte (reprocessar se falhar, não perder mensagem), o ecossistema Redis tem o Streams, mas
-                aí já é hora de considerar também uma fila dedicada (RabbitMQ, SQS).
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Como usar</h3>
-            <p class="text-sm text-slate-600">
-                Escolha a estrutura pelo jeito que você vai <strong>ler</strong> o dado, não só como ele "parece"
-                naturalmente: precisa de ordem/ranking? Sorted set. Precisa de vários campos de um mesmo
-                "objeto"? Hash. Precisa só de fila FIFO? List. Usar <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">SET</code> com um JSON serializado dentro
-                funciona, mas aí você perde a possibilidade de atualizar um campo só sem reescrever tudo — vale
-                a pena conhecer as estruturas antes de recorrer a isso.
-            </p>
-        </div>
-
-        <div>
-            <h3 class="field-label">Exemplo</h3>
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># Sorted set: ranking de pontuação por prova
-ZADD ranking:prova42 950 "aluno:1"
-ZADD ranking:prova42 870 "aluno:2"
-
-# Top 10, do maior pro menor
-ZREVRANGE ranking:prova42 0 9 WITHSCORES
-
-# Hash: um "objeto" sessão numa chave só
-HSET sessao:abc123 usuario_id 42 papel "aluno"
-HGET sessao:abc123 papel</code></pre>
-            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code># List: fila simples de tarefas pra processar
-LPUSH fila:emails "enviar boas-vindas para aluno:42"
+            <div class="card guia">
+                <h2>3. List: uma fila de tarefas</h2>
+                <p>Quem produz tarefas coloca de um lado (<code>LPUSH</code>); quem processa tira do outro (<code>RPOP</code>). O primeiro a entrar é o primeiro a sair.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+LPUSH fila:emails "boas-vindas:ana" "boas-vindas:beto" "recuperar-senha:caio"
+LLEN fila:emails
 RPOP fila:emails
+LRANGE fila:emails 0 -1
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 3
+(integer) 3
+"boas-vindas:ana"
+1) "recuperar-senha:caio"
+2) "boas-vindas:beto"
+{%- endblock %}{% endembed %}
+            </div>
 
-# Pub/Sub: publica um evento pra quem estiver ouvindo o canal
-PUBLISH notificacoes:aluno:42 "Nova nota disponível"</code></pre>
-        </div>
+            <div class="card guia">
+                <h2>4. Set: conjuntos e operações</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+SADD curso:sql:alunos ana beto caio
+SADD curso:python:alunos beto dani
+SADD curso:sql:alunos ana
+SINTER curso:sql:alunos curso:python:alunos
+SCARD curso:sql:alunos
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 3
+(integer) 2
+(integer) 0
+1) "beto"
+(integer) 3
+{%- endblock %}{% endembed %}
+                <p>Adicionar "ana" de novo devolveu <code>0</code>: set não repete. <code>SINTER</code> mostrou quem está nos dois cursos.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>5. Sorted set: um ranking em tempo real</h2>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+ZADD ranking 1500 ana 2200 beto 1800 caio
+ZINCRBY ranking 900 ana
+ZREVRANGE ranking 0 2 WITHSCORES
+ZREVRANK ranking caio
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 3
+"2400"
+1) "ana"
+2) "2400"
+3) "beto"
+4) "2200"
+5) "caio"
+6) "1800"
+(integer) 2
+{%- endblock %}{% endembed %}
+                <p><code>ZREVRANGE ... 0 2</code> traz os 3 primeiros, do maior pro menor. <code>ZREVRANK</code> diz a posição (começando do 0): o caio está em 3º.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>6. Padrão "cache-aside" e rate limit</h2>
+                <p>O jeito mais comum de usar Redis como cache numa aplicação:</p>
+                <ol>
+                    <li>A aplicação procura a chave no Redis (<code>GET cache:produto:7</code>).</li>
+                    <li>Achou? Responde direto, sem tocar no banco principal.</li>
+                    <li>Não achou? Busca no MySQL/PostgreSQL e grava no Redis com validade (<code>SET cache:produto:7 ... EX 300</code>).</li>
+                    <li>Quando o produto muda, apaga a chave (<code>DEL cache:produto:7</code>) pra próxima leitura buscar o valor novo.</li>
+                </ol>
+                <p>E um limitador de tentativas de login (no máximo 5 por minuto), com dois comandos:</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+INCR login:tentativas:ip:203.0.113.9
+EXPIRE login:tentativas:ip:203.0.113.9 60 NX
+INCR login:tentativas:ip:203.0.113.9
+TTL login:tentativas:ip:203.0.113.9
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (o TTL pode aparecer 1 segundo menor, conforme a hora em que você rodar)'} %}{% block out -%}
+(integer) 1
+(integer) 1
+(integer) 2
+(integer) 60
+{%- endblock %}{% endembed %}
+                <p>
+                    O <code>NX</code> só define a validade se ainda não houver uma, então a janela de 60 segundos começa na
+                    primeira tentativa. Se o INCR passar de 5, a aplicação recusa o login até a chave expirar.
+                </p>
+            </div>
+        </section>
+
+        {# =============================== AVANÇADO =============================== #}
+        <section x-show="level === 'avancado'" x-cloak class="space-y-6">
+            <div class="card guia">
+                <h2>1. Persistência: não perder tudo num reinício</h2>
+                <table>
+                    <thead><tr><th>Modo</th><th>Como funciona</th><th>Risco</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>RDB</strong> (snapshot)</td><td>Salva uma "foto" da memória em disco de tempos em tempos</td><td>Perde o que mudou desde a última foto</td></tr>
+                        <tr><td><strong>AOF</strong> (log)</td><td>Grava cada comando de escrita num arquivo</td><td>Arquivo maior; com <code>appendfsync everysec</code>, perde no máximo ~1 segundo</td></tr>
+                        <tr><td><strong>Os dois</strong></td><td>RDB pra backup + AOF pra durabilidade</td><td>A opção mais segura</td></tr>
+                    </tbody>
+                </table>
+                <p>
+                    E quando a memória enche? A <strong>política de despejo</strong> (<code>maxmemory-policy</code>) decide: pra
+                    cache, <code>allkeys-lru</code> apaga as chaves menos usadas; pra dados que não podem sumir,
+                    <code>noeviction</code> recusa novas escritas.
+                </p>
+            </div>
+
+            <div class="card guia">
+                <h2>2. Transações e scripts Lua</h2>
+                <p>
+                    <code>MULTI</code> enfileira comandos e <code>EXEC</code> roda todos de uma vez, sem nenhum outro cliente
+                    no meio. Atenção: diferente do SQL, <strong>não existe rollback</strong>. Se um comando falhar, os outros
+                    continuam.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+SET estoque:livro 3
+MULTI
+DECR estoque:livro
+LPUSH pedidos:livro "pedido-1001"
+EXEC
+GET estoque:livro
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+OK
+OK
+QUEUED
+QUEUED
+1) (integer) 2
+2) (integer) 1
+"2"
+{%- endblock %}{% endembed %}
+                <p>
+                    Pra lógica com decisão ("só baixa o estoque se ainda tiver"), use um <strong>script Lua</strong>: ele roda
+                    inteiro de forma atômica dentro do servidor.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+EVAL "local q = tonumber(redis.call('GET', KEYS[1])) if q > 0 then return redis.call('DECR', KEYS[1]) else return -1 end" 1 estoque:livro
+EVAL "local q = tonumber(redis.call('GET', KEYS[1])) if q > 0 then return redis.call('DECR', KEYS[1]) else return -1 end" 1 estoque:livro
+EVAL "local q = tonumber(redis.call('GET', KEYS[1])) if q > 0 then return redis.call('DECR', KEYS[1]) else return -1 end" 1 estoque:livro
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 1
+(integer) 0
+(integer) -1
+{%- endblock %}{% endembed %}
+                <p>O estoque estava em 2: as duas primeiras chamadas baixaram (1, depois 0) e a terceira devolveu -1, recusando a venda sem deixar o estoque negativo.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>3. Streams: um registro de eventos</h2>
+                <p>
+                    Um <strong>stream</strong> é uma lista de eventos que só cresce, cada um com um id em ordem de tempo.
+                    Vários consumidores podem ler no próprio ritmo. É uma versão leve do que sistemas como o Kafka fazem.
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+XADD eventos:pedidos 1-1 tipo criado pedido 1001
+XADD eventos:pedidos 2-1 tipo pago pedido 1001
+XLEN eventos:pedidos
+XRANGE eventos:pedidos - +
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+"1-1"
+"2-1"
+(integer) 2
+1) 1) "1-1"
+   2) 1) "tipo"
+      2) "criado"
+      3) "pedido"
+      4) "1001"
+2) 1) "2-1"
+   2) 1) "tipo"
+      2) "pago"
+      3) "pedido"
+      4) "1001"
+{%- endblock %}{% endembed %}
+                <p>Na prática, use <code>*</code> no lugar do id (<code>XADD eventos:pedidos * ...</code>) pro Redis gerar um a partir do horário. Aqui os ids são fixos só pro exemplo ter sempre o mesmo resultado.</p>
+            </div>
+
+            <div class="card guia">
+                <h2>4. Novidades do Redis 8</h2>
+                <p><strong>JSON nativo</strong>: documentos JSON com leitura e escrita de partes deles.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+JSON.SET produto:7 $ '{"nome": "Caderno", "preco": 18.5, "tags": ["papelaria"]}'
+JSON.NUMINCRBY produto:7 $.preco 1.5
+JSON.ARRAPPEND produto:7 $.tags '"escola"'
+JSON.GET produto:7
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+OK
+"[20.0]"
+1) (integer) 2
+"{\"nome\":\"Caderno\",\"preco\":20.0,\"tags\":[\"papelaria\",\"escola\"]}"
+{%- endblock %}{% endembed %}
+
+                <p><strong>Validade por campo de hash</strong>: antes, só a chave inteira podia expirar.</p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+HSET usuario:2 nome "Beto" token "xyz789"
+HEXPIRE usuario:2 600 FIELDS 1 token
+HTTL usuario:2 FIELDS 2 token nome
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (o TTL pode aparecer 1 segundo menor, conforme a hora em que você rodar)'} %}{% block out -%}
+(integer) 2
+1) (integer) 1
+1) (integer) 600
+2) (integer) -1
+{%- endblock %}{% endembed %}
+                <p>Só o campo <code>token</code> tem validade (600 s); o <code>nome</code> fica (<code>-1</code>).</p>
+
+                <p>
+                    <strong>Vector sets</strong>: guardam vetores (os "embeddings" que modelos de IA geram pra representar o
+                    significado de textos e imagens) e buscam os mais parecidos. Quanto maior a pontuação, mais parecido:
+                </p>
+                {% embed 'partials/guide/code.twig' with {engine: 'redis'} %}{% block code -%}
+VADD animais VALUES 3 0.9 0.1 0.0 gato
+VADD animais VALUES 3 0.8 0.2 0.1 felino
+VADD animais VALUES 3 0.0 0.1 0.9 planilha
+VSIM animais ELE gato WITHSCORES COUNT 3
+{%- endblock %}{% endembed %}
+                {% embed 'partials/guide/output.twig' %}{% block out -%}
+(integer) 1
+(integer) 1
+(integer) 1
+1) "gato"
+2) "0.9999521672725677"
+3) "felino"
+4) "0.9919387996196747"
+5) "planilha"
+6) "0.5060024857521057"
+{%- endblock %}{% endembed %}
+            </div>
+
+            <div class="card guia">
+                <h2>5. Escalando: réplicas, Sentinel e Cluster</h2>
+                <ul>
+                    <li><strong>Réplica</strong>: uma cópia de leitura do Redis principal. Distribui as leituras e serve de reserva.</li>
+                    <li><strong>Sentinel</strong>: vigia o principal e promove uma réplica sozinho se ele cair.</li>
+                    <li><strong>Cluster</strong>: divide as chaves entre vários servidores (16.384 "slots"). Comandos com várias chaves só funcionam se elas estiverem no mesmo slot; por isso existem as <em>hash tags</em>: <code>carrinho:{42}:itens</code> e <code>carrinho:{42}:total</code> caem juntas.</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <div class="card guia mt-8">
+        <h2>📖 Quando usar o Redis?</h2>
+        <ul>
+            <li>Como <strong>complemento</strong> do banco principal: cache, sessões, contadores, filas, rankings, rate limit.</li>
+            <li>Quando a resposta precisa ser instantânea e os dados cabem na memória.</li>
+            <li><strong>Não</strong> é substituto de um banco relacional pra dados com relações e regras complexas: ele não tem JOIN, nem consultas por qualquer campo (sem o módulo de busca), nem chave estrangeira.</li>
+        </ul>
     </div>
 {% endblock %}
