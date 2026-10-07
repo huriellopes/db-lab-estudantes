@@ -1,0 +1,27 @@
+{#
+    Bloco de código do guia, usado via embed:
+
+        {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
+        SELECT 1;
+        {%- endblock %}{% endembed %}
+
+    engine:  qual banco roda o exemplo — mysql, postgres, mssql, oracle, mongo, redis ou text.
+             Vira o rótulo do bloco e o data-engine que bin/validate-guide-examples.php usa pra
+             rodar cada exemplo no banco certo e garantir que nenhum está quebrado.
+    console: true só em exemplo de MySQL que roda direto no console SQL do laboratório —
+             mostra o botão "Testar no console".
+    titulo:  opcional, substitui o rótulo.
+#}
+{% set rotulos = {mysql: 'MySQL', postgres: 'PostgreSQL', mssql: 'SQL Server (T-SQL)', oracle: 'Oracle (SQL/PL-SQL)', mongo: 'MongoDB (mongosh)', redis: 'Redis (redis-cli)', text: ''} %}
+<figure x-data="codeExample" data-engine="{{ engine|default('text') }}" class="my-3 overflow-hidden rounded-lg border border-slate-800 bg-slate-900">
+    <figcaption class="flex items-center justify-between gap-2 border-b border-slate-800 px-3 py-1.5 text-xs text-slate-400">
+        <span>{{ titulo|default(rotulos[engine|default('text')]) }}</span>
+        <span class="flex shrink-0 gap-1">
+            <button type="button" @click="copy" class="rounded px-2 py-0.5 hover:bg-slate-800 hover:text-slate-100">Copiar</button>
+            {% if console|default(false) %}
+                <button type="button" @click="openInConsole" title="Abre o console SQL do painel com este exemplo. Escolha um schema lá antes de executar." class="rounded px-2 py-0.5 text-indigo-300 hover:bg-slate-800 hover:text-indigo-200">▶ Testar no console</button>
+            {% endif %}
+        </span>
+    </figcaption>
+    <pre class="overflow-x-auto px-4 py-3 text-xs leading-relaxed text-slate-100"><code x-ref="code">{% block code %}{% endblock %}</code></pre>
+</figure>

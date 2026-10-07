@@ -1,0 +1,6 @@
+{# Resultado esperado de um exemplo (tabela em texto, saída do shell...). Uso via embed, igual
+   a partials/guide/code.twig, com o conteúdo no block "out". titulo é opcional. #}
+<figure class="my-3 overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50/60">
+    <figcaption class="border-b border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-800">{{ titulo|default('Resultado') }}</figcaption>
+    <pre class="overflow-x-auto px-4 py-3 text-xs leading-relaxed text-emerald-950"><code>{% block out %}{% endblock %}</code></pre>
+</figure>

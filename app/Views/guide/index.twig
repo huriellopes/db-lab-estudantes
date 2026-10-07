@@ -3,21 +3,61 @@
 {% block content %}
     <div class="mb-8">
         <h1 class="text-2xl font-semibold text-slate-900">Guia de bancos de dados</h1>
-        <p class="mt-1 text-sm text-slate-500">
-            SQL, os principais bancos relacionais, e NoSQL — o que é, pra que serve e quando usar cada um,
-            com exemplos. Cada página tem uma parte pra quem tá começando e outra pra quem já manja o básico.
+        <p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+            Tudo explicado do zero, com linguagem simples e muitos exemplos. Cada página tem três níveis:
+            comece pelo <strong>Iniciante</strong>, e quando estiver confortável passe pro
+            <strong>Intermediário</strong> e pro <strong>Avançado</strong>. Os exemplos de MySQL têm um botão
+            <span class="whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-xs text-indigo-300">▶ Testar no console</span>
+            que abre o exemplo pronto no seu <a href="/dashboard" class="font-medium text-indigo-600 hover:text-indigo-700">painel</a>.
         </p>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {% for slug, topic in topics %}
-            <a href="/guia/{{ slug }}" class="card flex items-start gap-3 transition-shadow hover:shadow-md">
-                <span class="text-2xl">{{ topic.icon }}</span>
-                <div class="min-w-0">
-                    <h2 class="font-semibold text-slate-900">{{ topic.title }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">{{ topic.summary }}</p>
-                </div>
-            </a>
-        {% endfor %}
+    <div class="card mb-8">
+        <h2 class="text-base font-semibold text-slate-900">🧭 Por onde começar?</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            Se você nunca mexeu com banco de dados, siga esta ordem. Cada passo usa o que você aprendeu no anterior.
+        </p>
+        <ol class="mt-4 grid gap-3 sm:grid-cols-3">
+            <li class="rounded-xl border border-slate-200 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Passo 1 · Planejar</p>
+                <p class="mt-1 text-sm text-slate-700"><a href="/guia/modelagem-er" class="font-medium hover:text-indigo-700">Modelagem de dados</a> e <a href="/guia/formas-normais" class="font-medium hover:text-indigo-700">Formas Normais</a>: decidir quais tabelas criar e como elas se ligam.</p>
+            </li>
+            <li class="rounded-xl border border-slate-200 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Passo 2 · Praticar SQL</p>
+                <p class="mt-1 text-sm text-slate-700"><a href="/guia/sql-ansi" class="font-medium hover:text-indigo-700">SQL ANSI</a> e <a href="/guia/mysql" class="font-medium hover:text-indigo-700">MySQL</a>: criar tabelas, inserir e consultar — tudo testável no console do laboratório.</p>
+            </li>
+            <li class="rounded-xl border border-slate-200 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Passo 3 · Conhecer outros bancos</p>
+                <p class="mt-1 text-sm text-slate-700">PostgreSQL, SQL Server e Oracle (relacionais) e MongoDB e Redis (NoSQL): quando cada um faz mais sentido.</p>
+            </li>
+        </ol>
     </div>
+
+    {% set grupos = {} %}
+    {% for slug, topic in topics %}
+        {% set grupos = grupos|merge({(topic.group): (grupos[topic.group] ?? [])|merge([slug])}) %}
+    {% endfor %}
+
+    {% set numero = 0 %}
+    {% for grupo, slugs in grupos %}
+        <h2 class="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ grupo }}</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for slug in slugs %}
+                {% set numero = numero + 1 %}
+                {% set topic = topics[slug] %}
+                <a href="/guia/{{ slug }}" class="card flex items-start gap-3 transition-shadow hover:shadow-md">
+                    <span class="text-2xl">{{ topic.icon }}</span>
+                    <div class="min-w-0">
+                        <h3 class="font-semibold text-slate-900"><span class="text-slate-400">{{ numero }}.</span> {{ topic.title }}</h3>
+                        <p class="mt-1 text-sm text-slate-500">{{ topic.summary }}</p>
+                        <p class="mt-3 flex flex-wrap gap-1">
+                            <span class="badge-indigo">🌱 Iniciante</span>
+                            <span class="badge-amber">🚀 Intermediário</span>
+                            <span class="badge-rose">🧠 Avançado</span>
+                        </p>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endfor %}
 {% endblock %}
