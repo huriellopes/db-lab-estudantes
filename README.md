@@ -404,6 +404,12 @@ nomes e patterns de schema (`GRANT`/`LIKE`), expiração de sessão, teto de lin
 (SQLite em memória), IP do cliente, CSRF, paginação/filtros, o enum `Role`,
 `AuthenticatedUser::shortName()` e as regras de autorização por papel.
 
+### Antes do push
+
+`composer install` ativa um hook de **pre-push** (`.githooks/pre-push`) que roda, só pro que
+mudou, as mesmas verificações do CI e barra push direto em `main`/`dev` e segredos no diff —
+detalhes e proteções de branch do GitHub no [CONTRIBUTING.md](CONTRIBUTING.md).
+
 O CI (`.github/workflows/ci.yml`) roda em todo PR pra `dev` e `main`:
 
 | Job | O que valida |

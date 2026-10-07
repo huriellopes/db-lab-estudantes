@@ -40,6 +40,10 @@
         "migrate": "php bin/console.php migrate",
         "migrate:rollback": "php bin/console.php migrate:rollback",
         "migrate:status": "php bin/console.php migrate:status",
-        "db:seed": "php bin/console.php db:seed"
+        "db:seed": "php bin/console.php db:seed",
+        "hooks:install": "git rev-parse --git-dir > /dev/null 2>&1 && git config core.hooksPath .githooks && echo 'Hook de pre-push ativado (.githooks/pre-push).' || true",
+        "post-install-cmd": [
+            "@hooks:install"
+        ]
     }
 }
