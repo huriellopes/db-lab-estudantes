@@ -317,7 +317,9 @@ function runCode(string $engine, string $code, bool $asSystem = false): array
         $stdout = realignTables($stdout);
     }
 
-    return [$ok, trim($stdout . ($stderr !== '' ? "\n" . $stderr : ''))];
+    // Só tira linhas em branco das pontas: espaço no começo da 1ª linha faz parte do alinhamento
+    // (o cabeçalho de uma tabela do psql começa com espaço).
+    return [$ok, rtrim(ltrim($stdout . ($stderr !== '' ? "\n" . $stderr : ''), "\n"))];
 }
 
 /**
