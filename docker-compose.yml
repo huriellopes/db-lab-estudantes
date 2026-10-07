@@ -103,6 +103,8 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASS: ${MYSQL_PASSWORD}
       PMA_URL: ${PMA_URL}
+      # Endereço interno (rede docker) só pro health check — nunca exibido na UI.
+      PMA_INTERNAL_URL: ${PMA_INTERNAL_URL:-http://phpmyadmin}
       APP_KEY: ${APP_KEY}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -118,6 +120,10 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    # Logs de erro e backups gerados pelo /admin sobrevivem a rebuild/recreate do container.
+    volumes:
+      - dblab_app_logs:/var/www/html/storage/logs
+      - dblab_app_backups:/var/www/html/storage/backups
     logging:
       driver: json-file
       options:
@@ -137,3 +143,5 @@ networks:
 
 volumes:
   mysql_data:
+  dblab_app_logs:
+  dblab_app_backups:

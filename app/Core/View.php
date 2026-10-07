@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Support\ByteSize;
 use App\Support\Csrf;
 use App\Support\PasswordPolicy;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
+use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 /**
@@ -74,5 +76,7 @@ final class View
             static fn (): string => '<input type="hidden" name="_csrf" value="' . htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') . '">',
             ['is_safe' => ['html']],
         ));
+
+        $twig->addFilter(new TwigFilter('bytes', [ByteSize::class, 'format']));
     }
 }

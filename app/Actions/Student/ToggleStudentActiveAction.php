@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Student;
 
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Services\UserManager;
 use Throwable;
 
@@ -22,6 +23,7 @@ final class ToggleStudentActiveAction extends StudentAction
             $message = $student->active
                 ? "Conta de {$student->name} desativada."
                 : "Conta de {$student->name} reativada.";
+            AuditLog::record($student->active ? 'student.deactivated' : 'student.activated', 'user', $student->id);
             $this->respond(true, $message, '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('atualizar o status', $e), '/professor/alunos');

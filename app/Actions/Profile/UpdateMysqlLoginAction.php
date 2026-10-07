@@ -6,6 +6,7 @@ namespace App\Actions\Profile;
 
 use App\Core\Action;
 use App\Core\Auth;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\UserManager;
 use App\Support\MysqlIdentifier;
@@ -44,6 +45,7 @@ final class UpdateMysqlLoginAction extends Action
         try {
             UserManager::renameMysqlLogin($user, $newLogin);
             Auth::refresh(User::find($user->id));
+            AuditLog::record('profile.mysql_login_changed', 'user', Auth::id(), ['para' => $newLogin]);
             $this->respond(true, "Login do phpMyAdmin atualizado para \"{$newLogin}\".", '/profile');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('renomear o login', $e), '/profile');
