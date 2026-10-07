@@ -9,8 +9,10 @@ use App\Models\RememberToken;
 use App\Models\User as UserModel;
 use App\Support\AuthenticatedUser;
 use App\Support\Crypto;
+use App\Support\Csrf;
 use App\Support\Policy;
 use App\Support\RequestScheme;
+use App\Support\SessionTimeout;
 
 final class Auth
 {
@@ -43,18 +45,79 @@ final class Auth
     public static function login(User $user, ?string $plainPassword = null): void
     {
         session_regenerate_id(true);
+        // Token CSRF novo junto com o ID novo: o de antes do login pode ter sido visto por
+        // quem plantou a sessão (o próximo GET gera outro, ver App\Support\Csrf::token).
+        unset($_SESSION[Csrf::SESSION_KEY]);
 
-        $_SESSION['user'] = AuthenticatedUser::fromEntity($user);
+        self::storeSnapshot($user);
+        $_SESSION['logged_in_at'] = time();
+        $_SESSION['last_activity_at'] = time();
         if ($plainPassword !== null) {
             $_SESSION['mysql_password_enc'] = Crypto::encrypt($plainPassword);
         }
     }
 
-    /** Atualiza os dados da sessão sem exigir novo login (usado após editar o próprio perfil). */
+    /**
+     * Atualiza os dados da sessão sem exigir novo login (usado após editar o próprio perfil
+     * ou trocar a própria senha). Sem session_regenerate_id de propósito: não é uma troca de
+     * privilégio, e regenerar aqui só invalidaria o token CSRF das outras abas abertas.
+     */
     public static function refresh(User $user): void
     {
         if (self::check()) {
-            self::login($user);
+            self::storeSnapshot($user);
+        }
+    }
+
+    /**
+     * Revalida a sessão logada contra o banco, uma vez por requisição (chamado no bootstrap,
+     * public/index.php, antes de attemptRememberLogin). Antes, a sessão guardava um retrato
+     * do usuário tirado no login e nunca mais olhava pro banco: desativar, excluir, rebaixar
+     * o papel ou trocar a senha de alguém não afetava a sessão já aberta dessa pessoa.
+     *
+     * - Expirou (inatividade ou idade, ver SessionTimeout): encerra só a sessão — o cookie de
+     *   "lembrar de mim", se houver, reabre uma nova logo em seguida.
+     * - Conta sumiu, foi desativada ou session_version mudou (senha trocada etc.): encerra a
+     *   sessão E o cookie de lembrar (os tokens no banco já foram revogados por UserManager).
+     * - Senão: atualiza o retrato (papel, nome, login...) e o horário da última atividade.
+     */
+    public static function enforceSession(): void
+    {
+        $sessionUser = self::user();
+        if ($sessionUser === null) {
+            return;
+        }
+
+        $now = time();
+        if (SessionTimeout::isExpired($now, self::sessionInt('last_activity_at'), self::sessionInt('logged_in_at'))) {
+            self::endSession();
+
+            return;
+        }
+
+        $user = UserModel::find($sessionUser->id);
+        if ($user === null || !$user->active || $user->sessionVersion !== (self::sessionInt('session_version') ?? 0)) {
+            self::clearRememberCookie();
+            self::endSession();
+
+            return;
+        }
+
+        self::storeSnapshot($user);
+        $_SESSION['last_activity_at'] = $now;
+        $_SESSION['logged_in_at'] ??= $now;
+    }
+
+    /**
+     * Depois que a própria pessoa troca a senha, UserManager::resetPassword revoga os cookies
+     * de "lembrar de mim" de todos os dispositivos — inclusive deste. Se este navegador tinha
+     * um, emite outro na hora, pra quem trocou a senha não perder o "manter conectado" aqui.
+     */
+    public static function keepRememberedDevice(int $userId): void
+    {
+        $plainToken = $_COOKIE[self::REMEMBER_COOKIE] ?? null;
+        if (is_string($plainToken) && $plainToken !== '') {
+            self::remember($userId);
         }
     }
 
@@ -208,6 +271,34 @@ final class Auth
         if (!self::isAdmin()) {
             self::forbidden();
         }
+    }
+
+    private static function storeSnapshot(User $user): void
+    {
+        $_SESSION['user'] = AuthenticatedUser::fromEntity($user);
+        $_SESSION['session_version'] = $user->sessionVersion;
+    }
+
+    private static function sessionInt(string $key): ?int
+    {
+        $value = $_SESSION[$key] ?? null;
+
+        return is_int($value) ? $value : null;
+    }
+
+    /**
+     * Sai da conta sem destruir a sessão PHP em si. Mantém só o token CSRF: a verificação de
+     * CSRF do bootstrap roda depois, e sem ele um POST feito logo após a sessão expirar
+     * levava 419 em vez de cair no redirect pro login (Auth::requireLogin).
+     */
+    private static function endSession(): void
+    {
+        $csrf = $_SESSION[Csrf::SESSION_KEY] ?? null;
+        $_SESSION = [];
+        if (is_string($csrf)) {
+            $_SESSION[Csrf::SESSION_KEY] = $csrf;
+        }
+        session_regenerate_id(true);
     }
 
     private static function forbidden(): never

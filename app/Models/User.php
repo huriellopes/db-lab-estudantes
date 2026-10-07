@@ -174,6 +174,13 @@ final class User
         $stmt->execute([$name, $email, $id]);
     }
 
+    /** Derruba todas as sessões já abertas dessa conta (ver App\Core\Auth::enforceSession). */
+    public static function bumpSessionVersion(int $id): void
+    {
+        $stmt = Database::connection()->prepare('UPDATE users SET session_version = session_version + 1 WHERE id = ?');
+        $stmt->execute([$id]);
+    }
+
     public static function updatePasswordHash(int $id, string $passwordHash): void
     {
         $stmt = Database::connection()->prepare('UPDATE users SET password_hash = ? WHERE id = ?');

@@ -18,6 +18,7 @@ final readonly class User
         public string $mysqlLogin,
         public string $schemaPrefix,
         public bool $active,
+        public int $sessionVersion,
         public DateTimeImmutable $createdAt,
         public ?DateTimeImmutable $deletedAt,
         public ?DateTimeImmutable $lastLoginAt,
@@ -42,6 +43,7 @@ final readonly class User
             // NULL só numa linha ainda "pending" (cadastro no meio) — ver UserManager::provisionNewUser.
             schemaPrefix: (string) ($row['schema_prefix'] ?? $row['mysql_login']),
             active: (bool) $row['active'],
+            sessionVersion: (int) ($row['session_version'] ?? 0),
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             deletedAt: $row['deleted_at'] !== null ? new DateTimeImmutable((string) $row['deleted_at']) : null,
             lastLoginAt: $row['last_login_at'] !== null ? new DateTimeImmutable((string) $row['last_login_at']) : null,
