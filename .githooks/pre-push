@@ -31,6 +31,7 @@ passo() { printf '\033[36m▸ %s\033[0m\n' "$*"; }
 ZERO=0000000000000000000000000000000000000000
 falhas=0
 arquivos=""
+adicoes=""
 
 while read -r local_ref local_sha remote_ref remote_sha; do
     # Apagando uma branch remota: nada pra verificar.
@@ -44,16 +45,15 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             ;;
     esac
 
-    # Base de comparação: o que já existe no remoto. Branch nova (remote_sha zerado) compara
-    # com a dev, que é de onde as branches de trabalho saem.
-    if [ "$remote_sha" = "$ZERO" ]; then
-        base=$(git merge-base "$local_sha" origin/dev 2>/dev/null || git rev-list --max-parents=0 "$local_sha" | tail -1)
-    else
-        base="$remote_sha"
-    fi
+    # Só o que é novo de verdade: commits que ainda não existem em nenhuma branch remota.
+    # Comparar com a ponta remota desta branch não basta — um merge da dev traria pro diff
+    # código que já está publicado (e já foi verificado) como se fosse novo.
+    novos=$(git rev-list --no-merges "$local_sha" --not --remotes)
+    [ -z "$novos" ] && continue
     arquivos="$arquivos
-$(git diff --name-only --diff-filter=ACMR "$base" "$local_sha")"
-    intervalo_diff="$base..$local_sha"
+$(git log --no-merges --format= --name-only --diff-filter=ACMR "$local_sha" --not --remotes)"
+    adicoes="$adicoes
+$(git log --no-merges --format= -p "$local_sha" --not --remotes -- . ':(exclude)composer.lock' ':(exclude)package-lock.json' | grep -E '^\+' | grep -Ev '^\+\+\+ ')"
 done
 
 arquivos=$(printf '%s\n' "$arquivos" | sed '/^$/d' | sort -u)
@@ -75,8 +75,7 @@ if mudou '(^|/)\.env($|\.)' && printf '%s\n' "$arquivos" | grep -E '(^|/)\.env($
     printf '%s\n' "$arquivos" | grep -E '(^|/)\.env($|\.)' | grep -Ev '\.example$' | sed 's/^/    /'
     falhas=$((falhas + 1))
 fi
-segredos=$(git diff "$intervalo_diff" -- . ':(exclude)*.lock' ':(exclude)package-lock.json' \
-    | grep -E '^\+' \
+segredos=$(printf '%s\n' "$adicoes" \
     | grep -E -- '-----BEGIN [A-Z ]*PRIVATE KEY-----|APP_KEY=base64:[A-Za-z0-9+/=]{20,}|(PASSWORD|SECRET|TOKEN)=[^[:space:]$]{8,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}' \
     | grep -Ev 'example|exemplo|\$\{|openssl rand' || true)
 if [ -n "$segredos" ]; then
