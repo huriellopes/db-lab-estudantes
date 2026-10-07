@@ -97,14 +97,19 @@ COMMIT;
                 <h2>3. Consultas e funções do dia a dia</h2>
                 {% embed 'partials/guide/code.twig' with {engine: 'oracle'} %}{% block code -%}
 SELECT nome,
-       TO_CHAR(contratado, 'DD/MM/YYYY')                    AS contratacao,
+       TO_CHAR(contratado, 'DD/MM/YYYY')                    AS admissao,
        TRUNC(MONTHS_BETWEEN(DATE '2026-10-01', contratado) / 12) AS anos_de_casa,
        NVL(TO_CHAR(gerente_id), 'sem gerente')               AS gerente
 FROM empregado
 ORDER BY contratado;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+ NOME          | ADMISSAO   | ANOS_DE_CASA | GERENTE
+---------------+------------+--------------+-------------
+ Helena Duarte | 10/01/2015 |           11 | sem gerente
+ Igor Pacheco  | 01/06/2018 |            8 | 1
+ Lara Fontes   | 15/09/2021 |            5 | 2
+ Nilo Barros   | 20/03/2022 |            4 | 1
 {%- endblock %}{% endembed %}
                 <ul>
                     <li><code>TO_CHAR(data, 'formato')</code> formata datas e números como texto.</li>
@@ -119,7 +124,10 @@ ORDER BY salario DESC
 FETCH FIRST 2 ROWS ONLY;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+ NOME          | SALARIO
+---------------+------------
+ Helena Duarte |      18000
+ Igor Pacheco  |      11000
 {%- endblock %}{% endembed %}
                 <p>
                     Em código antigo você vai ver <code>WHERE ROWNUM &lt;= 2</code>: era o jeito de limitar linhas antes do
@@ -138,7 +146,12 @@ JOIN departamento d ON d.id = e.depto_id
 ORDER BY d.nome, e.nome;
 {%- endblock %}{% endembed %}
                     {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+ NOME          | DEPARTAMENTO
+---------------+--------------
+ Nilo Barros   | Comercial
+ Helena Duarte | Diretoria
+ Igor Pacheco  | Tecnologia
+ Lara Fontes   | Tecnologia
 {%- endblock %}{% endembed %}
                     <p>Repare que no Oracle o apelido de tabela vem sem <code>AS</code> (<code>empregado e</code>). Com <code>AS</code> dá erro.</p>
                 </details>
@@ -171,7 +184,9 @@ END;
 /
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+Empregados: 4
+Média salarial: 11200
+Folha acima de 10 mil em média
 {%- endblock %}{% endembed %}
                 <p><code>DBMS_OUTPUT.PUT_LINE</code> imprime uma mensagem. No SQL*Plus ou SQL Developer, ligue antes com <code>SET SERVEROUTPUT ON</code>.</p>
             </div>
@@ -187,7 +202,8 @@ END;
 /
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+Igor Pacheco    11,000.00
+Lara Fontes      8,200.00
 {%- endblock %}{% endembed %}
             </div>
 
@@ -206,7 +222,12 @@ CONNECT BY PRIOR id = gerente_id
 ORDER SIBLINGS BY nome;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+ NIVEL      | ORGANOGRAMA
+------------+-----------------
+          1 | Helena Duarte
+          2 |   Igor Pacheco
+          3 |     Lara Fontes
+          2 |   Nilo Barros
 {%- endblock %}{% endembed %}
                 <p>O Oracle também aceita a forma padrão, a CTE recursiva (<code>WITH ... UNION ALL</code>), igual nos outros bancos.</p>
             </div>
@@ -223,7 +244,11 @@ GROUP BY d.nome
 ORDER BY d.nome;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+ DEPARTAMENTO | PESSOAS    | EQUIPE
+--------------+------------+---------------------------
+ Comercial    |          1 | Nilo Barros
+ Diretoria    |          1 | Helena Duarte
+ Tecnologia   |          2 | Igor Pacheco, Lara Fontes
 {%- endblock %}{% endembed %}
             </div>
         </section>
@@ -259,7 +284,8 @@ END;
 /
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+Aumento aplicado para Lara Fontes
+Empregado 99 não existe
 {%- endblock %}{% endembed %}
                 <ul>
                     <li><code>empregado.nome%TYPE</code> declara a variável com o mesmo tipo da coluna: se a coluna mudar, a variável acompanha.</li>
@@ -288,7 +314,13 @@ SELECT 'Hoje é ' || TO_CHAR(DATE '2026-10-07', 'DD/MM/YYYY') AS mensagem;
 SELECT titulo FROM tarefa WHERE NOT concluida;
 {%- endblock %}{% endembed %}
                 {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+ MENSAGEM
+-------------------
+ Hoje é 07/10/2026
+
+ TITULO
+---------------
+ Criar índices
 {%- endblock %}{% endembed %}
                 <ul>
                     <li><strong>JSON Relational Duality</strong>: as mesmas tabelas relacionais podem ser lidas e gravadas como documentos JSON, como se fosse um banco de documentos.</li>
@@ -331,8 +363,16 @@ EXPLAIN PLAN FOR SELECT nome FROM empregado WHERE id = 2;
 
 SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, NULL, 'BASIC'));
 {%- endblock %}{% endembed %}
-                {% embed 'partials/guide/output.twig' %}{% block out -%}
-PENDENTE
+                {% embed 'partials/guide/output.twig' with {compare: false, titulo: 'Resultado (o nome do índice SYS_C... muda em cada banco)'} %}{% block out -%}
+Plan hash value: 3746942221
+
+---------------------------------------------------
+| Id  | Operation                   | Name        |
+---------------------------------------------------
+|   0 | SELECT STATEMENT            |             |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMPREGADO   |
+|   2 |   INDEX UNIQUE SCAN         | SYS_C008724 |
+---------------------------------------------------
 {%- endblock %}{% endembed %}
                 <p>"INDEX UNIQUE SCAN" mostra que o Oracle foi direto na linha pelo índice da chave primária.</p>
             </div>

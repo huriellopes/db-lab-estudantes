@@ -428,9 +428,17 @@ function formatSqlcmd(string $text): string
             }
         }
         foreach ($rows as $r => $cells) {
+            if ($r > 0) {
+                // Número no SQL*Plus vem alinhado à direita (com espaços na frente): tira e realinha.
+                foreach ($cells as $c => $cell) {
+                    if ($numeric[$c] ?? false) {
+                        $cells[$c] = ltrim($cell);
+                    }
+                }
+            }
             $parts = [];
             foreach ($cells as $c => $cell) {
-                $pad = str_repeat(' ', $widths[$c] - mb_strlen($cell));
+                $pad = str_repeat(' ', max(0, $widths[$c] - mb_strlen($cell)));
                 $parts[] = ($r > 0 && ($numeric[$c] ?? false)) ? $pad . $cell : $cell . $pad;
             }
             $out[] = ' ' . rtrim(implode(' | ', $parts));
@@ -467,12 +475,13 @@ function formatSqlplus(string $text): string
             $cells = [];
             foreach ($starts as $k => $start) {
                 $end = $starts[$k + 1] ?? null;
-                $cells[] = trim($end === null ? mb_substr($row, $start) : mb_substr($row, $start, $end - $start));
+                // Só rtrim: espaço à esquerda pode ser conteúdo (o recuo de um LPAD, por exemplo).
+                $cells[] = rtrim($end === null ? mb_substr($row, $start) : mb_substr($row, $start, $end - $start));
             }
 
             return $cells;
         };
-        $rows = [$slice($header)];
+        $rows = [array_map('trim', $slice($header))];
         for ($i++; $i < count($lines) && trim($lines[$i]) !== ''; $i++) {
             $rows[] = $slice($lines[$i]);
         }
@@ -482,7 +491,7 @@ function formatSqlplus(string $text): string
             foreach ($cells as $c => $cell) {
                 $widths[$c] = max($widths[$c] ?? 0, mb_strlen($cell));
                 if ($r > 0) {
-                    $numeric[$c] = ($numeric[$c] ?? true) && preg_match('/^-?[\d.,]+$/', $cell);
+                    $numeric[$c] = ($numeric[$c] ?? true) && preg_match('/^\s*-?[\d.,]+$/', $cell);
                 }
             }
         }
