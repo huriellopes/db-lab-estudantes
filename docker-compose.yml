@@ -16,13 +16,15 @@ services:
     # outro IP, não é afetado (FAILED_LOGIN_ATTEMPTS bloquearia a conta inteira por dias, e
     # aí qualquer um travaria o console/phpMyAdmin de um colega errando a senha dele de
     # propósito). Tentativas atrasadas: information_schema.connection_control_failed_login_attempts.
+    # "--loose-" é obrigatório: na criação de um volume novo (--initialize) o MySQL ainda não
+    # carregou o plugin, e sem o prefixo aborta com "unknown variable" em vez de só avisar.
     command: >-
       --default-authentication-plugin=mysql_native_password
       --default-time-zone=America/Sao_Paulo
       --plugin-load-add=connection_control.so
-      --connection-control-failed-connections-threshold=5
-      --connection-control-min-connection-delay=1000
-      --connection-control-max-connection-delay=30000
+      --loose-connection-control-failed-connections-threshold=5
+      --loose-connection-control-min-connection-delay=1000
+      --loose-connection-control-max-connection-delay=30000
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       # Root só via socket/localhost de dentro do container (healthcheck, manutenção com
