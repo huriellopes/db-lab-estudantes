@@ -488,3 +488,7 @@ em modo dev (hot-reload) em vez do build estático, defina `VITE_DEV_SERVER_URL=
   `App\Support` é código de segurança crítico, coberto por testes.
 - Os limites de CPU/memória por serviço no `docker-compose.yml` seguem a convenção usada
   nesta máquina pra evitar sobrecarga; ajuste conforme necessário.
+
+## 🏷️ Créditos
+
+Desenvolvido por **[Hurvion Systems](https://hurvionsystems.cantinbr.com.br)**. Código-fonte: [github.com/huriellopes/db-lab-estudantes](https://github.com/huriellopes/db-lab-estudantes).
