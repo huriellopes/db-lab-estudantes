@@ -34,6 +34,8 @@ RUN apt-get update \
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/php-hardening.ini /usr/local/etc/php/conf.d/zz-hardening.ini
+COPY docker/php-performance.ini /usr/local/etc/php/conf.d/zz-performance.ini
+COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zz-tuning.conf
 
 WORKDIR /var/www/html
 

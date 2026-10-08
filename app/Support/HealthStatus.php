@@ -16,13 +16,22 @@ final readonly class HealthStatus
         public bool $ok,
         public ?int $latencyMs = null,
         public string $detail = '',
+        // O que fazer quando ok=false (comando a rodar no servidor, ação do /admin/manutencao).
+        // Também só pro admin, igual ao detail.
+        public string $hint = '',
     ) {
     }
 
-    /** @return array{name: string, ok: bool, latencyMs: ?int, detail: string} */
+    /** @return array{name: string, ok: bool, latencyMs: ?int, detail: string, hint: string} */
     public function toArray(): array
     {
-        return ['name' => $this->name, 'ok' => $this->ok, 'latencyMs' => $this->latencyMs, 'detail' => $this->detail];
+        return [
+            'name' => $this->name,
+            'ok' => $this->ok,
+            'latencyMs' => $this->latencyMs,
+            'detail' => $this->detail,
+            'hint' => $this->hint,
+        ];
     }
 
     /** @param array<string, mixed> $row */
@@ -33,6 +42,7 @@ final readonly class HealthStatus
             (bool) ($row['ok'] ?? false),
             isset($row['latencyMs']) ? (int) $row['latencyMs'] : null,
             (string) ($row['detail'] ?? ''),
+            (string) ($row['hint'] ?? ''),
         );
     }
 }

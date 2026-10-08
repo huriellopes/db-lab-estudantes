@@ -1,0 +1,266 @@
+{% extends 'layouts/app.twig' %}
+
+{# Linha "rótulo · valor" com a explicação do que o número significa logo abaixo. #}
+{% macro row(label, value, help = '') %}
+    <div class="py-3">
+        <div class="flex items-baseline justify-between gap-4">
+            <dt class="text-sm text-slate-700">{{ label }}</dt>
+            <dd class="text-right text-sm font-medium text-slate-900">{{ value }}</dd>
+        </div>
+        {% if help %}<p class="mt-0.5 text-xs text-slate-500">{{ help }}</p>{% endif %}
+    </div>
+{% endmacro %}
+
+{# Barra de uso: `ratio` = fração usada (0..1); fica âmbar a partir de 80% e vermelha a partir de 95%. #}
+{% macro bar(ratio) %}
+    {% set pct = (ratio * 100)|round %}
+    <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        <div class="h-full rounded-full {{ pct >= 95 ? 'bg-rose-500' : (pct >= 80 ? 'bg-amber-500' : 'bg-emerald-500') }}" style="width: {{ pct }}%"></div>
+    </div>
+{% endmacro %}
+
+{# Ações via Axios (ajaxForm, ver resources/js/app.js): confirmação no modal quando `title`
+   é passado, toast com o resultado e a tela recarregada sem reload completo (refresh: true)
+   pra mostrar os números novos. Sem JS, cada <form> continua um POST normal (redirect + flash). #}
+{% macro action_attrs(title = null, message = '', label = 'Confirmar') %}
+    hx-boost="false"
+    x-data="ajaxForm({
+        {% if title %}confirmTitle: '{{ title|e('js') }}', confirmMessage: '{{ message|e('js') }}', confirmLabel: '{{ label|e('js') }}',{% endif %}
+        refresh: true,
+    })"
+    @submit.prevent="submit"
+{% endmacro %}
+
+{% block content %}
+    {% import _self as m %}
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">Manutenção</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            O que está acontecendo com o ambiente e o que dá pra resolver daqui mesmo. Toda ação fica registrada na
+            <a href="/admin/auditoria?q=maintenance." class="text-indigo-600 hover:text-indigo-700">auditoria</a>.
+        </p>
+    </div>
+
+    {# ---- Status + reverificar ---- #}
+    {% include 'partials/health-card.twig' with { health: health, detailed: true, showMaintenanceLink: false, class: 'mb-3' } %}
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+        <span>
+            {% if checkedAt %}Verificado às {{ checkedAt|date('H:i:s') }}.{% endif %}
+            O status fica em cache por {{ cacheTtl }}s pra não sobrecarregar os serviços a cada página aberta.
+        </span>
+        <form method="post" action="/admin/manutencao/status" {{ m.action_attrs() }}>
+            {{ csrf_field() }}
+            <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">
+                <span x-show="!loading">Reverificar agora</span>
+                <span x-show="loading" x-cloak>Verificando…</span>
+            </button>
+        </form>
+    </div>
+
+    {# ---- Modo manutenção ---- #}
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Modo manutenção</h2>
+    <div class="card mb-8">
+        {% if mode %}
+            <p class="text-sm text-amber-800">
+                <span class="font-semibold">Ligado</span>
+                {% if mode.since %}desde {{ mode.since|date('d/m/Y H:i') }}{% endif %}{% if mode.by %} por {{ mode.by }}{% endif %}.
+                Alunos e professores veem uma página "em manutenção" (HTTP 503); admins continuam navegando normalmente.
+            </p>
+            {% if mode.message %}<p class="mt-2 text-sm text-slate-600">Mensagem: “{{ mode.message }}”</p>{% endif %}
+            <form method="post" action="/admin/manutencao/modo" class="mt-4" {{ m.action_attrs() }}>
+                {{ csrf_field() }}
+                <input type="hidden" name="enabled" value="0">
+                <button type="submit" class="btn-primary">Desligar e reabrir o lab</button>
+            </form>
+        {% else %}
+            <p class="text-sm text-slate-600">
+                Fecha o lab pra quem não é admin enquanto você resolve um problema (ex.: banco instável, restauração de backup).
+                Quem estiver usando passa a ver uma página "em manutenção"; login continua disponível pra admins entrarem.
+                Recriar o container desliga sozinho.
+            </p>
+            <form
+                method="post" action="/admin/manutencao/modo" class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"
+                {{ m.action_attrs('Ligar modo manutenção', 'Alunos e professores vão perder o acesso ao lab até você desligar. Continuar?', 'Ligar') }}
+            >
+                {{ csrf_field() }}
+                <input type="hidden" name="enabled" value="1">
+                <input type="text" name="message" maxlength="300" class="field-input" placeholder="Mensagem para os alunos (opcional) — ex.: Voltamos às 20h">
+                <button type="submit" class="btn-danger">Ligar modo manutenção</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {# ---- Diagnóstico ---- #}
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Diagnóstico</h2>
+    <div class="mb-8 grid gap-6 lg:grid-cols-2">
+        <div class="card">
+            <h3 class="text-base font-semibold text-slate-900">Disco</h3>
+            <p class="mt-1 text-xs text-slate-500">
+                É este o "% livre" do card de status: espaço da partição onde fica o <code>storage/</code> da aplicação
+                (logs, backups e caches) — não é memória nem nada do PHP. Abaixo de {{ minFreeDiskPercent }}% livre a
+                Aplicação aparece offline, porque logs e backups começam a falhar ao gravar.
+            </p>
+            {% if disk %}
+                {{ m.bar(1 - disk.freeRatio) }}
+                <dl class="divide-y divide-slate-100">
+                    {{ m.row('Livre', disk.free|bytes ~ ' (' ~ (disk.freeRatio * 100)|round ~ '%)') }}
+                    {{ m.row('Usado', disk.used|bytes) }}
+                    {{ m.row('Total', disk.total|bytes) }}
+                </dl>
+            {% else %}
+                <p class="mt-3 text-sm text-slate-500">Não foi possível ler o disco neste servidor.</p>
+            {% endif %}
+
+            <h4 class="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">O que a aplicação ocupa</h4>
+            <dl class="divide-y divide-slate-100">
+                {{ m.row('Logs de erro', storageUsage.logs|bytes, logFiles ~ ' arquivo(s) — um por dia, guardados por ' ~ logRetentionDays ~ ' dias.') }}
+                {{ m.row('Backups', storageUsage.backups|bytes, backupCount ~ ' arquivo(s) — ficam os ' ~ backupKeepLast ~ ' mais recentes.') }}
+                {{ m.row('Cache de templates (Twig)', storageUsage['twig-cache']|bytes, 'Páginas compiladas; se recria sozinho.') }}
+                {{ m.row('Outros caches', storageUsage.cache|bytes, 'Status do lab, limites de tentativa, flag de manutenção.') }}
+            </dl>
+            <p class="mt-2 text-xs text-slate-500">
+                Se o disco estiver cheio e não for por aqui, o mais comum são imagens Docker antigas — no servidor:
+                <code>docker system df</code> pra ver e <code>docker system prune</code> pra limpar.
+            </p>
+        </div>
+
+        <div class="card">
+            <h3 class="text-base font-semibold text-slate-900">Container da aplicação</h3>
+            <p class="mt-1 text-xs text-slate-500">Recursos do container <code>app</code> (nginx + PHP-FPM), limitados no docker-compose.</p>
+            {% if memory %}
+                {% if memory.limit %}{{ m.bar(memory.used / memory.limit) }}{% endif %}
+                <dl class="divide-y divide-slate-100">
+                    {{ m.row(
+                        'Memória',
+                        memory.used|bytes ~ (memory.limit ? ' de ' ~ memory.limit|bytes : ' (sem limite)'),
+                        'Inclui o cache de arquivos do sistema, então tende a crescer até perto do limite — isso é normal. Se bater no limite, o Docker reinicia o container.'
+                    ) }}
+                </dl>
+            {% else %}
+                <dl class="divide-y divide-slate-100">
+                    {{ m.row('Memória', 'indisponível', 'Só dá pra ler rodando dentro do Docker.') }}
+                </dl>
+            {% endif %}
+            <dl class="divide-y divide-slate-100">
+                {% if cpuLimit %}
+                    {{ m.row('Limite de CPU', cpuLimit|number_format(1, ',', '.') ~ ' CPU') }}
+                {% endif %}
+                {% if load %}
+                    {{ m.row(
+                        'Carga (1 / 5 / 15 min)',
+                        load|map(l => l|number_format(2, ',', '.'))|join(' / '),
+                        'Média de processos querendo CPU no servidor inteiro' ~ (cpuCount ? ' (' ~ cpuCount ~ ' CPUs)' : '') ~ '. Acima do número de CPUs por muito tempo = servidor sobrecarregado.'
+                    ) }}
+                {% endif %}
+            </dl>
+
+            <h3 class="mt-6 text-base font-semibold text-slate-900">PHP {{ phpVersion }}</h3>
+            <dl class="divide-y divide-slate-100">
+                {{ m.row('memory_limit', phpSettings.memory_limit, 'Máximo de memória por requisição. Estourar dá erro 500 só naquela página.') }}
+                {{ m.row('max_execution_time', phpSettings.max_execution_time ~ 's', 'Tempo máximo de uma requisição (0 = sem limite).') }}
+                {{ m.row('upload_max_filesize / post_max_size', phpSettings.upload_max_filesize ~ ' / ' ~ phpSettings.post_max_size, 'Tamanho máximo de arquivo/formulário enviado.') }}
+                {{ m.row('session.gc_maxlifetime', phpSettings['session.gc_maxlifetime'] ~ 's', 'Depois disso uma sessão parada pode ser apagada.') }}
+                {% if phpSettings['fpm.max_children'] %}
+                    {{ m.row('Workers do PHP-FPM (máx.)', phpSettings['fpm.max_children'], 'Quantas requisições o PHP atende ao mesmo tempo; as demais esperam na fila do nginx. Ajuste com FPM_MAX_CHILDREN no .env (cada worker usa ~20-40 MB).') }}
+                {% endif %}
+                {% if opcache.enabled %}
+                    {{ m.row(
+                        'OPcache',
+                        opcache.used|bytes ~ ' usados, ' ~ opcache.free|bytes ~ ' livres',
+                        opcache.scripts ~ ' arquivos compilados em memória' ~ (opcache.hitRate is not null ? ', ' ~ opcache.hitRate|number_format(1, ',', '.') ~ '% de acerto' : '') ~ '. Acelera o PHP guardando o código já compilado.'
+                    ) }}
+                {% else %}
+                    {{ m.row('OPcache', 'desligado', 'Sem cache de código compilado — o PHP recompila cada arquivo a cada requisição.') }}
+                {% endif %}
+            </dl>
+            <p class="mt-3 flex flex-wrap gap-1.5">
+                {% for ext, loaded in phpExtensions %}
+                    <span class="rounded-full px-2 py-0.5 text-xs {{ loaded ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">{{ ext }}{{ loaded ? '' : ' ausente' }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    {# ---- Ações ---- #}
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Caches</h2>
+    <div class="mb-8 grid gap-6 sm:grid-cols-2">
+        <form method="post" action="/admin/manutencao/cache-twig" class="card flex flex-col justify-between gap-4" {{ m.action_attrs() }}>
+            {{ csrf_field() }}
+            <div>
+                <h3 class="text-base font-semibold text-slate-900">Limpar cache de templates</h3>
+                <p class="mt-1 text-sm text-slate-500">Use se uma página ficou mostrando versão antiga ou dando erro depois de um deploy. Ele se recria sozinho.</p>
+            </div>
+            <button type="submit" class="btn-secondary self-start">Limpar cache do Twig</button>
+        </form>
+        <form method="post" action="/admin/manutencao/opcache" class="card flex flex-col justify-between gap-4" {{ m.action_attrs() }}>
+            {{ csrf_field() }}
+            <div>
+                <h3 class="text-base font-semibold text-slate-900">Resetar OPcache</h3>
+                <p class="mt-1 text-sm text-slate-500">Força o PHP a reler todo o código. Use se um arquivo atualizado no servidor não "pegou". Sem impacto pros alunos.</p>
+            </div>
+            <button type="submit" class="btn-secondary self-start" {{ opcache.enabled ? '' : 'disabled' }}>
+                {{ opcache.enabled ? 'Resetar OPcache' : 'OPcache desligado' }}
+            </button>
+        </form>
+    </div>
+
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Liberar espaço</h2>
+    <div class="mb-8 grid gap-6 sm:grid-cols-2">
+        <form
+            method="post" action="/admin/manutencao/logs" class="card flex flex-col justify-between gap-4"
+            {{ m.action_attrs('Apagar logs antigos', 'Os logs apagados somem também de /admin/logs. O de hoje é sempre mantido.', 'Apagar') }}
+        >
+            {{ csrf_field() }}
+            <div>
+                <h3 class="text-base font-semibold text-slate-900">Logs de erro antigos</h3>
+                <p class="mt-1 text-sm text-slate-500">Hoje: {{ storageUsage.logs|bytes }} em {{ logFiles }} arquivo(s). O log de hoje nunca é apagado.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <select name="days" class="field-input !w-auto">
+                    <option value="7">mais de 7 dias</option>
+                    <option value="3">mais de 3 dias</option>
+                    <option value="1">mais de 1 dia</option>
+                </select>
+                <button type="submit" class="btn-danger">Apagar</button>
+            </div>
+        </form>
+        <form
+            method="post" action="/admin/manutencao/backups" class="card flex flex-col justify-between gap-4"
+            {{ m.action_attrs('Apagar backups antigos', 'Os backups mais antigos serão apagados de vez. Baixe antes o que quiser guardar.', 'Apagar') }}
+        >
+            {{ csrf_field() }}
+            <div>
+                <h3 class="text-base font-semibold text-slate-900">Backups antigos</h3>
+                <p class="mt-1 text-sm text-slate-500">
+                    Hoje: {{ storageUsage.backups|bytes }} em {{ backupCount }} arquivo(s).
+                    <a href="/admin/backups" class="text-indigo-600 hover:text-indigo-700">Ver backups</a>
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <select name="keep" class="field-input !w-auto">
+                    <option value="5">manter os 5 mais recentes</option>
+                    <option value="3">manter os 3 mais recentes</option>
+                    <option value="1">manter só o mais recente</option>
+                </select>
+                <button type="submit" class="btn-danger" {{ backupCount == 0 ? 'disabled' : '' }}>Apagar</button>
+            </div>
+        </form>
+    </div>
+
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">O que não dá pra fazer por aqui</h2>
+    <div class="card text-sm text-slate-600">
+        <p>
+            Reiniciar containers e derrubar consultas travadas no MySQL ficam fora do painel de propósito: exigiriam dar
+            à aplicação acesso ao Docker do servidor (equivale a acesso root) ou privilégios de administrador do MySQL.
+            Quando algo estiver offline, o card de status acima mostra o comando a rodar no servidor, e os
+            <a href="/admin/logs/ao-vivo" class="text-indigo-600 hover:text-indigo-700">logs ao vivo</a>
+            mostram a aplicação, o MySQL e a auditoria em tempo real. Os comandos mais usados:
+        </p>
+        <ul class="mt-3 space-y-1 font-mono text-xs text-slate-700">
+            <li><span class="text-slate-400"># ver o estado de todos os serviços</span><br>docker compose ps</li>
+            <li><span class="text-slate-400"># ver o motivo de um erro</span><br>docker compose logs --tail=100 mysql</li>
+            <li><span class="text-slate-400"># reiniciar um serviço (mysql, phpmyadmin ou app)</span><br>docker compose restart phpmyadmin</li>
+        </ul>
+    </div>
+{% endblock %}
