@@ -119,6 +119,8 @@ services:
       APP_KEY: ${APP_KEY}
       # "local" libera o DevUsersSeeder (contas com senha padrão) — sem a variável, vale production.
       APP_ENV: ${APP_ENV:-production}
+      # Expurgo automático de Dados excluídos: lotes com mais de N dias saem de vez (0 = desligado).
+      ARCHIVE_RETENTION_DAYS: ${ARCHIVE_RETENTION_DAYS:-0}
       # Tuning do PHP-FPM/OPcache (docker/php-fpm-pool.conf, docker/php-performance.ini).
       # FPM_MAX_CHILDREN x ~40MB precisa caber em APP_MEM_LIMIT.
       FPM_MAX_CHILDREN: ${FPM_MAX_CHILDREN:-10}

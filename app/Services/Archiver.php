@@ -188,7 +188,11 @@ final class Archiver
         AuditLog::record('archive.restored', $root['model'], $root['model_id'], ['batch' => $batchId, 'itens' => count($items), 'rotulo' => $root['label']]);
     }
 
-    public static function purge(string $batchId): void
+    /**
+     * @param array<string, mixed> $auditMeta
+     * @param ?array{id: ?int, name: string} $actor Padrão: quem está logado.
+     */
+    public static function purge(string $batchId, array $auditMeta = [], ?array $actor = null): void
     {
         $items = DeletedModel::itemsOfBatch($batchId);
         if ($items === []) {
@@ -206,7 +210,35 @@ final class Archiver
         }
 
         DeletedModel::deleteBatch($batchId);
-        AuditLog::record('archive.purged', $root['model'], $root['model_id'], ['batch' => $batchId, 'itens' => count($items), 'rotulo' => $root['label']]);
+        AuditLog::record('archive.purged', $root['model'], $root['model_id'], ['batch' => $batchId, 'itens' => count($items), 'rotulo' => $root['label']] + $auditMeta, $actor);
+    }
+
+    /**
+     * Expurgo automático por tempo (ARCHIVE_RETENTION_DAYS): exclui definitivamente os lotes com
+     * mais de $days dias que não estão marcados "não apagar". Sem $apply, só devolve o que faria.
+     * Um lote que falhar não impede os outros (fica no log de erros e é tentado de novo amanhã).
+     *
+     * @return list<array{batch_id: string, model: string, label: string, deleted_at: string, error?: string}>
+     */
+    public static function purgeExpired(int $days, bool $apply): array
+    {
+        $expired = DeletedModel::expiredBatches($days);
+        if (!$apply) {
+            return $expired;
+        }
+
+        $done = [];
+        foreach ($expired as $batch) {
+            try {
+                self::purge($batch['batch_id'], ['motivo' => "expurgo automático ({$days} dias)"], ['id' => null, 'name' => 'expurgo automático']);
+                $done[] = $batch;
+            } catch (Throwable $e) {
+                ErrorLogger::exception($e, 'error');
+                $done[] = $batch + ['error' => $e->getMessage()];
+            }
+        }
+
+        return $done;
     }
 
     /**
