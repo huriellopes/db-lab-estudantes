@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Database;
+use App\Support\LikePattern;
 use PDO;
 
 /** Tabela class_members: responsáveis (professor) e alunos de cada turma. */
@@ -70,6 +71,32 @@ final class ClassMember
         $stmt->execute($args);
 
         return array_map(static fn (array $r): array => ['id' => (int) $r['id'], 'class_id' => (int) $r['class_id']], $stmt->fetchAll());
+    }
+
+    /**
+     * Sugestões do autocomplete "adicionar à turma": pessoas da instituição da turma que ainda
+     * não estão nela (o papel na turma vem da conta: professor entra como responsável).
+     *
+     * @return list<array{id: int, name: string, email: string, mysql_login: string, role: string}>
+     */
+    public static function candidates(int $classId, string $query, int $limit = 8): array
+    {
+        $query = trim($query);
+        if (mb_strlen($query) < 2) {
+            return [];
+        }
+        $like = LikePattern::contains($query);
+        $stmt = Database::connection()->prepare(
+            'SELECT u.id, u.name, u.email, u.mysql_login, u.role FROM users u
+             INNER JOIN institution_members im ON im.user_id = u.id
+             INNER JOIN classes c ON c.institution_id = im.institution_id AND c.id = ?
+             WHERE (u.name LIKE ? OR u.email LIKE ? OR u.mysql_login LIKE ?)
+               AND NOT EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = c.id AND m.user_id = u.id)
+             ORDER BY u.name LIMIT ' . max(1, min($limit, 20)),
+        );
+        $stmt->execute([$classId, $like, $like, $like]);
+
+        return array_map(static fn (array $r): array => ['id' => (int) $r['id']] + $r, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** @return list<array{id: int, name: string, institution: string, professors: string}> "Minhas turmas" do aluno. */

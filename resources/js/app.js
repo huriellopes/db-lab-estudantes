@@ -1290,6 +1290,77 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
+  /**
+   * Autocomplete de "vincular pessoa" (instituição e turma). Busca em `url?q=` só quem ainda pode
+   * ser vinculado (o servidor filtra) e só libera o envio depois que uma sugestão é escolhida —
+   * evita vincular a pessoa errada por um e-mail digitado com erro. O valor enviado (hidden
+   * `identificador`) é o e-mail da sugestão escolhida. Fica dentro do <form> do ajaxForm.
+   */
+  Alpine.data('userPicker', (url) => ({
+    query: '',
+    results: [],
+    selected: null,
+    open: false,
+    active: -1,
+    searching: false,
+    timer: null,
+    seq: 0,
+
+    onInput() {
+      this.selected = null;
+      clearTimeout(this.timer);
+      if (this.query.trim().length < 2) {
+        this.results = [];
+        this.open = false;
+        return;
+      }
+      this.timer = setTimeout(() => this.search(), 250);
+    },
+
+    async search() {
+      // Respostas fora de ordem (digitação rápida): só vale a da última busca.
+      const seq = ++this.seq;
+      this.searching = true;
+      try {
+        const { data } = await axios.get(url, { params: { q: this.query.trim() } });
+        if (seq !== this.seq) return;
+        this.results = data.results ?? [];
+        this.active = this.results.length ? 0 : -1;
+        this.open = true;
+      } catch (_) {
+        if (seq === this.seq) this.results = [];
+      } finally {
+        if (seq === this.seq) this.searching = false;
+      }
+    },
+
+    choose(result) {
+      this.selected = result;
+      this.query = `${result.name} <${result.email}>`;
+      this.open = false;
+    },
+
+    onKeydown(event) {
+      if (!this.open || this.results.length === 0) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        this.active = Math.min(this.active + 1, this.results.length - 1);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        this.active = Math.max(this.active - 1, 0);
+      } else if (event.key === 'Enter' && this.active >= 0) {
+        event.preventDefault();
+        this.choose(this.results[this.active]);
+      } else if (event.key === 'Escape') {
+        this.open = false;
+      }
+    },
+
+    roleLabel(role) {
+      return role === 'professor' ? 'Professor' : 'Aluno';
+    },
+  }));
+
   /** Botão de copiar texto (credenciais, comando de conexão do SGBD...) com feedback via toast. */
   Alpine.data('copyable', (text) => ({
     copy() {
