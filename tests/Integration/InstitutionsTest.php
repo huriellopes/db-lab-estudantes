@@ -100,6 +100,23 @@ it('keeps memberships consistent when the role changes', function () {
     expect(InstitutionMember::forUser($student->id)[0]['role'])->toBe('professor');
 });
 
+it('lists for a professor only the students of their institutions', function () {
+    [$a, $b] = [integrationInstitution(), integrationInstitution()];
+    $professor = integrationUser(Role::Professor);
+    [$mine, $other, $loose] = [integrationUser(), integrationUser(), integrationUser()];
+    InstitutionManager::addMember($a, $professor->email);
+    InstitutionManager::addMember($a, $mine->email);
+    InstitutionManager::addMember($b, $other->email);
+
+    $visible = App\Actions\Student\IndexStudentsAction::visibleStudentIds(Role::Professor, $professor->id, null);
+
+    expect($visible)->toContain($mine->id)
+        ->and($visible)->not->toContain($other->id)
+        ->and($visible)->not->toContain($loose->id)
+        ->and(App\Actions\Student\IndexStudentsAction::visibleStudentIds(Role::Admin, 0, 'sem'))->toContain($loose->id)
+        ->and(App\Actions\Student\IndexStudentsAction::visibleStudentIds(Role::Admin, 0, 'sem'))->not->toContain($mine->id);
+});
+
 function batchOf(string $model, int $id): string
 {
     $stmt = Database::connection()->prepare('SELECT batch_id FROM deleted_models WHERE model = ? AND model_id = ? AND is_root = 1 ORDER BY id DESC LIMIT 1');
