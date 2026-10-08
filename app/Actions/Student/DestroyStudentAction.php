@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Student;
 
 use App\Core\Auth;
-use App\Models\AuditLog;
-use App\Services\UserManager;
+use App\Services\ArchiveException;
+use App\Services\Archiver;
 use Throwable;
 
 /** POST /professor/alunos/{id}/excluir. */
@@ -19,9 +19,10 @@ final class DestroyStudentAction extends StudentAction
         $student = $this->findStudentOrFail((int) $params['id']);
 
         try {
-            UserManager::softDelete($student);
-            AuditLog::record('student.deleted', 'user', $student->id, ['email' => $student->email]);
-            $this->respond(true, "Conta de {$student->name} excluída (um admin pode restaurar na lixeira).", '/professor/alunos');
+            Archiver::archive('user', $student->id, 'student.deleted', ['email' => $student->email]);
+            $this->respond(true, "Conta de {$student->name} excluída (um admin pode restaurar em Dados excluídos).", '/professor/alunos');
+        } catch (ArchiveException $e) {
+            $this->respond(false, $e->getMessage(), '/professor/alunos');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('excluir a conta', $e), '/professor/alunos');
         }

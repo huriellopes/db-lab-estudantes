@@ -56,10 +56,4 @@ final class ErDiagram
 
         return $row === false ? null : ErDiagramEntity::fromRow($row);
     }
-
-    public static function delete(int $id): void
-    {
-        $stmt = Database::connection()->prepare('DELETE FROM er_diagrams WHERE id = ?');
-        $stmt->execute([$id]);
-    }
 }

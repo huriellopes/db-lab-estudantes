@@ -8,6 +8,7 @@ use App\Core\Action;
 use App\Core\Auth;
 use App\Models\Entities\SavedQuery as SavedQueryEntity;
 use App\Models\SavedQuery;
+use App\Services\Archiver;
 use Throwable;
 
 /** POST /consultas-salvas/excluir. */
@@ -25,7 +26,7 @@ final class DestroySavedQueryAction extends Action
         }
 
         try {
-            SavedQuery::delete($query->id);
+            Archiver::archive('saved_query', $query->id, 'saved_query.deleted');
         } catch (Throwable $e) {
             $this->json(false, $this->genericError('remover a consulta', $e));
         }

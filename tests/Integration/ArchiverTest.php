@@ -117,3 +117,16 @@ it('archives a single saved query and brings it back', function () {
     Archiver::restore($batch);
     expect(SavedQuery::findOwned($id, $user->id)?->title)->toBe('q-it sozinha');
 });
+
+it('archives the record when the console sync finds a schema dropped outside the platform', function () {
+    $user = integrationUser();
+    $db = integrationSchema($user);
+    Database::connection()->exec("DROP DATABASE `{$db}`");
+
+    SchemaRecord::reconcileForUser($user->id, $user->schemaPrefix, []);
+
+    $stmt = Database::connection()->prepare("SELECT JSON_EXTRACT(meta, '$.removed_outside') FROM deleted_models WHERE model = 'schema' AND label = ?");
+    $stmt->execute([$db]);
+    expect(SchemaRecord::nameTaken($db))->toBeTrue() // reservado no arquivo
+        ->and($stmt->fetchColumn())->toBe('true');
+});
