@@ -49,3 +49,26 @@ it('skips the owner check when the owner comes back in the same batch', function
     $ownerChecks = array_filter($checks, static fn (array $c): bool => $c['expect'] === 'present');
     expect($ownerChecks)->toBe([]);
 });
+
+it('checks name and code of an institution and the target of a membership', function () {
+    $checks = ArchiveRestoreChecks::for([
+        archivedItem('institution_member', 5, ['institution_id' => 2, 'user_id' => 9, 'role' => 'aluno']),
+    ]);
+
+    $sqls = array_column($checks, 'sql');
+    expect($sqls)->toContain('SELECT 1 FROM institutions WHERE id = ?')
+        ->and($sqls)->toContain('SELECT 1 FROM institution_members WHERE student_user_id = ?');
+
+    $withInstitution = ArchiveRestoreChecks::for([
+        archivedItem('institution', 2, ['name' => 'Escola Azul', 'invite_code' => 'ABCD-EF23']),
+        archivedItem('institution_member', 5, ['institution_id' => 2, 'user_id' => 9, 'role' => 'professor']),
+    ]);
+    $sqls = array_column($withInstitution, 'sql');
+    expect($sqls)->toContain('SELECT 1 FROM institutions WHERE name = ?')
+        ->and($sqls)->toContain('SELECT 1 FROM institutions WHERE invite_code = ?')
+        ->and($sqls)->not->toContain('SELECT 1 FROM institution_members WHERE student_user_id = ?');
+
+    // A instituição vem no mesmo lote: não se exige que ela "exista" antes (só o id livre, genérico).
+    $institutionMustExist = array_filter($withInstitution, static fn (array $c): bool => $c['expect'] === 'present' && $c['sql'] === 'SELECT 1 FROM institutions WHERE id = ?');
+    expect($institutionMustExist)->toBe([]);
+});

@@ -7,6 +7,8 @@ namespace App\Actions\Admin;
 use App\Core\Auth;
 use App\Models\AuditLog;
 use App\Models\User as UserModel;
+use App\Services\InstitutionException;
+use App\Services\InstitutionManager;
 use App\Support\Role;
 
 /** POST /admin/usuarios/{id}/papel. */
@@ -21,6 +23,12 @@ final class UpdateAdminUserRoleAction extends AdminUserAction
 
         if ($role === null) {
             $this->respond(false, 'Papel inválido.', '/admin/usuarios');
+        }
+
+        try {
+            InstitutionManager::syncRoleChange($target, $role);
+        } catch (InstitutionException $e) {
+            $this->respond(false, $e->getMessage(), '/admin/usuarios');
         }
 
         UserModel::updateRole($target->id, $role);

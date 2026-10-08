@@ -85,7 +85,7 @@ final class Archiver
 
             $pdo->beginTransaction();
             foreach ($items as $i => $item) {
-                DeletedModel::insert($batchId, $item['is_root'], $item['model'], (int) $item['row']['id'], ArchiveGraph::label($item['model'], $item['row']), $item['row'], $metaById[$i] ?? [], $actor);
+                DeletedModel::insert($batchId, $item['is_root'], $item['model'], (int) $item['row']['id'], self::labelFor($pdo, $item['model'], $item['row']), $item['row'], $metaById[$i] ?? [], $actor);
             }
             // Filhos de usuário saem pela FK ON DELETE CASCADE (já estão arquivados acima).
             $pdo->prepare('DELETE FROM ' . ArchiveGraph::table($model) . ' WHERE id = ?')->execute([$id]);
@@ -215,6 +215,21 @@ final class Archiver
         AuditLog::record('archive.purged', $root['model'], $root['model_id'], ['batch' => $batchId, 'itens' => count($items), 'rotulo' => $root['label']]);
     }
 
+    /** @param array<string, mixed> $row */
+    private static function labelFor(PDO $pdo, string $model, array $row): string
+    {
+        if ($model !== 'institution_member') {
+            return ArchiveGraph::label($model, $row);
+        }
+        $stmt = $pdo->prepare('SELECT u.name, i.name FROM users u, institutions i WHERE u.id = ? AND i.id = ?');
+        $stmt->execute([(int) $row['user_id'], (int) $row['institution_id']]);
+        $names = $stmt->fetch(PDO::FETCH_NUM);
+
+        return $names === false
+            ? ArchiveGraph::label($model, $row)
+            : mb_substr("{$names[0]} → {$names[1]} ({$row['role']})", 0, 200);
+    }
+
     /** @return ?array<string, mixed> */
     private static function fetchRow(PDO $pdo, string $model, int $id): ?array
     {
@@ -226,14 +241,18 @@ final class Archiver
     }
 
     /**
-     * Reinsere a linha arquivada. Colunas que deixaram de existir desde a exclusão (ex.:
+     * Reinsere a linha arquivada. Colunas geradas (ex.: institution_members.student_user_id —
+     * o MySQL recusa valor nelas) e colunas que deixaram de existir desde a exclusão (ex.:
      * users.deleted_at, removida na migração da lixeira antiga) são ignoradas.
      *
      * @param array<string, mixed> $values
      */
     private static function insertRow(PDO $pdo, string $table, array $values): void
     {
-        $existing = $pdo->prepare('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
+        $existing = $pdo->prepare(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND EXTRA NOT LIKE '%GENERATED%'",
+        );
         $existing->execute([$table]);
         $values = array_intersect_key($values, array_flip($existing->fetchAll(PDO::FETCH_COLUMN)));
         $columns = array_keys($values);

@@ -8,11 +8,14 @@ use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Flash;
 use App\Models\AuditLog;
+use App\Models\Institution;
+use App\Models\InstitutionMember;
 use App\Models\User;
 use App\Services\RateLimiter;
 use App\Services\UserManager;
 use App\Support\ClientIp;
 use App\Support\FlashType;
+use App\Support\InviteCode;
 use App\Support\RegistrationValidator;
 use App\Support\Role;
 use Throwable;
@@ -31,7 +34,8 @@ final class RegisterAction extends Action
         $username = strtolower(trim((string) ($_POST['username'] ?? '')));
         $password = (string) ($_POST['password'] ?? '');
         $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
-        $old = compact('name', 'email', 'username');
+        $inviteInput = trim((string) ($_POST['codigo_instituicao'] ?? ''));
+        $old = compact('name', 'email', 'username') + ['codigo_instituicao' => $inviteInput];
 
         $ipKey = 'register:ip:' . ClientIp::resolve($_SERVER);
         $ipLimit = RateLimiter::check($ipKey, maxAttempts: 8, windowSeconds: 900);
@@ -52,13 +56,25 @@ final class RegisterAction extends Action
                 User::isLoginTaken($username),
             );
 
+            $institution = null;
+            if (!$errors && $inviteInput !== '') {
+                $code = InviteCode::normalize($inviteInput);
+                $institution = $code !== null ? Institution::findByInviteCode($code) : null;
+                if ($institution === null) {
+                    $errors[] = 'Código da instituição inválido. Confira com seu professor ou deixe o campo em branco.';
+                }
+            }
+
             if (!$errors) {
                 try {
                     // O cadastro público é sempre "aluno" (ver Role::registrable()) — quem
                     // cria professores/admins é o próprio admin, pelo painel.
-                    UserManager::provisionNewUser($name, $email, $username, $password, Role::registrable());
+                    $user = UserManager::provisionNewUser($name, $email, $username, $password, Role::registrable());
+                    if ($institution !== null) {
+                        InstitutionMember::add($institution->id, $user->id, Role::Aluno->value);
+                    }
 
-                    AuditLog::record('auth.registered', 'user', $username, ['email' => $email], ['id' => null, 'name' => $name]);
+                    AuditLog::record('auth.registered', 'user', $username, ['email' => $email, 'instituicao' => $institution?->name], ['id' => null, 'name' => $name]);
                     Flash::set(FlashType::Success, 'Cadastro realizado com sucesso! Faça login para continuar.');
                     $this->redirect('/login');
                 } catch (Throwable $e) {
