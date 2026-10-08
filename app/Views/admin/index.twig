@@ -26,7 +26,7 @@
         {{ m.stat('Ativos (7 dias)', stats.activeLast7Days, stats.activeLast30Days ~ ' nos últimos 30 dias') }}
         {{ m.stat('Nunca entraram', stats.neverLoggedIn, 'de ' ~ stats.totalUsers() ~ ' contas') }}
         {{ m.stat('Desativados', stats.inactiveUsers) }}
-        {{ m.stat('Na lixeira', stats.trashedUsers) }}
+        {{ m.stat('Dados excluídos', stats.deletedBatches, 'lotes aguardando revisão') }}
         {{ m.stat('Erros (24h)', stats.errorsLast24h, 'ver logs de erro') }}
     </div>
 

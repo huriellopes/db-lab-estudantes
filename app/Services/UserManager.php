@@ -102,22 +102,4 @@ final class UserManager
             self::revokeAllSessions($user->id);
         }
     }
-
-    /**
-     * Soft delete, como o SoftDeletes do Laravel: marca deleted_at e bloqueia o acesso
-     * MySQL, mas NÃO apaga os databases nem a conta MySQL — dá pra restaurar depois.
-     */
-    public static function softDelete(User $user): void
-    {
-        SchemaProvisioner::lockMysqlAccount($user->mysqlLogin);
-        UserModel::softDelete($user->id);
-        self::revokeAllSessions($user->id);
-    }
-
-    /** Desfaz o softDelete: libera o acesso MySQL de novo e limpa deleted_at. */
-    public static function restore(User $user): void
-    {
-        SchemaProvisioner::unlockMysqlAccount($user->mysqlLogin);
-        UserModel::restore($user->id);
-    }
 }
