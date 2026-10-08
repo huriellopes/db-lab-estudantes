@@ -116,6 +116,36 @@
         </div>
     {% endif %}
 
+    {% if canEdit %}
+        <div class="card mb-6 space-y-3">
+            <h2 class="text-base font-semibold text-slate-900">Código da turma</h2>
+            <p class="text-sm text-slate-500">O aluno digita em "Entrar com código", no painel dele, e já entra nesta turma (e na {{ class.institutionName }}, se ainda não estiver em nenhuma instituição).</p>
+            <p class="font-mono text-2xl tracking-widest {{ class.inviteCode ? 'text-indigo-700' : 'text-slate-400' }}">{{ class.inviteCode ?: 'desativado' }}</p>
+            <div class="flex flex-wrap gap-2">
+                <form
+                    hx-boost="false" method="post" action="/turmas/{{ class.id }}/codigo"
+                    x-data="ajaxForm({ confirmTitle: 'Gerar novo código', confirmMessage: 'O código atual deixa de valer. Continuar?', confirmLabel: 'Gerar', danger: false, refresh: true })"
+                    @submit.prevent="submit"
+                >
+                    {{ csrf_field() }}
+                    <input type="hidden" name="acao" value="gerar">
+                    <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">{{ class.inviteCode ? 'Gerar novo código' : 'Ativar com novo código' }}</button>
+                </form>
+                {% if class.inviteCode %}
+                    <form
+                        hx-boost="false" method="post" action="/turmas/{{ class.id }}/codigo"
+                        x-data="ajaxForm({ confirmTitle: 'Desativar código', confirmMessage: 'Ninguém mais vai conseguir entrar nesta turma pelo código. Continuar?', confirmLabel: 'Desativar', refresh: true })"
+                        @submit.prevent="submit"
+                    >
+                        {{ csrf_field() }}
+                        <input type="hidden" name="acao" value="desativar">
+                        <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">Desativar</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         {{ m.members(students, class, 'Alunos', 'Nenhum aluno na turma ainda.', canEdit) }}
         {{ m.members(professors, class, 'Professores responsáveis', 'Sem responsável — só o admin edita.', canEdit) }}

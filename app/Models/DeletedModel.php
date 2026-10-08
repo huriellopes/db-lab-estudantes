@@ -53,6 +53,7 @@ final class DeletedModel
         'db_name' => ['schema', '$.db_name'],
         'institution_name' => ['institution', '$.name'],
         'invite_code' => ['institution', '$.invite_code'],
+        'class_invite_code' => ['class', '$.invite_code'],
     ];
 
     /**

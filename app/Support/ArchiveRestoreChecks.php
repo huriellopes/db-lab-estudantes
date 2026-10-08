@@ -81,6 +81,11 @@ final class ArchiveRestoreChecks
             if ($item['model'] === 'class') {
                 $institutionId = (int) $v['institution_id'];
                 $checks[] = self::absent('SELECT 1 FROM classes WHERE institution_id = ? AND name = ?', [$institutionId, (string) $v['name']], "Já existe uma turma chamada {$v['name']} nesta instituição.");
+                if (($v['invite_code'] ?? null) !== null) {
+                    $taken = "O código {$v['invite_code']} já é de outra turma ou instituição.";
+                    $checks[] = self::absent('SELECT 1 FROM classes WHERE invite_code = ?', [(string) $v['invite_code']], $taken);
+                    $checks[] = self::absent('SELECT 1 FROM institutions WHERE invite_code = ?', [(string) $v['invite_code']], $taken);
+                }
                 if (!in_array($institutionId, $institutionsInBatch, true)) {
                     $checks[] = [
                         'sql' => 'SELECT 1 FROM institutions WHERE id = ?',
