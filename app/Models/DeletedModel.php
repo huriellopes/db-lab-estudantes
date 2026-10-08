@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Database;
+use App\Services\SchemaQuarantine;
+use App\Support\Paginator;
 
 /**
  * Tabela deleted_models — o arquivo de dados excluídos. Só App\Services\Archiver escreve
@@ -70,6 +72,101 @@ final class DeletedModel
     public static function deleteBatch(string $batchId): void
     {
         Database::connection()->prepare('DELETE FROM deleted_models WHERE batch_id = ?')->execute([$batchId]);
+    }
+
+    public static function paginateBatches(?string $model, string $search, int $days, int $page, int $perPage = 15): Paginator
+    {
+        $where = ['d.is_root = 1'];
+        $args = [];
+        if ($model !== null && $model !== '') {
+            $where[] = 'd.model = ?';
+            $args[] = $model;
+        }
+        if ($days > 0) {
+            $where[] = 'd.deleted_at >= NOW() - INTERVAL ? DAY';
+            $args[] = $days;
+        }
+        if ($search !== '') {
+            // Busca no rótulo de qualquer item do lote (ex.: achar um usuário pelo nome de um schema dele).
+            $where[] = '(d.label LIKE ? OR EXISTS (SELECT 1 FROM deleted_models x WHERE x.batch_id = d.batch_id AND x.label LIKE ?))';
+            array_push($args, "%{$search}%", "%{$search}%");
+        }
+        $whereSql = implode(' AND ', $where);
+        $pdo = Database::connection();
+
+        $count = $pdo->prepare("SELECT COUNT(*) FROM deleted_models d WHERE {$whereSql}");
+        $count->execute($args);
+        $total = (int) $count->fetchColumn();
+        $page = max(1, min($page, (int) ceil(max($total, 1) / $perPage)));
+
+        $stmt = $pdo->prepare(
+            "SELECT d.batch_id FROM deleted_models d WHERE {$whereSql} ORDER BY d.deleted_at DESC, d.id DESC LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage),
+        );
+        $stmt->execute($args);
+        $batchIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        return new Paginator(self::describeBatches($batchIds), $page, $perPage, $total);
+    }
+
+    /**
+     * @param list<string> $batchIds
+     * @return list<array<string, mixed>>
+     */
+    private static function describeBatches(array $batchIds): array
+    {
+        if ($batchIds === []) {
+            return [];
+        }
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM deleted_models WHERE batch_id IN (' . implode(',', array_fill(0, count($batchIds), '?')) . ') ORDER BY is_root DESC, id',
+        );
+        $stmt->execute($batchIds);
+
+        $byBatch = array_fill_keys($batchIds, []);
+        foreach ($stmt->fetchAll() as $row) {
+            $byBatch[$row['batch_id']][] = self::hydrate($row);
+        }
+
+        $quarantines = [];
+        foreach ($byBatch as $items) {
+            foreach ($items as $item) {
+                if (isset($item['meta']['quarantine'])) {
+                    $quarantines[] = (string) $item['meta']['quarantine'];
+                }
+            }
+        }
+        $sizes = SchemaQuarantine::sizeBytes($quarantines);
+
+        $batches = [];
+        foreach ($byBatch as $batchId => $items) {
+            $root = $items[0];
+            $related = [];
+            $bytes = 0;
+            foreach ($items as $item) {
+                if (!$item['is_root']) {
+                    $related[$item['model']] = ($related[$item['model']] ?? 0) + 1;
+                }
+                $bytes += $sizes[$item['meta']['quarantine'] ?? ''] ?? 0;
+            }
+            $batches[] = [
+                'batch_id' => $batchId,
+                'model' => $root['model'],
+                'label' => $root['label'],
+                'deleted_by_name' => $root['deleted_by_name'],
+                'deleted_at' => $root['deleted_at'],
+                'removed_outside' => ($root['meta']['removed_outside'] ?? false) === true,
+                'related' => $related,
+                'quarantine_bytes' => $bytes,
+                'items' => array_map(static fn (array $i): array => [
+                    'model' => $i['model'],
+                    'model_id' => $i['model_id'],
+                    'label' => $i['label'],
+                    'values' => $i['values'],
+                ], $items),
+            ];
+        }
+
+        return $batches;
     }
 
     public static function countBatches(): int
