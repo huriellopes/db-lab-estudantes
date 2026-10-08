@@ -1,0 +1,57 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-6">
+        <a href="/professor/bancos" class="text-sm text-slate-500 hover:text-slate-700">← Bancos dos alunos</a>
+        <h1 class="mt-2 font-mono text-2xl font-semibold text-slate-900">{{ db }}</h1>
+        {% if owner %}<p class="mt-1 text-sm text-slate-500">de {{ owner }} · {{ tables|length }} tabela{{ tables|length == 1 ? '' : 's' }}</p>{% endif %}
+    </div>
+
+    {% if relations is not empty %}
+        <div class="card mb-6">
+            <h2 class="mb-3 text-base font-semibold text-slate-900">Relações</h2>
+            <ul class="space-y-1 font-mono text-sm text-slate-700">
+                {% for r in relations %}
+                    <li>{{ r.from }} <span class="text-indigo-500">→</span> {{ r.to }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if tables is empty %}
+        <div class="card py-10 text-center text-sm text-slate-500">Este banco ainda não tem tabelas.</div>
+    {% endif %}
+
+    <div class="grid gap-6 lg:grid-cols-2">
+        {% for t in tables %}
+            <div class="card">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <h2 class="truncate font-mono text-base font-semibold text-slate-900">{{ t.name }}</h2>
+                    <a href="/professor/bancos/{{ db|url_encode }}/{{ t.name|url_encode }}" class="btn-secondary shrink-0 !px-3 !py-1.5 text-xs">Ver dados</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-slate-400">
+                            <tr><th class="py-1 pr-3">Coluna</th><th class="py-1 pr-3">Tipo</th><th class="py-1 pr-3">Nulo</th><th class="py-1">Chave / extra</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-mono text-slate-700">
+                            {% for c in t.columns %}
+                                <tr>
+                                    <td class="py-1 pr-3">{{ c.name }}</td>
+                                    <td class="py-1 pr-3 text-slate-500">{{ c.type }}</td>
+                                    <td class="py-1 pr-3">{{ c.nullable ? 'sim' : 'não' }}</td>
+                                    <td class="py-1 text-slate-500">
+                                        {% if c.name in t.primaryKey %}<span class="rounded bg-amber-50 px-1 text-amber-700">PK</span>{% endif %}
+                                        {% for fk in t.foreignKeys|filter(f => f.column == c.name) %}<span class="rounded bg-indigo-50 px-1 text-indigo-700">→ {{ fk.refTable }}.{{ fk.refColumn }}</span>{% endfor %}
+                                        {{ c.extra }}{% if c.default is not null %} padrão: {{ c.default }}{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if t.primaryKey is empty %}<p class="mt-2 text-xs text-amber-700">Sem chave primária: os dados desta tabela ficam só leitura.</p>{% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

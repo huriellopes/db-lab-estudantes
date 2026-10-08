@@ -380,6 +380,24 @@ Nada de negócio (contas, schemas, consultas salvas, diagramas) é apagado diret
   aluno o `DROP TABLE` dos próprios schemas. O registro é arquivado como "removido fora da
   plataforma" e auditado, sem dados para restaurar.
 
+## Bancos dos alunos para o professor (`/professor/bancos`)
+
+- **Privilégios exatos.** A conta MySQL do professor recebe `SELECT, INSERT, UPDATE ON \`<prefixo>\_\_%\`.*`
+  para cada aluno com quem divide instituição — nunca `DELETE`, `DROP` ou `ALTER` (nem `TRUNCATE`,
+  que exige `DROP`). Assim o "pode ajudar, não pode excluir" vale no próprio MySQL: na tela, no
+  phpMyAdmin e em qualquer SGBD. Testado em integração (DELETE/DROP/TRUNCATE/ALTER recusados).
+- **Onde é concedido/revogado.** `App\Services\ProfessorGrants` recalcula do zero (idempotente) depois
+  de vincular/remover membro, excluir instituição, trocar papel, entrar por código, cadastro com
+  código e arquivar/restaurar usuário/instituição/vínculo; e no boot (`grants:sync-professors`).
+  Aluno que sai da instituição, ou professor que deixa de ser professor, perde o acesso. Falha na
+  sincronização vai para o log de erros e nunca derruba a ação principal.
+- **Execução pela conta do professor.** Leitura e escrita usam `Database::connectAs` com a senha MySQL
+  do professor (cifrada na sessão); o `appuser` só é usado para conferir o escopo
+  (`InstitutionScope`). Banco fora do escopo responde 404. Identificadores vêm da estrutura real e
+  vão entre crases; valores sempre como parâmetros (`App\Support\RowEditSql`).
+- **Auditoria** (`professor.db_row_inserted` / `professor.db_row_updated`): banco, tabela, colunas e
+  chave — nunca os valores (dados do aluno).
+
 ## Disponibilidade (uptime)
 
 Nenhum sistema garante 100% de uptime; o que dá pra fazer é reduzir a chance e o tempo de uma
