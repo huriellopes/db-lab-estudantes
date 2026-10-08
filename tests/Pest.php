@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Database;
 use App\Models\Entities\User as UserEntity;
 use App\Models\SchemaRecord;
+use App\Services\InstitutionManager;
 use App\Services\SchemaProvisioner;
 use App\Services\UserManager;
 use App\Support\Role;
@@ -101,6 +102,11 @@ function integrationSchema(UserEntity $owner, string $label = 'dados'): string
     return $dbName;
 }
 
+function integrationInstitution(): int
+{
+    return InstitutionManager::create('it-inst-' . bin2hex(random_bytes(4)));
+}
+
 function cleanupIntegrationData(): void
 {
     $pdo = Database::connection();
@@ -122,6 +128,7 @@ function cleanupIntegrationData(): void
         SchemaProvisioner::dropMysqlAccount($login);
     }
 
-    $pdo->exec("DELETE FROM deleted_models WHERE label REGEXP '^(Integração [0-9a-f]{8} <it-|it[0-9a-f]{8}__|q-it )'");
+    $pdo->exec("DELETE FROM deleted_models WHERE label REGEXP '^(Integração [0-9a-f]{8} |it[0-9a-f]{8}__|q-it |it-inst-[0-9a-f]{8})'");
+    $pdo->exec("DELETE FROM institutions WHERE name REGEXP '^it-inst-[0-9a-f]{8}$'");
     $pdo->exec("DELETE FROM users WHERE email LIKE 'it-%@example.test'");
 }
