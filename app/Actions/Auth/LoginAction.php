@@ -10,6 +10,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\RateLimiter;
 use App\Support\ClientIp;
+use App\Support\RateLimits;
 
 /** POST /login. */
 final class LoginAction extends Action
@@ -35,10 +36,11 @@ final class LoginAction extends Action
 
         // Duas chaves: por IP (protege contra spray em várias contas) e por identificador
         // (protege uma conta específica de força bruta vinda de IPs diferentes).
-        $ipKey = 'login:ip:' . ClientIp::resolve($_SERVER);
-        $idKey = 'login:id:' . mb_strtolower($identifier);
-        $ipLimit = RateLimiter::check($ipKey, maxAttempts: 15, windowSeconds: 300);
-        $idLimit = RateLimiter::check($idKey, maxAttempts: 6, windowSeconds: 300);
+        // Limites dimensionados para sala de aula (IP compartilhado) — ver App\Support\RateLimits.
+        [$ipKey, $ipMax, $window] = RateLimits::loginPerIp(ClientIp::resolve($_SERVER));
+        [$idKey, $idMax] = RateLimits::loginPerAccount($identifier);
+        $ipLimit = RateLimiter::check($ipKey, maxAttempts: $ipMax, windowSeconds: $window);
+        $idLimit = RateLimiter::check($idKey, maxAttempts: $idMax, windowSeconds: $window);
 
         if (!$ipLimit->allowed || !$idLimit->allowed) {
             $wait = (int) ceil(max($ipLimit->retryAfterSeconds, $idLimit->retryAfterSeconds) / 60);

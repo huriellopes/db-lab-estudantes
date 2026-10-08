@@ -16,6 +16,7 @@ use App\Services\UserManager;
 use App\Support\ClientIp;
 use App\Support\FlashType;
 use App\Support\InviteCode;
+use App\Support\RateLimits;
 use App\Support\RegistrationValidator;
 use App\Support\Role;
 use Throwable;
@@ -37,14 +38,18 @@ final class RegisterAction extends Action
         $inviteInput = trim((string) ($_POST['codigo_instituicao'] ?? ''));
         $old = compact('name', 'email', 'username') + ['codigo_instituicao' => $inviteInput];
 
-        $ipKey = 'register:ip:' . ClientIp::resolve($_SERVER);
-        $ipLimit = RateLimiter::check($ipKey, maxAttempts: 8, windowSeconds: 900);
+        // Com código de instituição válido o cadastro conta no limite DO CÓDIGO (generoso, cabe a
+        // turma toda), não no do IP — a sala inteira sai pelo mesmo IP. Ver App\Support\RateLimits.
+        $inviteCode = $inviteInput !== '' ? InviteCode::normalize($inviteInput) : null;
+        $validCode = $inviteCode !== null && Institution::findByInviteCode($inviteCode) !== null ? $inviteCode : null;
+        [$limitKey, $limitMax, $window] = RateLimits::register(ClientIp::resolve($_SERVER), $validCode);
+        $ipLimit = RateLimiter::check($limitKey, maxAttempts: $limitMax, windowSeconds: $window);
 
         if (!$ipLimit->allowed) {
             $wait = (int) ceil($ipLimit->retryAfterSeconds / 60);
             $errors = ["Muitas tentativas de cadastro por aqui. Aguarde {$wait} minuto(s) e tente de novo."];
         } else {
-            RateLimiter::hit($ipKey);
+            RateLimiter::hit($limitKey);
 
             $errors = RegistrationValidator::validate(
                 $name,
