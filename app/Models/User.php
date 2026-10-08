@@ -10,15 +10,14 @@ use App\Support\Role;
 use App\Support\SchemaNameBuilder;
 
 /**
- * Exclusão é sempre soft delete (deleted_at), como o SoftDeletes do Laravel: os métodos
- * de leitura abaixo (find, findByEmail, all, ...) excluem linhas com deleted_at
- * preenchido por padrão. Use trashed()/findTrashed() para enxergar quem foi excluído.
+ * Exclusão passa sempre por App\Services\Archiver: a linha sai daqui e vai para
+ * deleted_models (restaurável pelo admin em /admin/excluidos).
  */
 final class User
 {
     public static function find(int $id): ?UserEntity
     {
-        $stmt = Database::connection()->prepare('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL');
+        $stmt = Database::connection()->prepare('SELECT * FROM users WHERE id = ?');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
 
@@ -27,7 +26,7 @@ final class User
 
     public static function findByEmail(string $email): ?UserEntity
     {
-        $stmt = Database::connection()->prepare('SELECT * FROM users WHERE email = ? AND deleted_at IS NULL');
+        $stmt = Database::connection()->prepare('SELECT * FROM users WHERE email = ?');
         $stmt->execute([$email]);
         $row = $stmt->fetch();
 
@@ -38,7 +37,7 @@ final class User
     public static function findByEmailOrUsername(string $identifier): ?UserEntity
     {
         $stmt = Database::connection()->prepare(
-            'SELECT * FROM users WHERE (email = ? OR mysql_login = ?) AND deleted_at IS NULL',
+            'SELECT * FROM users WHERE (email = ? OR mysql_login = ?)',
         );
         $stmt->execute([$identifier, $identifier]);
         $row = $stmt->fetch();
@@ -48,7 +47,7 @@ final class User
 
     public static function emailExists(string $email): bool
     {
-        return self::findByEmail($email) !== null;
+        return self::findByEmail($email) !== null || DeletedModel::isReserved('email', $email);
     }
 
     /**
@@ -73,7 +72,9 @@ final class User
         $except = $exceptUserId ?? 0;
         $stmt->execute([$login, $login, $except, SchemaNameBuilder::likePattern($login), $except]);
 
-        return $stmt->fetch() !== false;
+        return $stmt->fetch() !== false
+            || DeletedModel::isReserved('mysql_login', $login)
+            || DeletedModel::isReserved('schema_prefix', $login);
     }
 
     /** @return list<UserEntity> Todos os usuários não excluídos, opcionalmente filtrados por papel. */
@@ -81,7 +82,7 @@ final class User
     {
         if ($role !== null) {
             $stmt = Database::connection()->prepare(
-                'SELECT * FROM users WHERE role = ? AND deleted_at IS NULL ORDER BY created_at DESC',
+                'SELECT * FROM users WHERE role = ? ORDER BY created_at DESC',
             );
             $stmt->execute([$role->value]);
 
@@ -89,7 +90,7 @@ final class User
         }
 
         $rows = Database::connection()
-            ->query('SELECT * FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC')
+            ->query('SELECT * FROM users ORDER BY created_at DESC')
             ->fetchAll();
 
         return array_map(UserEntity::fromRow(...), $rows);
@@ -99,36 +100,17 @@ final class User
     public static function allManageable(): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT * FROM users WHERE deleted_at IS NULL AND role <> ? ORDER BY created_at DESC',
+            'SELECT * FROM users WHERE role <> ? ORDER BY created_at DESC',
         );
         $stmt->execute([Role::Admin->value]);
 
         return array_map(UserEntity::fromRow(...), $stmt->fetchAll());
     }
 
-    /** @return list<UserEntity> Contas excluídas (soft delete) — a "lixeira". */
-    public static function trashed(): array
-    {
-        $rows = Database::connection()
-            ->query('SELECT * FROM users WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')
-            ->fetchAll();
-
-        return array_map(UserEntity::fromRow(...), $rows);
-    }
-
-    public static function findTrashed(int $id): ?UserEntity
-    {
-        $stmt = Database::connection()->prepare('SELECT * FROM users WHERE id = ? AND deleted_at IS NOT NULL');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : UserEntity::fromRow($row);
-    }
-
     public static function countByRole(Role $role): int
     {
         $stmt = Database::connection()->prepare(
-            'SELECT COUNT(*) FROM users WHERE role = ? AND deleted_at IS NULL',
+            'SELECT COUNT(*) FROM users WHERE role = ?',
         );
         $stmt->execute([$role->value]);
 
@@ -206,22 +188,10 @@ final class User
         $stmt->execute([$id]);
     }
 
-    public static function softDelete(int $id): void
-    {
-        $stmt = Database::connection()->prepare('UPDATE users SET deleted_at = NOW() WHERE id = ?');
-        $stmt->execute([$id]);
-    }
-
-    public static function restore(int $id): void
-    {
-        $stmt = Database::connection()->prepare('UPDATE users SET deleted_at = NULL WHERE id = ?');
-        $stmt->execute([$id]);
-    }
-
     /**
      * Apaga a linha de verdade — só para desfazer um cadastro que falhou no meio do
      * caminho (ver App\Services\UserManager::provisionNewUser). Nunca exposto a um
-     * controller: a exclusão "normal" é sempre softDelete().
+     * controller: a exclusão "normal" passa sempre pelo App\Services\Archiver.
      */
     public static function forceDelete(int $id): void
     {

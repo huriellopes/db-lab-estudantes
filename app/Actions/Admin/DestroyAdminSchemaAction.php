@@ -6,9 +6,9 @@ namespace App\Actions\Admin;
 
 use App\Core\Action;
 use App\Core\Auth;
-use App\Models\AuditLog;
 use App\Models\SchemaRecord;
-use App\Services\SchemaProvisioner;
+use App\Services\ArchiveException;
+use App\Services\Archiver;
 use App\Support\SchemaNameBuilder;
 use Throwable;
 
@@ -31,10 +31,10 @@ final class DestroyAdminSchemaAction extends Action
         }
 
         try {
-            SchemaProvisioner::dropDatabase($dbName);
-            SchemaRecord::delete($record->id);
-            AuditLog::record('schema.deleted', 'schema', $dbName, ['por' => 'admin']);
-            $this->respond(true, "Schema \"{$dbName}\" removido.", '/admin/schemas');
+            Archiver::archive('schema', $record->id, 'schema.deleted', ['por' => 'admin']);
+            $this->respond(true, "Schema \"{$dbName}\" movido para Dados excluídos.", '/admin/schemas');
+        } catch (ArchiveException $e) {
+            $this->respond(false, $e->getMessage(), '/admin/schemas');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('remover o schema', $e), '/admin/schemas');
         }

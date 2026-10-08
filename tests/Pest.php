@@ -2,6 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Core\Database;
+use App\Models\Entities\User as UserEntity;
+use App\Models\SchemaRecord;
+use App\Services\ClassManager;
+use App\Services\InstitutionManager;
+use App\Services\SchemaProvisioner;
+use App\Services\UserManager;
+use App\Support\AuthenticatedUser;
+use App\Support\Role;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -41,7 +51,96 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Testes em tests/Integration falam com o MySQL de verdade (o do docker compose, porta
+ * MYSQL_PORT do .env). Ficam fora do `composer test` padrão: rode `composer test:integration`.
+ */
+function requiresDatabase(): void
 {
-    // ..
+    if (getenv('INTEGRATION') !== '1') {
+        test()->markTestSkipped('Teste de integração: rode com `composer test:integration` (precisa do docker compose no ar).');
+    }
+
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    $file = dirname(__DIR__) . '/.env';
+    $env = is_file($file) ? Dotenv\Dotenv::parse((string) file_get_contents($file)) : [];
+    $config = [
+        'DB_HOST' => '127.0.0.1',
+        'DB_PORT' => $env['MYSQL_PORT'] ?? '3307',
+        'DB_NAME' => $env['MYSQL_DATABASE'] ?? 'schoolapp',
+        'DB_USER' => $env['MYSQL_USER'] ?? 'appuser',
+        'DB_PASS' => $env['MYSQL_PASSWORD'] ?? '',
+    ];
+    foreach ($config as $key => $value) {
+        $_ENV[$key] = $value;
+    }
+
+    try {
+        new PDO("mysql:host={$config['DB_HOST']};port={$config['DB_PORT']};dbname={$config['DB_NAME']}", $config['DB_USER'], $config['DB_PASS']);
+    } catch (PDOException $e) {
+        throw new RuntimeException('MySQL do docker compose não respondeu em 127.0.0.1:' . $config['DB_PORT'] . ' — suba com `docker compose up -d`. ' . $e->getMessage());
+    }
+
+    $ready = true;
+}
+
+function integrationUser(Role $role = Role::Aluno): UserEntity
+{
+    $suffix = bin2hex(random_bytes(4));
+
+    return UserManager::provisionNewUser("Integração {$suffix}", "it-{$suffix}@example.test", "it{$suffix}", 'Integracao-Senha!9', $role);
+}
+
+function integrationSchema(UserEntity $owner, string $label = 'dados'): string
+{
+    $dbName = "{$owner->schemaPrefix}__{$label}";
+    SchemaProvisioner::createDatabase($dbName, $owner->mysqlLogin);
+    SchemaRecord::create($owner->id, $dbName);
+
+    return $dbName;
+}
+
+function integrationInstitution(): int
+{
+    return InstitutionManager::create('it-inst-' . bin2hex(random_bytes(4)));
+}
+
+function asActor(UserEntity $user): AuthenticatedUser
+{
+    return AuthenticatedUser::fromEntity($user);
+}
+
+function integrationClass(int $institutionId, AuthenticatedUser $actor): int
+{
+    return ClassManager::create($institutionId, 'it-turma-' . bin2hex(random_bytes(4)), $actor);
+}
+
+function cleanupIntegrationData(): void
+{
+    $pdo = Database::connection();
+
+    // Só o que os testes geram: login "it" + 8 hex. Nunca LIKE 'it%' — pegaria uma conta real
+    // ("italo") e apagaria os databases dela no ambiente de dev.
+    foreach ($pdo->query("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME REGEXP '^it[0-9a-f]{8}__' OR SCHEMA_NAME LIKE '\\_lixeira\\_s%'")->fetchAll(PDO::FETCH_COLUMN) as $db) {
+        if (str_starts_with($db, '_lixeira_s')) {
+            $owned = $pdo->prepare("SELECT 1 FROM deleted_models WHERE model = 'schema' AND JSON_UNQUOTE(JSON_EXTRACT(meta, '$.quarantine')) = ? AND label REGEXP '^it[0-9a-f]{8}__'");
+            $owned->execute([$db]);
+            if ($owned->fetch() === false) {
+                continue; // quarentena que não é de teste: nunca mexer
+            }
+        }
+        $pdo->exec("DROP DATABASE IF EXISTS `{$db}`");
+    }
+
+    foreach ($pdo->query("SELECT User FROM mysql.user WHERE User REGEXP '^it[0-9a-f]{8}$'")->fetchAll(PDO::FETCH_COLUMN) as $login) {
+        SchemaProvisioner::dropMysqlAccount($login);
+    }
+
+    $pdo->exec("DELETE FROM deleted_models WHERE label REGEXP '^(Integração [0-9a-f]{8} |it[0-9a-f]{8}__|q-it |it-inst-[0-9a-f]{8}|it-turma-[0-9a-f]{8})'");
+    $pdo->exec("DELETE FROM institutions WHERE name REGEXP '^it-inst-[0-9a-f]{8}$'");
+    $pdo->exec("DELETE FROM users WHERE email LIKE 'it-%@example.test'");
 }

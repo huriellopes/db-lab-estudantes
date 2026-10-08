@@ -29,6 +29,56 @@ if (csrfMeta) {
   axios.defaults.headers.common['X-CSRF-Token'] = csrfMeta.content;
 }
 
+// O hx-boost troca só o <body>: a <meta csrf-token> do <head> ficava com o token da primeira
+// página. Como o login gera um token novo (session_regenerate_id, ver App\Core\Auth), a
+// primeira ação via Axios depois de logar sempre levava 419 + uma ida extra a /csrf-token.
+// Aqui o token é lido da própria resposta da navegação, antes de trocar a tela.
+document.addEventListener('htmx:beforeSwap', (e) => {
+  const html = e.detail.serverResponse;
+  const match = typeof html === 'string' && html.match(/<meta name="csrf-token" content="([^"]+)"/);
+  if (!match) return;
+  axios.defaults.headers.common['X-CSRF-Token'] = match[1];
+  document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', match[1]);
+});
+
+// Por padrão o htmx DESCARTA respostas 4xx/5xx — clicar num link que dava 403/404/500 ou
+// enviar um form com o lab em manutenção (503) simplesmente "não fazia nada". Mostra a
+// página de erro do servidor como qualquer outra (só pra navegação boosted; requisições
+// parciais, como a busca das tabelas, continuam ignorando erro pra não quebrar o layout).
+htmx.config.responseHandling = [
+  { code: '204', swap: false },
+  { code: '[23]..', swap: true },
+  { code: '[45]..', swap: true, error: true },
+  { code: '...', swap: false },
+];
+document.addEventListener('htmx:beforeSwap', (e) => {
+  if (e.detail.isError && !e.detail.boosted) e.detail.shouldSwap = false;
+});
+
+/**
+ * Navega pra uma URL do mesmo jeito que um clique num link boosted (troca só o <body>,
+ * empurra o histórico, barra de progresso) — pra quem precisa navegar via JS sem recarregar
+ * a página inteira (`window.location.href = ...` recarregava CSS/JS e reiniciava o Alpine).
+ * Sem htmx (JS falhou), cai pra navegação normal.
+ */
+window.navigate = (url) => {
+  if (!window.htmx) {
+    window.location.href = url;
+    return;
+  }
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('hx-boost', 'true');
+  link.hidden = true;
+  document.body.appendChild(link);
+  htmx.process(link);
+  link.click();
+  link.remove();
+};
+
+/** Recarrega a página atual sem reload completo (mesmo caminho do window.navigate). */
+window.refreshPage = () => window.navigate(window.location.pathname + window.location.search);
+
 // Sessão "expirada" quase sempre é só o token CSRF ficando velho (aba aberta tempo demais,
 // ou sessão renovada em outra aba) — não a pessoa ter sido deslogada de verdade. Em vez de
 // empurrar isso pra cada componente (ou, pior, mandar recarregar a página e perder o que
@@ -139,6 +189,8 @@ document.addEventListener('alpine:init', () => {
    *    de confirmação antes de enviar.
    *  - confirmTitle / confirmLabel / danger: customizam o modal de confirmação.
    *  - removeRow: remove o elemento [data-row] mais próximo em caso de sucesso.
+   *  - refresh: recarrega a página atual em caso de sucesso, sem reload completo (ver
+   *    window.refreshPage) — pra quando a ação muda números/listas da tela inteira.
    *  - onSuccess(response): callback extra em caso de sucesso.
    */
   Alpine.data('ajaxForm', (options = {}) => ({
@@ -151,6 +203,7 @@ document.addEventListener('alpine:init', () => {
         confirmLabel = 'Confirmar',
         danger = true,
         removeRow = false,
+        refresh = false,
         onSuccess = null,
       } = options;
 
@@ -185,6 +238,9 @@ document.addEventListener('alpine:init', () => {
         }
         if (typeof onSuccess === 'function') {
           onSuccess(response);
+        }
+        if (refresh) {
+          window.refreshPage();
         }
       } catch (error) {
         const message = error.response?.data?.message ?? 'Não foi possível concluir a ação.';
@@ -998,7 +1054,7 @@ document.addEventListener('alpine:init', () => {
       } catch (_) {
         // Sem localStorage, só não pré-preenche — a pessoa cola o SQL copiado manualmente.
       }
-      window.location.href = '/dashboard';
+      window.navigate('/dashboard');
     },
   }));
 
@@ -1008,6 +1064,168 @@ document.addEventListener('alpine:init', () => {
    * começa sempre em "iniciante") e aceita link direto pra um nível via #iniciante,
    * #intermediario ou #avancado na URL.
    */
+  /**
+   * `tail -f` no navegador (GET /admin/logs/ao-vivo): pergunta a cada INTERVAL_MS o que entrou
+   * depois do último cursor em GET /admin/logs/ao-vivo/feed (ver App\Services\LogTail).
+   * Polling curto em vez de stream de propósito — uma conexão aberta prenderia um worker do
+   * PHP-FPM por aba. Com a aba em segundo plano desacelera (HIDDEN_INTERVAL_MS) em vez de
+   * parar, e para de vez ao sair da página (destroy(), chamado pelo Alpine quando o hx-boost
+   * troca o <body>).
+   */
+  Alpine.data('liveLog', (initialSource = 'app') => ({
+    INTERVAL_MS: 2000,
+    HIDDEN_INTERVAL_MS: 10000,
+    MAX_LINES: 1000,
+
+    source: initialSource,
+    lines: [],
+    cursor: '',
+    paused: false,
+    follow: true,
+    level: '',
+    search: '',
+    status: 'conectando',
+    error: null,
+    lastUpdate: null,
+    timer: null,
+    nextId: 0,
+    // Muda a cada troca de fonte: resposta de uma requisição antiga (da fonte anterior)
+    // que chegue atrasada é descartada em vez de misturar linhas de duas fontes.
+    generation: 0,
+
+    init() {
+      this.onVisibility = () => {
+        if (!document.hidden && !this.paused) this.poll();
+      };
+      document.addEventListener('visibilitychange', this.onVisibility);
+      this.poll();
+    },
+
+    destroy() {
+      clearTimeout(this.timer);
+      document.removeEventListener('visibilitychange', this.onVisibility);
+    },
+
+    get visibleLines() {
+      const q = this.search.trim().toLowerCase();
+      return this.lines.filter(
+        (l) =>
+          (this.level === '' || l.level === this.level) &&
+          (q === '' || `${l.message}\n${l.detail}`.toLowerCase().includes(q)),
+      );
+    },
+
+    switchSource(source) {
+      if (source === this.source) return;
+      this.source = source;
+      this.lines = [];
+      this.cursor = '';
+      this.level = '';
+      this.generation++;
+      const url = new URL(window.location.href);
+      url.searchParams.set('fonte', source);
+      history.replaceState(history.state, '', url);
+      this.poll();
+    },
+
+    togglePause() {
+      this.paused = !this.paused;
+      if (!this.paused) this.poll();
+      else clearTimeout(this.timer);
+    },
+
+    clear() {
+      this.lines = [];
+    },
+
+    schedule() {
+      clearTimeout(this.timer);
+      if (!this.paused) {
+        this.timer = setTimeout(
+          () => this.poll(),
+          document.hidden ? this.HIDDEN_INTERVAL_MS : this.INTERVAL_MS,
+        );
+      }
+    },
+
+    async poll() {
+      clearTimeout(this.timer);
+      if (this.paused) return;
+
+      const generation = this.generation;
+      try {
+        const { data } = await axios.get('/admin/logs/ao-vivo/feed', {
+          params: { fonte: this.source, cursor: this.cursor },
+        });
+        if (generation !== this.generation) return;
+
+        this.cursor = data.cursor ?? this.cursor;
+        this.error = data.error ?? null;
+        this.status = this.error
+          ? 'erro'
+          : document.hidden
+            ? 'ao vivo (a cada 10s, aba oculta)'
+            : 'ao vivo';
+        this.lastUpdate = new Date();
+        if (data.entries?.length) this.append(data.entries);
+      } catch (error) {
+        if (generation !== this.generation) return;
+        this.status = 'erro';
+        this.error =
+          error.response?.data?.message ??
+          'Sem resposta do servidor — tentando de novo em instantes.';
+        // Sessão caiu / sem permissão: não adianta insistir.
+        if ([401, 403].includes(error.response?.status)) {
+          this.paused = true;
+          return;
+        }
+      }
+      this.schedule();
+    },
+
+    append(entries) {
+      const box = this.$refs.box;
+      const atBottom = box ? box.scrollHeight - box.scrollTop - box.clientHeight < 40 : true;
+
+      for (const e of entries) this.lines.push({ id: this.nextId++, open: false, ...e });
+      if (this.lines.length > this.MAX_LINES)
+        this.lines.splice(0, this.lines.length - this.MAX_LINES);
+
+      // Só rola sozinho se "seguir" estiver ligado E a pessoa já estava no fim — quem subiu
+      // pra ler uma linha antiga não é arrancado de lá a cada 2s.
+      if (this.follow && atBottom) this.$nextTick(() => this.scrollToBottom());
+    },
+
+    scrollToBottom() {
+      const box = this.$refs.box;
+      if (box) box.scrollTop = box.scrollHeight;
+    },
+
+    formatTime(value) {
+      const date = new Date(String(value).replace(' ', 'T'));
+      return Number.isNaN(date.getTime())
+        ? value
+        : date.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+    },
+
+    levelClass(level) {
+      return (
+        {
+          critical: 'text-rose-400 font-semibold',
+          error: 'text-rose-400',
+          warning: 'text-amber-300',
+          notice: 'text-sky-300',
+        }[level] ?? 'text-slate-400'
+      );
+    },
+  }));
+
   Alpine.data('guideLevels', () => ({
     levels: ['iniciante', 'intermediario', 'avancado'],
     level: 'iniciante',
@@ -1068,7 +1286,78 @@ document.addEventListener('alpine:init', () => {
       } catch (_) {
         // Sem localStorage, só não pré-preenche — a pessoa usa o "Copiar".
       }
-      window.location.href = '/dashboard';
+      window.navigate('/dashboard');
+    },
+  }));
+
+  /**
+   * Autocomplete de "vincular pessoa" (instituição e turma). Busca em `url?q=` só quem ainda pode
+   * ser vinculado (o servidor filtra) e só libera o envio depois que uma sugestão é escolhida —
+   * evita vincular a pessoa errada por um e-mail digitado com erro. O valor enviado (hidden
+   * `identificador`) é o e-mail da sugestão escolhida. Fica dentro do <form> do ajaxForm.
+   */
+  Alpine.data('userPicker', (url) => ({
+    query: '',
+    results: [],
+    selected: null,
+    open: false,
+    active: -1,
+    searching: false,
+    timer: null,
+    seq: 0,
+
+    onInput() {
+      this.selected = null;
+      clearTimeout(this.timer);
+      if (this.query.trim().length < 2) {
+        this.results = [];
+        this.open = false;
+        return;
+      }
+      this.timer = setTimeout(() => this.search(), 250);
+    },
+
+    async search() {
+      // Respostas fora de ordem (digitação rápida): só vale a da última busca.
+      const seq = ++this.seq;
+      this.searching = true;
+      try {
+        const { data } = await axios.get(url, { params: { q: this.query.trim() } });
+        if (seq !== this.seq) return;
+        this.results = data.results ?? [];
+        this.active = this.results.length ? 0 : -1;
+        this.open = true;
+      } catch (_) {
+        if (seq === this.seq) this.results = [];
+      } finally {
+        if (seq === this.seq) this.searching = false;
+      }
+    },
+
+    choose(result) {
+      this.selected = result;
+      this.query = `${result.name} <${result.email}>`;
+      this.open = false;
+    },
+
+    onKeydown(event) {
+      if (!this.open || this.results.length === 0) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        this.active = Math.min(this.active + 1, this.results.length - 1);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        this.active = Math.max(this.active - 1, 0);
+      } else if (event.key === 'Enter' && this.active >= 0) {
+        event.preventDefault();
+        this.choose(this.results[this.active]);
+      } else if (event.key === 'Escape') {
+        this.open = false;
+      }
+    },
+
+    roleLabel(role) {
+      return role === 'professor' ? 'Professor' : 'Aluno';
     },
   }));
 

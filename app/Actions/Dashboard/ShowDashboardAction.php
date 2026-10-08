@@ -7,6 +7,7 @@ namespace App\Actions\Dashboard;
 use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Config;
+use App\Models\ClassMember;
 use App\Models\Entities\SavedQuery as SavedQueryEntity;
 use App\Models\Entities\Schema;
 use App\Models\SavedQuery;
@@ -43,6 +44,8 @@ final class ShowDashboardAction extends Action
             'pageTitle' => 'Meu painel',
             // Status do lab (app/MySQL/phpMyAdmin) — só online/offline, ver partials/health-card.twig.
             'health' => HealthCheck::all(),
+            // "Minhas turmas" (só aparece para quem é aluno em alguma turma).
+            'myClasses' => ClassMember::classesOfStudent(Auth::id()),
             // Prefixo dos schemas (users.schema_prefix) — pode ser diferente do login MySQL
             // atual se a pessoa renomeou o login depois de criar a conta.
             'schemaPrefix' => User::find(Auth::id())?->schemaPrefix ?? Auth::user()->mysqlLogin,

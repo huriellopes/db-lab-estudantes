@@ -23,6 +23,19 @@
                     </span>
                 {% endif %}
             </li>
+            {% if detailed and not s.ok and s.hint %}
+                <li class="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                    <span class="font-medium">O que fazer:</span> {{ s.hint }}
+                </li>
+            {% endif %}
         {% endfor %}
     </ul>
+    {# `?? true`, não `|default(true)`: o default do Twig trata false como vazio e mostrava o
+       link mesmo na própria /admin/manutencao, onde ele apontava pra página atual. #}
+    {% if detailed and (showMaintenanceLink ?? true) %}
+        <div class="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <a href="/admin/logs/ao-vivo" class="btn-secondary !px-3 !py-1.5 text-xs">Logs ao vivo</a>
+            <a href="/admin/manutencao" class="btn-secondary !px-3 !py-1.5 text-xs">Diagnóstico e manutenção →</a>
+        </div>
+    {% endif %}
 </div>

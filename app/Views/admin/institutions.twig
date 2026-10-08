@@ -1,0 +1,37 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">Instituições</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Escolas e faculdades que usam o lab. Professores podem estar em várias; cada aluno fica em uma.
+            Professor só enxerga os alunos das instituições dele.
+        </p>
+    </div>
+
+    {% if studentsWithoutInstitution > 0 %}
+        <a href="/professor/alunos?instituicao=sem" class="mb-6 block rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 hover:bg-amber-100">
+            {{ studentsWithoutInstitution }} aluno{{ studentsWithoutInstitution == 1 ? '' : 's' }} sem instituição — nenhum professor enxerga. Ver e vincular →
+        </a>
+    {% endif %}
+
+    <form method="post" action="/admin/instituicoes" class="card mb-6 grid gap-3 sm:grid-cols-[1fr_auto]">
+        {{ csrf_field() }}
+        <input type="text" name="name" required minlength="2" maxlength="120" placeholder="Nome da nova instituição" class="field-input">
+        <button type="submit" class="btn-primary">Criar instituição</button>
+    </form>
+
+    {% if institutions is empty %}
+        <div class="card py-10 text-center text-sm text-slate-500">Nenhuma instituição ainda.</div>
+    {% else %}
+        <div class="grid gap-4 sm:grid-cols-2">
+            {% for i in institutions %}
+                <a href="/admin/instituicoes/{{ i.id }}" class="card transition-shadow hover:shadow-md">
+                    <p class="font-semibold text-slate-900">{{ i.name }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ i.professors }} professor{{ i.professors == 1 ? '' : 'es' }} · {{ i.students }} aluno{{ i.students == 1 ? '' : 's' }}</p>
+                    <p class="mt-2 font-mono text-xs {{ i.inviteCode ? 'text-indigo-600' : 'text-slate-400' }}">{{ i.inviteCode ?: 'código desativado' }}</p>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

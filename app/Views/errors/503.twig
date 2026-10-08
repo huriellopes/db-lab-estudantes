@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-br" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Em manutenção · {{ app_name }}</title>
+    {{ vite() }}
+</head>
+<body class="h-full" hx-boost="true">
+<div class="flex h-full min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
+    <p class="text-sm font-semibold text-amber-600">503</p>
+    <h1 class="mt-2 text-2xl font-semibold text-slate-900">O lab está em manutenção</h1>
+    <p class="mt-2 max-w-md text-sm text-slate-500">
+        {{ mode.message|default('') ?: 'Estamos ajustando o ambiente. Seus schemas e dados continuam guardados — tente de novo em alguns minutos.' }}
+    </p>
+    <a href="/" class="btn-primary mt-6">Tentar de novo</a>
+</div>
+</body>
+</html>

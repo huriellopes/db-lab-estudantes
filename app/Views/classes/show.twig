@@ -1,0 +1,138 @@
+{% extends 'layouts/app.twig' %}
+
+{% macro members(list, class, title, empty, canEdit) %}
+    <div class="card">
+        <h2 class="mb-3 text-base font-semibold text-slate-900">{{ title }} <span class="text-sm font-normal text-slate-400">({{ list|length }})</span></h2>
+        {% if list is empty %}
+            <p class="text-sm text-slate-500">{{ empty }}</p>
+        {% else %}
+            <ul class="divide-y divide-slate-100 text-sm">
+                {% for m in list %}
+                    <li class="flex items-center justify-between gap-3 py-2" data-row>
+                        <span class="min-w-0">
+                            <span class="font-medium text-slate-800">{{ m.name }}</span>
+                            <span class="block truncate text-xs text-slate-500">{{ m.email }}</span>
+                        </span>
+                        {% if m.user_id == auth_user().id %}
+                            {# A pessoa não "se remove": sai da turma (se não for a última responsável). #}
+                            <form
+                                hx-boost="false" method="post" action="/turmas/{{ class.id }}/sair"
+                                x-data="ajaxForm({
+                                    confirmTitle: 'Sair da turma',
+                                    confirmMessage: 'Sair de {{ class.name|e('js') }}? Você deixa de ser responsável e não poderá mais editá-la.',
+                                    confirmLabel: 'Sair',
+                                    onSuccess: () => window.navigate('/turmas'),
+                                })" @submit.prevent="submit"
+                            >
+                                {{ csrf_field() }}
+                                <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">Sair da turma</button>
+                            </form>
+                        {% elseif canEdit %}
+                            <form
+                                hx-boost="false" method="post" action="/turmas/{{ class.id }}/membros/{{ m.id }}/remover"
+                                x-data="ajaxForm({
+                                    confirmTitle: 'Remover da turma',
+                                    confirmMessage: 'Remover {{ m.name|e('js') }} de {{ class.name|e('js') }}? O vínculo fica em Dados excluídos.',
+                                    confirmLabel: 'Remover',
+                                    refresh: true,
+                                })" @submit.prevent="submit"
+                            >
+                                {{ csrf_field() }}
+                                <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">Remover</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% block content %}
+    {% import _self as m %}
+
+    <div class="mb-8">
+        <a href="/turmas" class="text-sm text-slate-500 hover:text-slate-700">← Turmas</a>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ class.name }}</h1>
+        <p class="mt-1 text-sm text-slate-500">{{ class.institutionName }} · criada em {{ class.createdAt|date('d/m/Y') }}</p>
+        {% if not canEdit %}
+            <p class="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">Só leitura: você não é professor responsável por esta turma.</p>
+        {% endif %}
+    </div>
+
+    {% if canEdit %}
+        <div class="mb-6 grid gap-6 lg:grid-cols-2">
+            <form
+                hx-boost="false" method="post" action="/turmas/{{ class.id }}"
+                x-data="ajaxForm({ refresh: true })" @submit.prevent="submit" class="card space-y-3"
+            >
+                {{ csrf_field() }}
+                <h2 class="text-base font-semibold text-slate-900">Nome</h2>
+                <input type="text" name="name" value="{{ class.name }}" required minlength="2" maxlength="120" class="field-input">
+                <button :disabled="loading" type="submit" class="btn-secondary">Salvar nome</button>
+            </form>
+            <form
+                hx-boost="false" method="post" action="/turmas/{{ class.id }}/membros"
+                x-data="ajaxForm({ refresh: true })" @submit.prevent="submit" class="card space-y-3"
+            >
+                <h2 class="text-base font-semibold text-slate-900">Adicionar</h2>
+                <p class="text-sm text-slate-500">Aluno ou professor da {{ class.institutionName }}. Professor entra como responsável.</p>
+                {{ csrf_field() }}
+                <div x-data="userPicker('/turmas/{{ class.id }}/candidatos')" class="relative grid gap-3 sm:grid-cols-[1fr_auto]" @click.outside="open = false">
+                    <input type="hidden" name="identificador" :value="selected ? selected.email : ''">
+                    <div class="relative">
+                        <input
+                            type="text" x-model="query" @input="onInput()" @keydown="onKeydown($event)" @focus="results.length && (open = true)"
+                            placeholder="Digite nome, e-mail ou username" autocomplete="off" class="field-input"
+                            role="combobox" :aria-expanded="open" aria-autocomplete="list"
+                        >
+                        <ul
+                            x-show="open" x-cloak
+                            class="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+                            role="listbox"
+                        >
+                            <template x-for="(r, i) in results" :key="r.id">
+                                <li>
+                                    <button
+                                        type="button" @click="choose(r)" @mouseenter="active = i"
+                                        class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm"
+                                        :class="i === active ? 'bg-indigo-50' : ''" role="option" :aria-selected="i === active"
+                                    >
+                                        <span class="min-w-0">
+                                            <span class="block truncate font-medium text-slate-800" x-text="r.name"></span>
+                                            <span class="block truncate text-xs text-slate-500" x-text="r.email + ' · ' + r.mysql_login"></span>
+                                        </span>
+                                        <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600" x-text="roleLabel(r.role)"></span>
+                                    </button>
+                                </li>
+                            </template>
+                            <li x-show="results.length === 0" class="px-3 py-2 text-sm text-slate-500">Ninguém encontrado que possa ser vinculado aqui.</li>
+                        </ul>
+                    </div>
+                    <button :disabled="loading || !selected" type="submit" class="btn-primary disabled:cursor-not-allowed disabled:opacity-50">Adicionar</button>
+                    <p x-show="query.trim().length >= 2 && !selected && !open && !searching" x-cloak class="text-xs text-slate-500 sm:col-span-2">Escolha uma pessoa da lista para continuar.</p>
+                </div>
+            </form>
+        </div>
+    {% endif %}
+
+    <div class="mb-6 grid gap-6 lg:grid-cols-2">
+        {{ m.members(students, class, 'Alunos', 'Nenhum aluno na turma ainda.', canEdit) }}
+        {{ m.members(professors, class, 'Professores responsáveis', 'Sem responsável — só o admin edita.', canEdit) }}
+    </div>
+
+    {% if canEdit %}
+        <form
+            hx-boost="false" method="post" action="/turmas/{{ class.id }}/excluir"
+            x-data="ajaxForm({
+                confirmTitle: 'Excluir turma',
+                confirmMessage: 'Excluir {{ class.name|e('js') }}? Os vínculos vão junto para Dados excluídos; as contas continuam ativas.',
+                confirmLabel: 'Excluir',
+                onSuccess: () => window.navigate('/turmas'),
+            })" @submit.prevent="submit"
+        >
+            {{ csrf_field() }}
+            <button :disabled="loading" type="submit" class="btn-danger">Excluir turma</button>
+        </form>
+    {% endif %}
+{% endblock %}

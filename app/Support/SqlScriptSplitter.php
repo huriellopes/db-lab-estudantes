@@ -13,6 +13,10 @@ namespace App\Support;
  * Não é um parser SQL completo: só o suficiente pra não quebrar um ';' que esteja dentro
  * de uma string ('...'/"..."), de um identificador entre crases (`...`) ou de um
  * comentário (-- até o fim da linha, # até o fim da linha, ou bloco /* ... * /).
+ *
+ * Entende `DELIMITER <x>` no começo de uma linha, como o cliente `mysql`: é como um script
+ * de restauração com trigger/procedure (BEGIN ... ; ... END) chega inteiro no console —
+ * ver App\Support\ProgrammableObjects::restoreScript().
  */
 final class SqlScriptSplitter
 {
@@ -24,6 +28,7 @@ final class SqlScriptSplitter
         $length = strlen($script);
         $quote = null;
         $i = 0;
+        $delimiter = ';';
 
         while ($i < $length) {
             $char = $script[$i];
@@ -40,6 +45,17 @@ final class SqlScriptSplitter
                     $quote = null;
                 }
                 $i++;
+                continue;
+            }
+
+            $atLineStart = $i === 0 || $script[$i - 1] === "\n";
+            if ($atLineStart && preg_match('/\G[ \t]*DELIMITER[ \t]+(\S+)[ \t]*(\r?\n|$)/Ai', $script, $m, 0, $i) === 1) {
+                if (trim($current) !== '') {
+                    $statements[] = trim($current);
+                    $current = '';
+                }
+                $delimiter = $m[1];
+                $i += strlen($m[0]);
                 continue;
             }
 
@@ -66,10 +82,10 @@ final class SqlScriptSplitter
                 continue;
             }
 
-            if ($char === ';') {
+            if (substr_compare($script, $delimiter, $i, strlen($delimiter)) === 0) {
                 $statements[] = trim($current);
                 $current = '';
-                $i++;
+                $i += strlen($delimiter);
                 continue;
             }
 

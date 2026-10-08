@@ -26,7 +26,7 @@
         {{ m.stat('Ativos (7 dias)', stats.activeLast7Days, stats.activeLast30Days ~ ' nos últimos 30 dias') }}
         {{ m.stat('Nunca entraram', stats.neverLoggedIn, 'de ' ~ stats.totalUsers() ~ ' contas') }}
         {{ m.stat('Desativados', stats.inactiveUsers) }}
-        {{ m.stat('Na lixeira', stats.trashedUsers) }}
+        {{ m.stat('Dados excluídos', stats.deletedBatches, 'lotes aguardando revisão') }}
         {{ m.stat('Erros (24h)', stats.errorsLast24h, 'ver logs de erro') }}
     </div>
 
@@ -75,10 +75,14 @@
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {% for link in [
             { href: '/admin/usuarios', title: 'Gerenciar usuários', text: 'Editar, trocar papel, resetar senha ou excluir qualquer conta.' },
+            { href: '/admin/instituicoes', title: 'Instituições', text: 'Escolas e faculdades: professores, alunos e código de convite.' },
             { href: '/admin/schemas', title: 'Todos os schemas', text: 'Ver e excluir qualquer database criado no lab.' },
             { href: '/admin/auditoria', title: 'Auditoria', text: 'Quem fez o quê e quando — logins, papéis, exclusões, backups.' },
             { href: '/admin/logs', title: 'Logs de erro', text: 'Erros recentes da aplicação, agrupados por recorrência.' },
+            { href: '/admin/logs/ao-vivo', title: 'Logs ao vivo', text: 'Acompanhe em tempo real (tail -f) os logs da aplicação, do MySQL e a auditoria.' },
             { href: '/admin/backups', title: 'Backups', text: 'Gerar e baixar dumps do banco da aplicação ou de um schema.' },
+            { href: '/admin/excluidos', title: 'Dados excluídos', text: 'Restaure ou exclua definitivamente contas, schemas, consultas e diagramas excluídos.' },
+            { href: '/admin/manutencao', title: 'Manutenção', text: 'Disco, memória e PHP em detalhe; limpar caches, liberar espaço e modo manutenção.' },
         ] %}
             <a href="{{ link.href }}" class="card flex items-center justify-between transition-shadow hover:shadow-md">
                 <div>

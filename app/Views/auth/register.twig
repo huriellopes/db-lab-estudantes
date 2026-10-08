@@ -35,6 +35,12 @@
             </p>
         </div>
 
+        <div>
+            <label for="codigo_instituicao" class="field-label">Código da instituição <span class="font-normal text-slate-400">(opcional)</span></label>
+            <input type="text" id="codigo_instituicao" name="codigo_instituicao" value="{{ old.codigo_instituicao }}" maxlength="12" autocomplete="off" placeholder="ABCD-EF23" class="field-input font-mono uppercase">
+            <p class="mt-1 text-xs text-slate-500">Seu professor passa esse código. Sem ele, um admin vincula você depois.</p>
+        </div>
+
         {{ forms.password_field('password', 'password', 'Senha', password_min_length) }}
 
         {{ forms.password_field('password_confirm', 'password_confirm', 'Confirmar senha', password_min_length) }}

@@ -35,7 +35,7 @@ cria os próprios schemas e pratica SQL no navegador, no phpMyAdmin ou no SGBD f
 | 💻 **Console SQL no navegador** | Roda scripts com vários comandos usando a conta da própria pessoa, com consultas salvas e limites de tempo e memória. |
 | 🧩 **Laboratório de modelagem ER** | Diagramas arrastáveis, salvos por usuário. |
 | 📚 **Guia de estudos** | 9 tópicos (modelagem, formas normais, SQL ANSI, MySQL, PostgreSQL, SQL Server, Oracle, MongoDB, Redis), cada um em 3 níveis, com 155 exemplos executados e conferidos em bancos reais e botão "Testar no console". |
-| 👩‍🏫 **Gestão de turma** | Professores administram alunos; o admin administra tudo, inclusive a lixeira com restauração. |
+| 👩‍🏫 **Gestão de turma** | Instituições com professores e alunos; professores administram os alunos das suas instituições; o admin administra tudo, inclusive os dados excluídos (restaurar ou excluir definitivamente). |
 | 📊 **Painel do admin observável** | Métricas de uso, saúde dos serviços, auditoria global, logs de erro e backups — tudo em `/admin`. |
 | 🚦 **Status do lab para todos** | O painel de cada pessoa mostra se aplicação, MySQL e phpMyAdmin estão no ar. |
 | 🐳 **Mesma imagem em dev e produção** | `php:8.5-fpm` + nginx + supervisord, com migrations automáticas no boot. |
@@ -100,17 +100,21 @@ de cada achado e do que ainda está pendente fica no **[SECURITY.md](SECURITY.md
 | Papel | Pode |
 |---|---|
 | 🎓 **Aluno** | Cadastrar-se (só alunos se autocadastram), logar com e-mail **ou** username, criar/excluir os próprios schemas, editar o próprio perfil (nome/senha/username). |
-| 👩‍🏫 **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (soft delete) contas de aluno (`/professor/alunos`). |
-| 🛡️ **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar da lixeira), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `php bin/console.php user:promote-admin <email>`. Não aparece em `/admin/usuarios` (contas admin não entram nessa lista). |
+| 👩‍🏫 **Professor** | Tudo do aluno, **+** ver, editar, ativar/desativar, resetar senha e excluir (vai para Dados excluídos) contas de aluno **das instituições dele** (`/professor/alunos`), e criar turmas nessas instituições (`/turmas`), editando as turmas em que é responsável. Professor sem instituição não vê nenhum aluno. |
+| 🛡️ **Admin** (super admin) | Tudo do professor, **+** criar usuários de qualquer papel, gerenciar qualquer usuário não-admin (ativar/desativar, excluir, restaurar em Dados excluídos), promover/rebaixar papéis, e ver/excluir **qualquer** schema do sistema (`/admin`). Promovido via `php bin/console.php user:promote-admin <email>`. Não aparece em `/admin/usuarios` (contas admin não entram nessa lista). |
 
 ## 🛡️ Painel do admin e observabilidade
 
 | Rota | O que tem |
 |---|---|
-| `/admin` | Contas por papel, ativos em 7/30 dias, nunca logaram, desativados, lixeira, erros nas últimas 24h, schemas e espaço ocupado, top 5 maiores schemas, consultas salvas, diagramas ER, cadastros por dia (14 dias) e saúde detalhada (versão, latência, conexões do MySQL). |
+| `/admin` | Contas por papel, ativos em 7/30 dias, nunca logaram, desativados, lotes em Dados excluídos, erros nas últimas 24h, schemas e espaço ocupado, top 5 maiores schemas, consultas salvas, diagramas ER, cadastros por dia (14 dias) e saúde detalhada (versão, latência, conexões do MySQL). |
 | `/admin/auditoria` | Trilha global (tabela `audit_logs`): login/falha de login/logout, cadastro, reset de senha, criação/edição/papel/status/senha/exclusão/restauração de contas, ações do professor sobre alunos, criação/exclusão de schemas e backups. Busca, filtro por ação e período. Senhas, tokens e afins nunca são gravados (`App\Support\AuditMeta`). Retenção: `php bin/console.php audit:prune --days=180`. |
 | `/admin/logs` | Erros/avisos da aplicação (`storage/logs/app-AAAA-MM-DD.log`, JSON-lines, 14 dias), agrupados por recorrência + entradas recentes com stack trace. Continua tudo também no `docker logs`. |
 | `/admin/backups` | Gera dump `.sql.gz` do banco da aplicação ou de qualquer schema, baixa e exclui. Guarda os 10 mais recentes em `storage/backups`. Restauração é manual (phpMyAdmin ou `gunzip < arquivo.sql.gz \| mysql ...`). Não inclui triggers/rotinas — para um dump completo de produção use `mysqldump` no host. |
+| `/admin/instituicoes` | **Instituições.** O admin cria escolas/faculdades e vincula professores (podem estar em várias) e alunos (no máximo uma — garantido por um UNIQUE no MySQL). Professor só vê e gerencia os alunos das instituições dele. Cada instituição tem um código de convite (`XXXX-XXXX`) que o aluno digita no cadastro para já entrar nela; o admin gera outro ou desativa. Excluir instituição ou remover vínculo vai para Dados excluídos. Trocar o papel respeita os vínculos (professor em 2+ instituições não vira aluno; promovido a admin perde os vínculos, que vão para o arquivo). |
+| `/turmas` | **Turmas** (professor e admin). Cada turma pertence a uma instituição; quem cria vira professor responsável e só os responsáveis (e o admin) editam — os outros professores da instituição veem só leitura. Entram alunos e professores da mesma instituição (aluno pode estar em várias turmas). O aluno vê "Minhas turmas" no dashboard. O professor não se remove: usa "Sair da turma" (se não for o último responsável). Os campos de vincular (turma e instituição) são autocomplete: só sugerem quem pode ser vinculado e só enviam depois de escolher uma pessoa da lista. Excluir turma, remover alguém, sair da turma ou da instituição ou trocar de papel mandam os vínculos para Dados excluídos; excluir a instituição leva as turmas junto. |
+| `/admin/excluidos` | **Dados excluídos.** Nada de negócio é apagado direto: contas, schemas, consultas salvas e diagramas vão para `deleted_models` em lotes (uma conta leva seus schemas, consultas e diagramas). Schemas ficam em quarentena (`_lixeira_s<id>`, fora do alcance do aluno); views/triggers/rotinas voltam como uma consulta "Restaurar objetos de …" na biblioteca do dono. Restaurar e excluir definitivamente são por lote e auditados; e-mail, login e nome de schema ficam reservados até a exclusão definitiva. `DROP DATABASE` feito fora da plataforma não tem volta — o registro só fica arquivado e auditado. |
+| `/admin/manutencao` | Diagnóstico explicado: disco da partição do `storage/` (o "% livre" do card de status — abaixo de 5% a Aplicação fica offline), quanto ocupam logs/backups/caches, memória e CPU do container (cgroup), configs do PHP e OPcache. Ações: reverificar o status na hora, limpar cache do Twig, resetar OPcache, apagar logs e backups antigos e **modo manutenção** (503 para quem não é admin; `/login` continua aberto; flag em `storage/cache/maintenance.json`, some ao recriar o container). Serviço offline mostra o comando a rodar no servidor. Reiniciar containers fica fora de propósito (exigiria o socket do Docker na aplicação). |
 
 **Status do lab** (`/dashboard`, todos os usuários): aplicação, MySQL e phpMyAdmin com indicador online/offline — sem versão, host ou porta (isso só o admin vê). O resultado fica em cache por 30s (`storage/cache/health.json`). O phpMyAdmin é checado pela rede interna do Docker em `PMA_INTERNAL_URL` (padrão `http://phpmyadmin`).
 
@@ -134,9 +138,10 @@ Logs e backups ficam em volumes nomeados (`dblab_app_logs`/`dblab_app_backups` e
 - **Ativar/desativar** (professor sobre alunos, admin sobre todo mundo) bloqueia o login na
   app *e* o acesso MySQL/phpMyAdmin (`ALTER USER ... ACCOUNT LOCK`) sem apagar nada. É
   reversível a qualquer momento, e quem estava logado sai na hora.
-- **Excluir é soft delete**, como o `SoftDeletes` do Laravel: marca `deleted_at` e bloqueia o
-  acesso MySQL, mas **não apaga** a linha, os databases nem a conta MySQL da pessoa. O admin
-  vê e restaura contas excluídas em `/admin/usuarios/lixeira`.
+- **Excluir não apaga**: a conta vai para o arquivo de dados excluídos (`deleted_models`) com
+  os schemas, consultas e diagramas dela, e o acesso MySQL fica bloqueado. O admin restaura ou
+  exclui definitivamente em `/admin/excluidos` (antiga lixeira, `/admin/usuarios/lixeira`,
+  redireciona para lá).
 
 ## 🗃️ Migrations, seeders e factories (estilo Laravel)
 
@@ -144,7 +149,7 @@ Logs e backups ficam em volumes nomeados (`dblab_app_logs`/`dblab_app_backups` e
 composer migrate            # roda as migrations pendentes (também roda sozinho ao subir o container)
 composer migrate:status      # lista o que já rodou
 composer migrate:rollback     # desfaz o último lote
-composer db:seed               # roda database/seeders/DatabaseSeeder (hoje sem seeders padrão)
+composer db:seed               # roda database/seeders/DatabaseSeeder (com APP_ENV=local, cria admin/professor/aluno de dev)
 php bin/console.php user:promote-admin <email>   # promove uma conta existente a admin (pede confirmação)
 ```
 
@@ -152,7 +157,19 @@ php bin/console.php user:promote-admin <email>   # promove uma conta existente a
   App\Core\Migration` com `up()`/`down()`, igual ao estilo de migration do Laravel 8+.
   `App\Core\Migrator` roda as pendentes e registra numa tabela `migrations` (com `batch`,
   pra dar pra reverter o último lote).
-- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada; hoje sem seeders padrão.
+- `database/seeders/`: `DatabaseSeeder` é o ponto de entrada e chama o `DevUsersSeeder`, que
+  cria uma conta por papel, todas com a senha **`password123`**:
+
+  | Papel | E-mail | Login MySQL |
+  |---|---|---|
+  | Admin | `admin@dblab.local` | `devadmin` |
+  | Professor | `professor@dblab.local` | `devprofessor` |
+  | Aluno | `aluno@dblab.local` | `devaluno` |
+
+  Só com `APP_ENV=local` no `.env`; sem a variável ou com outro valor, não cria nada (os
+  seeders vão na imagem de produção, e essa senha também abre a conta MySQL). Conta que já
+  existe não é tocada. Com `APP_ENV=local`, o `docker/app-entrypoint.sh` já roda o `db:seed`
+  sozinho ao subir o container; na mão: `docker compose exec app php bin/console.php db:seed`.
 - `database/factories/UserFactory.php`: no estilo das factories do Laravel, com
   [`fakerphp/faker`](https://fakerphp.org/) (`require-dev`, só disponível localmente, não
   na imagem de produção).
@@ -278,6 +295,22 @@ com **JSON** (a linha some da tela sem recarregar a página); sem esse header �
 não carregar — o mesmo endpoint responde do jeito clássico (redirect + flash), então tudo
 funciona sem JavaScript também (progressive enhancement).
 
+### Navegação sem reload
+
+Nenhuma tela recarrega a página inteira (CSS/JS/Alpine continuam carregados):
+
+- **Links e forms comuns**: `hx-boost="true"` no `<body>` dos layouts (e das páginas de erro) —
+  o htmx busca a página e troca só o `<body>`, com histórico do navegador funcionando.
+  Respostas de erro (403/404/419/500/503) também são exibidas; por padrão o htmx as descartava
+  e o clique parecia "não fazer nada".
+- **Ações** (`ajaxForm`): Axios + toast; `refresh: true` recarrega só o conteúdo da tela atual
+  quando a ação muda números/listas (ex.: `/admin/manutencao`).
+- **Navegar via JS**: `window.navigate(url)` / `window.refreshPage()` — mesmo caminho de um
+  link boosted. Nunca `window.location.href = ...` nem `location.reload()`.
+- **Busca das tabelas**: `hx-get` com debounce troca só os resultados; Enter não faz GET nativo.
+- **Token CSRF**: o login gera um token novo; ele é lido da resposta de cada navegação
+  (`htmx:beforeSwap`) e atualizado no Axios, já que o `<head>` não é trocado.
+
 ### Roteamento
 
 `App\Core\Router` é um router simples próprio, sem framework, com suporte a segmentos
@@ -384,12 +417,40 @@ nginx do container só confia no `X-Forwarded-For` vindo de rede privada — ver
 > `root` em `mysql.user`), e cabeçalhos/autenticação extra no proxy reverso (HSTS, proteção do
 > phpMyAdmin) são configurados nele, fora deste repositório.
 
+## ⚡ Desempenho
+
+Calibrado com `docker/prod-diagnose.sh`, que lê o servidor **sem alterar nada** (CPU/RAM/swap,
+disco, consumo de todos os containers, variáveis e uso do MySQL, pool do PHP-FPM):
+
+```bash
+ssh <alias-do-servidor> 'bash -s' < docker/prod-diagnose.sh
+```
+
+| O quê | Onde | Por quê |
+|---|---|---|
+| Limites de CPU/memória por container | `deploy.resources.limits` nos dois compose, ajustáveis no `.env` (`APP_*`, `MYSQL_*`, `PMA_*`) | O servidor de produção é compartilhado com outros projetos e nenhum container tinha limite: um vazamento podia levar o host inteiro ao OOM. |
+| PHP-FPM com mais workers (`FPM_MAX_CHILDREN`: 10 em dev, 16 em produção) | `docker/php-fpm-pool.conf` | O padrão da imagem era 5: com o console SQL deixando uma consulta rodar até 10s, 5 alunos travavam a app pra todo mundo. Medido em dev, com 8 `SELECT SLEEP(4)` simultâneos: outra página levava 15,6s com 5 workers e 2,7s com 10. Também recicla workers a cada 500 requisições (`pm.max_requests`) e mata requisição presa após 120s. |
+| OPcache sem checar data dos arquivos em produção (`OPCACHE_VALIDATE_TIMESTAMPS=0`) | `docker/php-performance.ini` | O código é imutável dentro da imagem; deploy recria o container. "Resetar OPcache" em `/admin/manutencao` resolve qualquer caso raro. |
+| MySQL: `O_DIRECT`, buffer pool configurável, binlog de 7 dias | `command:` do serviço `mysql` | Evita os dados em dobro na RAM (buffer pool + cache do kernel); os dados do lab cabem no buffer pool de 128M. |
+| gzip para CSS/JS/JSON/SVG | `docker/nginx.conf` | O nginx da imagem só comprimia HTML. |
+
+Antes de subir `FPM_MAX_CHILDREN`, confira que `FPM_MAX_CHILDREN × ~40MB` cabe em
+`APP_MEM_LIMIT`; antes de subir `MYSQL_INNODB_BUFFER_POOL_SIZE`, que fica bem abaixo de
+`MYSQL_MEM_LIMIT`. O `/admin/manutencao` mostra memória/CPU do container (cgroup v1 e v2) e
+os workers do FPM em uso de configuração.
+
 ## 🧪 Testes
 
 ```bash
 composer install       # inclui as dependências de dev (Pest, PHP-CS-Fixer, Faker)
 composer test           # ou: ./vendor/bin/pest
+composer test:integration   # contra o MySQL do docker compose (precisa do `docker compose up -d`)
 ```
+
+`composer test:integration` roda `tests/Integration` (arquivo de excluídos, quarentena de
+schemas, reservas de nome) contra o MySQL de verdade, na porta `MYSQL_PORT` do `.env`. Os
+testes criam contas `it<8 hex>` e apagam só o que criaram. No `composer test` eles aparecem
+como *skipped*.
 
 Cobrem a lógica pura em `App\Support` (sem tocar o banco): geração e validação de username
 (inclusive contra injeção e colisão de prefixo), política de senha, validação de cadastro,
@@ -480,9 +541,8 @@ em modo dev (hot-reload) em vez do build estático, defina `VITE_DEV_SERVER_URL=
 - Renomear o username **não** renomeia os databases já criados (o MySQL não tem um "RENAME
   DATABASE" seguro), só o login. Os acessos continuam funcionando porque `RENAME USER`
   preserva os `GRANT`s, e o prefixo dos schemas fica o mesmo.
-- Soft delete apaga só o *acesso* (bloqueia o login na app e no MySQL). Os databases da pessoa
-  continuam ocupando espaço até alguém excluir os schemas dela manualmente ou (fora do escopo
-  atual) existir uma exclusão definitiva a partir da lixeira.
+- Itens em Dados excluídos ocupam espaço (schemas ficam em quarentena com os dados) até o admin
+  excluir definitivamente em `/admin/excluidos`. Não há expurgo automático por tempo.
 - O `appuser` tem privilégios amplos `ON *.*` (sem nenhum administrativo, ver `SECURITY.md`)
   pra conseguir criar databases e contas dinamicamente. A validação de identificadores em
   `App\Support` é código de segurança crítico, coberto por testes.

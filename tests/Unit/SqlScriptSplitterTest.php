@@ -90,3 +90,16 @@ it('handles a realistic multi-statement script end to end', function () {
         ->and($statements[1])->toBe("INSERT INTO alunos (nome) VALUES ('Ana; Beatriz'), ('Bruno')")
         ->and($statements[2])->toBe('SELECT * FROM alunos WHERE nome = "Ana; Beatriz"');
 });
+
+it('honours DELIMITER lines so routine bodies with semicolons stay whole', function () {
+    $script = "DELIMITER \$\$\nCREATE TRIGGER t BEFORE INSERT ON a FOR EACH ROW BEGIN SET NEW.x = 1; SET NEW.y = 2; END\$\$\nDELIMITER ;\nSELECT 1;";
+
+    expect(SqlScriptSplitter::split($script))->toBe([
+        'CREATE TRIGGER t BEFORE INSERT ON a FOR EACH ROW BEGIN SET NEW.x = 1; SET NEW.y = 2; END',
+        'SELECT 1',
+    ]);
+});
+
+it('does not treat DELIMITER inside a string or mid-line as a command', function () {
+    expect(SqlScriptSplitter::split("SELECT 'DELIMITER \$\$'; SELECT 2"))->toBe(["SELECT 'DELIMITER \$\$'", 'SELECT 2']);
+});

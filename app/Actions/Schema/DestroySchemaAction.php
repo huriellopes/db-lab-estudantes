@@ -6,9 +6,9 @@ namespace App\Actions\Schema;
 
 use App\Core\Action;
 use App\Core\Auth;
-use App\Models\AuditLog;
 use App\Models\SchemaRecord;
-use App\Services\SchemaProvisioner;
+use App\Services\ArchiveException;
+use App\Services\Archiver;
 use App\Support\SchemaNameBuilder;
 use Throwable;
 
@@ -33,10 +33,10 @@ final class DestroySchemaAction extends Action
         }
 
         try {
-            SchemaProvisioner::dropDatabase($dbName);
-            SchemaRecord::delete($schema->id);
-            AuditLog::record('schema.deleted', 'schema', $dbName);
-            $this->respond(true, "Schema \"{$dbName}\" removido.", '/dashboard');
+            Archiver::archive('schema', $schema->id, 'schema.deleted');
+            $this->respond(true, "Schema \"{$dbName}\" removido. Se precisar dele de volta, um admin consegue restaurar.", '/dashboard');
+        } catch (ArchiveException $e) {
+            $this->respond(false, $e->getMessage(), '/dashboard');
         } catch (Throwable $e) {
             $this->respond(false, $this->genericError('remover o schema', $e), '/dashboard');
         }

@@ -1,0 +1,113 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    {% set sources = {
+        app: { label: 'Aplicação', help: 'Erros e avisos do PHP da aplicação (storage/logs, arquivo do dia).' },
+        mysql: { label: 'MySQL', help: 'Error log do servidor MySQL (performance_schema.error_log): inicialização, avisos, conexões recusadas.' },
+        audit: { label: 'Auditoria', help: 'Quem fez o quê, conforme acontece: logins, contas, schemas, backups, manutenção.' },
+    } %}
+
+    <div x-data="liveLog('{{ source|e('js') }}')">
+        <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-semibold text-slate-900">Logs ao vivo</h1>
+                <p class="mt-1 text-sm text-slate-500">
+                    Como um <code>tail -f</code>: as linhas novas aparecem sozinhas, a cada 2 segundos.
+                    Para o histórico agrupado, veja <a href="/admin/logs" class="text-indigo-600 hover:text-indigo-700">Logs de erro</a>.
+                </p>
+            </div>
+            <span class="flex items-center gap-2 text-xs text-slate-500">
+                <span
+                    class="h-2.5 w-2.5 rounded-full"
+                    :class="paused ? 'bg-slate-300' : (status === 'erro' ? 'bg-rose-500' : 'animate-pulse bg-emerald-500')"
+                ></span>
+                <span x-text="paused ? 'pausado' : status"></span>
+                <template x-if="lastUpdate">
+                    <span x-text="'· ' + lastUpdate.toLocaleTimeString('pt-BR')"></span>
+                </template>
+            </span>
+        </div>
+
+        {# Fontes #}
+        <div class="mb-3 flex flex-wrap gap-2">
+            {% for key, s in sources %}
+                <button
+                    type="button" @click="switchSource('{{ key }}')"
+                    class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+                    :class="source === '{{ key }}' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'"
+                >{{ s.label }}</button>
+            {% endfor %}
+        </div>
+        {% for key, s in sources %}
+            <p x-show="source === '{{ key }}'" {{ key != source ? 'x-cloak' }} class="mb-4 text-xs text-slate-500">{{ s.help }}</p>
+        {% endfor %}
+
+        {# Controles #}
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+            <input type="search" x-model="search" placeholder="Filtrar texto…" class="field-input !w-auto min-w-0 flex-1 sm:max-w-xs">
+            <select x-model="level" class="field-input !w-auto">
+                <option value="">Todos os níveis</option>
+                <option value="critical">critical</option>
+                <option value="error">error</option>
+                <option value="warning">warning</option>
+                <option value="notice">notice</option>
+                <option value="info">info</option>
+            </select>
+            <button type="button" @click="togglePause()" class="btn-secondary !px-3 !py-1.5 text-xs" x-text="paused ? 'Continuar' : 'Pausar'"></button>
+            <button type="button" @click="clear()" class="btn-secondary !px-3 !py-1.5 text-xs">Limpar tela</button>
+            <label class="flex items-center gap-1.5 text-xs text-slate-600">
+                <input type="checkbox" x-model="follow" class="h-4 w-4 rounded border-slate-300 text-indigo-600">
+                Seguir o fim
+            </label>
+        </div>
+
+        <template x-if="error">
+            <p class="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800" x-text="error"></p>
+        </template>
+
+        {# Terminal #}
+        <div
+            x-ref="box"
+            class="h-[60vh] overflow-y-auto rounded-2xl bg-slate-900 p-4 font-mono text-xs leading-relaxed text-slate-200 shadow-inner"
+            role="log" aria-live="polite"
+        >
+            <template x-if="visibleLines.length === 0">
+                <p class="text-slate-500" x-text="lines.length === 0 ? 'Aguardando linhas novas…' : 'Nenhuma linha bate com o filtro.'"></p>
+            </template>
+            <template x-for="line in visibleLines" :key="line.id">
+                <div class="border-b border-white/5 py-1">
+                    <button
+                        type="button" @click="line.open = !line.open"
+                        class="flex w-full gap-3 text-left"
+                        :class="line.detail ? 'cursor-pointer hover:bg-white/5' : 'cursor-default'"
+                    >
+                        <span class="shrink-0 text-slate-500" x-text="formatTime(line.time)"></span>
+                        <span class="w-16 shrink-0 uppercase" :class="levelClass(line.level)" x-text="line.level"></span>
+                        <span class="min-w-0 flex-1 whitespace-pre-wrap break-words" x-text="line.message"></span>
+                        <span x-show="line.detail" class="shrink-0 text-slate-500" x-text="line.open ? '▾' : '▸'"></span>
+                    </button>
+                    <pre
+                        x-show="line.open && line.detail" x-cloak
+                        class="mt-1 ml-6 sm:ml-40 overflow-x-auto whitespace-pre-wrap break-words text-[11px] text-slate-400"
+                        x-text="line.detail"
+                    ></pre>
+                </div>
+            </template>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+            <span x-text="visibleLines.length + ' de ' + lines.length + ' linha(s) na tela (máx. ' + MAX_LINES + ')'"></span>
+            <button type="button" @click="scrollToBottom()" class="text-indigo-600 hover:text-indigo-700">Ir para o fim ↓</button>
+        </div>
+
+        <div class="card mt-6 text-sm text-slate-600">
+            <p>
+                nginx (acessos) e PHP-FPM escrevem só na saída do container, que a aplicação não consegue ler.
+                Para eles, no servidor:
+            </p>
+            <ul class="mt-2 space-y-1 font-mono text-xs text-slate-700">
+                <li>docker compose logs -f --tail=100 app</li>
+                <li>docker compose logs -f --tail=100 mysql phpmyadmin</li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}

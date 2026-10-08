@@ -1,0 +1,41 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">Turmas</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Turmas das suas instituições. Quem cria a turma vira professor responsável; só os responsáveis (e o admin) editam.
+        </p>
+    </div>
+
+    {% if institutions is empty %}
+        <p class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Você ainda não está em nenhuma instituição — peça a um admin para vincular você.</p>
+    {% else %}
+        <form method="post" action="/turmas" class="card mb-6 grid gap-3 sm:grid-cols-[auto_1fr_auto]">
+            {{ csrf_field() }}
+            <select name="institution_id" required class="field-input !w-auto">
+                {% for i in institutions %}
+                    <option value="{{ i.id }}">{{ i.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="name" required minlength="2" maxlength="120" placeholder="Nome da nova turma (ex.: Banco de Dados I — 2026/2)" class="field-input">
+            <button type="submit" class="btn-primary">Criar turma</button>
+        </form>
+    {% endif %}
+
+    {% if byInstitution is empty %}
+        <div class="card py-10 text-center text-sm text-slate-500">Nenhuma turma ainda.</div>
+    {% else %}
+        {% for institution, classes in byInstitution %}
+            <h2 class="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ institution }}</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                {% for c in classes %}
+                    <a href="/turmas/{{ c.id }}" class="card transition-shadow hover:shadow-md">
+                        <p class="font-semibold text-slate-900">{{ c.name }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ c.students }} aluno{{ c.students == 1 ? '' : 's' }} · {{ c.professors }} responsáve{{ c.professors == 1 ? 'l' : 'is' }}</p>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endblock %}
