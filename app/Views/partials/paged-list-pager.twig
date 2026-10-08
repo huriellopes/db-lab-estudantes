@@ -1,0 +1,8 @@
+{# Paginação do Alpine `pagedList`: "8 de 30 · ← →". Some quando cabe tudo numa página. #}
+<div x-show="paginated && filtered.length > perPage" x-cloak class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+    <span x-text="`Página ${Math.min(page, pages)} de ${pages} · ${filtered.length} no total`"></span>
+    <div class="flex gap-2">
+        <button type="button" @click="page = Math.max(1, Math.min(page, pages) - 1)" :disabled="page <= 1" class="btn-secondary !px-3 !py-1 text-xs disabled:opacity-40">← Anterior</button>
+        <button type="button" @click="page = Math.min(pages, page + 1)" :disabled="page >= pages" class="btn-secondary !px-3 !py-1 text-xs disabled:opacity-40">Próxima →</button>
+    </div>
+</div>

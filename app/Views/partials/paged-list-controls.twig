@@ -1,0 +1,7 @@
+{# Controles do Alpine `pagedList` (resources/js/app.js). Uso: dentro do elemento com x-data="pagedList()". #}
+<template x-if="paginated">
+    <div class="space-y-3">
+        <input type="search" x-model="q" placeholder="Buscar por nome, e-mail ou username" autocomplete="off" class="field-input !py-1.5 text-sm" aria-label="Buscar na lista">
+        <p x-show="filtered.length === 0" class="text-sm text-slate-500">Ninguém encontrado.</p>
+    </div>
+</template>

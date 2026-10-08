@@ -1361,6 +1361,47 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
+  /**
+   * Lista longa renderizada no servidor (membros de instituição/turma): mostra `perPage` por vez,
+   * com busca por nome/e-mail e paginação, sem nova requisição. Cada item tem `data-paged-row`
+   * e `data-search` (texto pesquisável) e usa `x-show="shows($el)"`. Controles em
+   * partials/paged-list-controls.twig (só aparecem quando a lista passa de uma página).
+   */
+  Alpine.data('pagedList', (perPage = 8) => ({
+    q: '',
+    page: 1,
+    perPage,
+    items: [],
+
+    init() {
+      this.items = [...this.$el.querySelectorAll('[data-paged-row]')].map((el) => ({
+        el,
+        text: (el.dataset.search || el.textContent).toLowerCase(),
+      }));
+      this.$watch('q', () => (this.page = 1));
+    },
+
+    get filtered() {
+      const q = this.q.trim().toLowerCase();
+      return q === '' ? this.items : this.items.filter((i) => i.text.includes(q));
+    },
+
+    get pages() {
+      return Math.max(1, Math.ceil(this.filtered.length / this.perPage));
+    },
+
+    get paginated() {
+      return this.items.length > this.perPage;
+    },
+
+    shows(el) {
+      const index = this.filtered.findIndex((i) => i.el === el);
+      if (index === -1) return false;
+      const page = Math.min(this.page, this.pages);
+      return index >= (page - 1) * this.perPage && index < page * this.perPage;
+    },
+  }));
+
   /** Botão de copiar texto (credenciais, comando de conexão do SGBD...) com feedback via toast. */
   Alpine.data('copyable', (text) => ({
     copy() {
