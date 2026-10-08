@@ -154,7 +154,7 @@ GRANT CREATE, DROP, ALTER, CREATE USER,
 Aplicado com `REVOKE` cirúrgico (não recriando do zero) tanto em dev quanto em produção,
 validado rodando a bateria completa de fluxos que dependem do MySQL antes e depois:
 registro, login, criar/excluir schema, console SQL, trocar senha, renomear login,
-ativar/desativar (admin), resetar senha (admin), soft delete/restaurar (admin) — todos
+ativar/desativar (admin), resetar senha (admin), excluir para o arquivo / restaurar / excluir definitivamente (admin) — todos
 passando com o privilégio reduzido.
 
 Efeito colateral descoberto no processo: `FLUSH PRIVILEGES` (chamado depois de todo
@@ -354,6 +354,31 @@ intencional) agora passam por `Controller::genericError($action, $e)`: loga o er
 (`error_log`, mesmo destino de sempre) e devolve uma mensagem genérica no padrão já usado
 ("Não foi possível {$action}. Tente de novo em instantes."). Detalhe de MySQL/PDO
 (estrutura de tabela, nome de constraint, etc.) não chega mais no navegador.
+
+## Arquivo de dados excluídos (`/admin/excluidos`)
+
+Nada de negócio (contas, schemas, consultas salvas, diagramas) é apagado direto: vai para
+`deleted_models` via `App\Services\Archiver`. Pontos de segurança:
+
+- **Objetos programáveis não são recriados pela app.** Um schema em quarentena perde views,
+  triggers, rotinas e eventos (o `RENAME TABLE` entre databases não os leva). Recriá-los com o
+  aluno como `DEFINER` exigiria dar `SET_USER_ID` ao `appuser`, e recriá-los sem isso faria o
+  código do aluno rodar com os privilégios da app sobre **todos** os schemas (escalada de
+  privilégio). Em vez disso, as definições viram uma consulta salva do próprio aluno, sem
+  `DEFINER`: ao rodá-la no console, o objeto nasce com ele como dono.
+- **`deleted_models.values` guarda a linha inteira, inclusive `password_hash`**, porque sem ele
+  um usuário restaurado ficaria sem senha. A tela mascara campos de senha/token/hash
+  (`App\Support\ArchiveSnapshot`) e só admin tem acesso a ela. O arquivo entra nos backups
+  do banco da aplicação como qualquer outra tabela.
+- **Quarentena fora do alcance do aluno.** O database `_lixeira_s<id>` não casa com o `GRANT`
+  por prefixo (`<prefixo>\_\_%`) da conta do aluno, então ele não lê nem altera os dados
+  arquivados.
+- **Nomes reservados.** E-mail, login, prefixo e nome de schema de itens arquivados não podem ser
+  reutilizados até a exclusão definitiva: a conta MySQL bloqueada continua existindo, e liberar o
+  login permitiria que outra pessoa "herdasse" o nome.
+- **`DROP DATABASE` por fora** (console, phpMyAdmin, SGBD) não pode ser impedido sem tirar do
+  aluno o `DROP TABLE` dos próprios schemas. O registro é arquivado como "removido fora da
+  plataforma" e auditado, sem dados para restaurar.
 
 ## Disponibilidade (uptime)
 
