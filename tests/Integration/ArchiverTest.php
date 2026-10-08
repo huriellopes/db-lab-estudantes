@@ -44,7 +44,7 @@ it('archives a user with schema, query and diagram, restores everything and audi
     expect(array_column($items, 'model'))->toBe(['user', 'schema', 'saved_query'])
         ->and($items[0]['is_root'])->toBeTrue()
         ->and(User::find($user->id))->toBeNull()
-        ->and(SchemaRecord::nameTaken($db))->toBeFalse()
+        ->and(SchemaRecord::findByName($db))->toBeNull() // saiu de schemas_criados (o nome segue reservado)
         ->and(SchemaQuarantine::exists($db))->toBeFalse()
         ->and(accountLocked($user->mysqlLogin))->toBeTrue()
         ->and(auditCount('user.deleted', $batch))->toBe(1);

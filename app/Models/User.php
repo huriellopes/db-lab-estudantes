@@ -48,7 +48,7 @@ final class User
 
     public static function emailExists(string $email): bool
     {
-        return self::findByEmail($email) !== null;
+        return self::findByEmail($email) !== null || DeletedModel::isReserved('email', $email);
     }
 
     /**
@@ -73,7 +73,9 @@ final class User
         $except = $exceptUserId ?? 0;
         $stmt->execute([$login, $login, $except, SchemaNameBuilder::likePattern($login), $except]);
 
-        return $stmt->fetch() !== false;
+        return $stmt->fetch() !== false
+            || DeletedModel::isReserved('mysql_login', $login)
+            || DeletedModel::isReserved('schema_prefix', $login);
     }
 
     /** @return list<UserEntity> Todos os usuários não excluídos, opcionalmente filtrados por papel. */

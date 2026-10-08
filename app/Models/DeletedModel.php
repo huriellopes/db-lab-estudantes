@@ -44,6 +44,29 @@ final class DeletedModel
         return array_map(self::hydrate(...), $stmt->fetchAll());
     }
 
+    private const RESERVABLE = [
+        'email' => ['user', '$.email'],
+        'mysql_login' => ['user', '$.mysql_login'],
+        'schema_prefix' => ['user', '$.schema_prefix'],
+        'db_name' => ['schema', '$.db_name'],
+    ];
+
+    /**
+     * E-mail/login/prefixo de conta e nome de schema que estão no arquivo continuam "ocupados"
+     * até a exclusão definitiva: a conta MySQL bloqueada ainda existe, e liberar o nome faria a
+     * restauração (ou o CREATE USER de outra pessoa) bater nele.
+     */
+    public static function isReserved(string $field, string $value): bool
+    {
+        [$model, $path] = self::RESERVABLE[$field] ?? throw new \InvalidArgumentException("Campo não reservável: {$field}");
+        $stmt = Database::connection()->prepare(
+            'SELECT 1 FROM deleted_models WHERE model = ? AND JSON_UNQUOTE(JSON_EXTRACT(`values`, ?)) = ? LIMIT 1',
+        );
+        $stmt->execute([$model, $path, $value]);
+
+        return $stmt->fetch() !== false;
+    }
+
     public static function deleteBatch(string $batchId): void
     {
         Database::connection()->prepare('DELETE FROM deleted_models WHERE batch_id = ?')->execute([$batchId]);

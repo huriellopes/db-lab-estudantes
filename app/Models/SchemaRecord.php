@@ -48,7 +48,7 @@ final class SchemaRecord
         $stmt = Database::connection()->prepare('SELECT id FROM schemas_criados WHERE db_name = ?');
         $stmt->execute([$dbName]);
 
-        return $stmt->fetch() !== false;
+        return $stmt->fetch() !== false || DeletedModel::isReserved('db_name', $dbName);
     }
 
     public static function create(int $userId, string $dbName): void
