@@ -58,14 +58,15 @@ it('only accepts members of the same institution and only responsible professors
     expect(SchoolClass::find($classId)->name)->toBe('it-turma-renomeada');
 });
 
-it('does not let a professor remove the last responsible', function () {
+it('does not let a professor remove themselves (they leave instead)', function () {
     $inst = integrationInstitution();
     $professor = integrationUser(Role::Professor);
     InstitutionManager::addMember($inst, $professor->email);
     $classId = integrationClass($inst, asActor($professor));
     $memberId = ClassMember::forClass($classId)[0]['id'];
 
-    expect(fn () => ClassManager::removeMember($memberId, asActor($professor)))->toThrow(ClassException::class, 'pelo menos um');
+    // Sair da turma (com a regra do último responsável) está em CandidatesAndLeaveTest.
+    expect(fn () => ClassManager::removeMember($memberId, asActor($professor)))->toThrow(ClassException::class, 'Sair da turma');
 });
 
 it('archives an institution with its classes and class memberships and restores all of it', function () {

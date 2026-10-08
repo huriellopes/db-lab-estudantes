@@ -73,12 +73,29 @@ final class ClassManager
     {
         $member = ClassMember::find($memberId) ?? throw new ClassException('Vínculo não encontrado.');
         self::editableOrFail($member['class_id'], $actor);
+        if ($member['user_id'] === $actor->id) {
+            throw new ClassException('Você não pode se remover: use "Sair da turma".');
+        }
 
         if ($member['role'] === 'professor' && $actor->role !== Role::Admin && count(ClassMember::professorIdsOf($member['class_id'])) === 1) {
             throw new ClassException('A turma precisa de pelo menos um professor responsável. Adicione outro antes de remover este.');
         }
 
         Archiver::archive('class_member', $memberId, 'class.member_removed');
+    }
+
+    /** O professor logado sai da turma (o vínculo vai para o arquivo). */
+    public static function leave(int $classId, AuthenticatedUser $actor): void
+    {
+        $own = array_values(array_filter(ClassMember::forClass($classId), static fn (array $m): bool => $m['user_id'] === $actor->id));
+        if ($own === []) {
+            throw new ClassException('Você não está nesta turma.');
+        }
+        if ($own[0]['role'] === 'professor' && count(ClassMember::professorIdsOf($classId)) === 1) {
+            throw new ClassException('A turma precisa de pelo menos um professor responsável. Adicione outro antes de sair.');
+        }
+
+        Archiver::archive('class_member', $own[0]['id'], 'class.member_left');
     }
 
     public static function delete(int $classId, AuthenticatedUser $actor): void

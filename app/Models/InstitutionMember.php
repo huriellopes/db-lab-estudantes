@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Database;
+use App\Support\LikePattern;
 use PDO;
 
 /** Tabela institution_members (professor em várias, aluno em uma — ver a migration). */
@@ -85,6 +86,32 @@ final class InstitutionMember
         $pdo->prepare('INSERT INTO institution_members (institution_id, user_id, role) VALUES (?, ?, ?)')->execute([$institutionId, $userId, $role]);
 
         return (int) $pdo->lastInsertId();
+    }
+
+    /**
+     * Sugestões do autocomplete "vincular pessoa" (admin): só quem ainda pode entrar nesta
+     * instituição — não-admin, que ainda não está nela, e aluno que não está em outra.
+     *
+     * @return list<array{id: int, name: string, email: string, mysql_login: string, role: string}>
+     */
+    public static function candidates(int $institutionId, string $query, int $limit = 8): array
+    {
+        $query = trim($query);
+        if (mb_strlen($query) < 2) {
+            return [];
+        }
+        $like = LikePattern::contains($query);
+        $stmt = Database::connection()->prepare(
+            "SELECT u.id, u.name, u.email, u.mysql_login, u.role FROM users u
+             WHERE u.role IN ('professor', 'aluno')
+               AND (u.name LIKE ? OR u.email LIKE ? OR u.mysql_login LIKE ?)
+               AND NOT EXISTS (SELECT 1 FROM institution_members m WHERE m.institution_id = ? AND m.user_id = u.id)
+               AND (u.role = 'professor' OR NOT EXISTS (SELECT 1 FROM institution_members s WHERE s.student_user_id = u.id))
+             ORDER BY u.name LIMIT " . max(1, min($limit, 20)),
+        );
+        $stmt->execute([$like, $like, $like, $institutionId]);
+
+        return array_map(static fn (array $r): array => ['id' => (int) $r['id']] + $r, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public static function setRoleForUser(int $userId, string $role): void

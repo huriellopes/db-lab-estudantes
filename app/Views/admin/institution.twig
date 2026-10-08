@@ -84,11 +84,43 @@
     <form
         hx-boost="false" method="post" action="/admin/instituicoes/{{ institution.id }}/membros"
         x-data="ajaxForm({ refresh: true })" @submit.prevent="submit"
-        class="card mb-6 grid gap-3 sm:grid-cols-[1fr_auto]"
+        class="card mb-6"
     >
         {{ csrf_field() }}
-        <input type="text" name="identificador" required placeholder="Adicionar professor ou aluno: e-mail ou username" class="field-input">
-        <button :disabled="loading" type="submit" class="btn-primary">Vincular</button>
+        <div x-data="userPicker('/admin/instituicoes/{{ institution.id }}/candidatos')" class="relative grid gap-3 sm:grid-cols-[1fr_auto]" @click.outside="open = false">
+            <input type="hidden" name="identificador" :value="selected ? selected.email : ''">
+            <div class="relative">
+                <input
+                    type="text" x-model="query" @input="onInput()" @keydown="onKeydown($event)" @focus="results.length && (open = true)"
+                    placeholder="Vincular professor ou aluno: digite nome, e-mail ou username" autocomplete="off" class="field-input"
+                    role="combobox" :aria-expanded="open" aria-autocomplete="list"
+                >
+                <ul
+                    x-show="open" x-cloak
+                    class="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+                    role="listbox"
+                >
+                    <template x-for="(r, i) in results" :key="r.id">
+                        <li>
+                            <button
+                                type="button" @click="choose(r)" @mouseenter="active = i"
+                                class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm"
+                                :class="i === active ? 'bg-indigo-50' : ''" role="option" :aria-selected="i === active"
+                            >
+                                <span class="min-w-0">
+                                    <span class="block truncate font-medium text-slate-800" x-text="r.name"></span>
+                                    <span class="block truncate text-xs text-slate-500" x-text="r.email + ' · ' + r.mysql_login"></span>
+                                </span>
+                                <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600" x-text="roleLabel(r.role)"></span>
+                            </button>
+                        </li>
+                    </template>
+                    <li x-show="results.length === 0" class="px-3 py-2 text-sm text-slate-500">Ninguém encontrado que possa ser vinculado aqui.</li>
+                </ul>
+            </div>
+            <button :disabled="loading || !selected" type="submit" class="btn-primary disabled:cursor-not-allowed disabled:opacity-50">Vincular</button>
+            <p x-show="query.trim().length >= 2 && !selected && !open && !searching" x-cloak class="text-xs text-slate-500 sm:col-span-2">Escolha uma pessoa da lista para continuar.</p>
+        </div>
     </form>
 
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
