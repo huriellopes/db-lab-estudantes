@@ -73,6 +73,7 @@ final class InstitutionManager
 
         InstitutionMember::add($institutionId, $user->id, $user->role->value);
         AuditLog::record('institution.member_added', 'institution', $institutionId, ['usuario' => $user->email, 'papel' => $user->role->value, 'instituicao' => $institution->name]);
+        ProfessorGrants::syncAllQuietly();
 
         return $user;
     }
@@ -83,12 +84,14 @@ final class InstitutionManager
         // Quem sai da instituição sai também das turmas dela (os vínculos de turma vão pro arquivo).
         ClassManager::archiveMembershipsOf($member['user_id'], $member['institution_id'], 'removido da instituição');
         Archiver::archive('institution_member', $memberId, 'institution.member_removed');
+        ProfessorGrants::syncAllQuietly();
     }
 
     public static function delete(int $id): void
     {
         $institution = self::findOrFail($id);
         Archiver::archive('institution', $id, 'institution.deleted', ['nome' => $institution->name]);
+        ProfessorGrants::syncAllQuietly();
     }
 
     /**

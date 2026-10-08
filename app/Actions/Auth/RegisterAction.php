@@ -11,6 +11,7 @@ use App\Models\AuditLog;
 use App\Models\Institution;
 use App\Models\InstitutionMember;
 use App\Models\User;
+use App\Services\ProfessorGrants;
 use App\Services\RateLimiter;
 use App\Services\UserManager;
 use App\Support\ClientIp;
@@ -77,6 +78,7 @@ final class RegisterAction extends Action
                     $user = UserManager::provisionNewUser($name, $email, $username, $password, Role::registrable());
                     if ($institution !== null) {
                         InstitutionMember::add($institution->id, $user->id, Role::Aluno->value);
+                        ProfessorGrants::syncAllQuietly();
                     }
 
                     AuditLog::record('auth.registered', 'user', $username, ['email' => $email, 'instituicao' => $institution?->name], ['id' => null, 'name' => $name]);

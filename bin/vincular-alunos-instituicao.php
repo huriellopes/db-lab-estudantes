@@ -106,6 +106,11 @@ foreach ($toLink as $s) {
     }
 }
 
+if ($apply && $linked > 0 && class_exists(\App\Services\ProfessorGrants::class)) {
+    \App\Services\ProfessorGrants::syncAll();
+    $out('Permissões dos professores sincronizadas.');
+}
+
 if ($apply) {
     $out('');
     $out("Resultado: {$linked} vinculado(s), {$failed} falha(s), " . count($already) . ' já estavam, ' . count($elsewhere) . ' em outra instituição.');

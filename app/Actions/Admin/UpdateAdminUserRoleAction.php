@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Models\User as UserModel;
 use App\Services\InstitutionException;
 use App\Services\InstitutionManager;
+use App\Services\ProfessorGrants;
 use App\Support\Role;
 
 /** POST /admin/usuarios/{id}/papel. */
@@ -32,6 +33,7 @@ final class UpdateAdminUserRoleAction extends AdminUserAction
         }
 
         UserModel::updateRole($target->id, $role);
+        ProfessorGrants::syncAllQuietly(); // depois do papel novo gravado
 
         AuditLog::record('user.role_changed', 'user', $target->id, ['de' => $target->role->value, 'para' => $role->value]);
         $this->respond(true, "Papel de {$target->name} atualizado para {$role->label()}.", '/admin/usuarios');

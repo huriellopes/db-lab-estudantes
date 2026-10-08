@@ -1,0 +1,81 @@
+{% extends 'layouts/app.twig' %}
+
+{% macro field(c, value) %}
+    <label class="block text-xs">
+        <span class="font-mono text-slate-600">{{ c.name }} <span class="text-slate-400">{{ c.type }}</span></span>
+        <input type="text" name="valor[{{ c.name }}]" value="{{ value }}" class="field-input mt-1 font-mono !py-1.5 text-sm" {{ c.binary ? 'disabled' }}>
+        {% if c.nullable and not c.binary %}
+            <span class="mt-1 inline-flex items-center gap-1 text-slate-500"><input type="checkbox" name="nulo[{{ c.name }}]" value="1" {{ value is null ? 'checked' }}> NULL</span>
+        {% endif %}
+    </label>
+{% endmacro %}
+
+{% block content %}
+    {% import _self as m %}
+    {% set base = '/professor/bancos/' ~ db|url_encode ~ '/' ~ table.name|url_encode %}
+    {% set editable = table.primaryKey is not empty %}
+
+    <div class="mb-6">
+        <a href="/professor/bancos/{{ db|url_encode }}" class="text-sm text-slate-500 hover:text-slate-700">← {{ db }}</a>
+        <h1 class="mt-2 font-mono text-2xl font-semibold text-slate-900">{{ table.name }}</h1>
+        <p class="mt-1 text-sm text-slate-500">{% if owner %}de {{ owner }} · {% endif %}{{ data.total }} linha{{ data.total == 1 ? '' : 's' }}. Inserir e alterar; excluir não é possível.</p>
+        {% if not editable %}<p class="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Sem chave primária: não dá para identificar uma linha com segurança, então os dados ficam só leitura.</p>{% endif %}
+    </div>
+
+    <details class="card mb-6">
+        <summary class="cursor-pointer text-base font-semibold text-slate-900">Inserir linha</summary>
+        <form hx-boost="false" method="post" action="{{ base }}/linhas" x-data="ajaxForm({ refresh: true })" @submit.prevent="submit" class="mt-4 grid gap-3 sm:grid-cols-2">
+            {{ csrf_field() }}
+            {% for c in table.columns %}{{ m.field(c, '') }}{% endfor %}
+            <p class="text-xs text-slate-500 sm:col-span-2">Campo vazio usa o padrão da coluna (ex.: AUTO_INCREMENT).</p>
+            <button :disabled="loading" type="submit" class="btn-primary sm:col-span-2">Inserir</button>
+        </form>
+    </details>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="text-xs text-slate-400">
+                    <tr>
+                        {% for c in table.columns %}<th class="whitespace-nowrap py-2 pr-4 font-mono">{{ c.name }}{% if c.name in table.primaryKey %} <span class="text-amber-600">PK</span>{% endif %}</th>{% endfor %}
+                        {% if editable %}<th></th>{% endif %}
+                    </tr>
+                </thead>
+                {% for row in data.rows %}
+                    <tbody x-data="{ open: false }" class="border-t border-slate-100">
+                        <tr>
+                            {% for c in table.columns %}
+                                {% set v = attribute(row, c.name) %}
+                                <td class="max-w-[16rem] truncate py-2 pr-4 font-mono text-slate-700" title="{{ v }}">{{ v is null ? 'NULL' : v }}</td>
+                            {% endfor %}
+                            {% if editable %}<td class="py-2"><button type="button" @click="open = !open" class="btn-secondary !px-3 !py-1 text-xs" x-text="open ? 'Fechar' : 'Editar'"></button></td>{% endif %}
+                        </tr>
+                        {% if editable %}
+                            <tr x-show="open" x-cloak>
+                                <td colspan="{{ table.columns|length + 1 }}" class="bg-slate-50 p-4">
+                                    <form hx-boost="false" method="post" action="{{ base }}/editar" x-data="ajaxForm({ refresh: true })" @submit.prevent="submit" class="grid gap-3 sm:grid-cols-2">
+                                        {{ csrf_field() }}
+                                        {% for k in table.primaryKey %}<input type="hidden" name="chave[{{ k }}]" value="{{ attribute(row, k) }}">{% endfor %}
+                                        {% for c in table.columns|filter(c => c.name not in table.primaryKey) %}{{ m.field(c, attribute(row, c.name)) }}{% endfor %}
+                                        <button :disabled="loading" type="submit" class="btn-primary sm:col-span-2">Salvar alteração</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                {% else %}
+                    <tbody><tr><td class="py-6 text-center text-sm text-slate-500" colspan="{{ table.columns|length + 1 }}">Tabela vazia.</td></tr></tbody>
+                {% endfor %}
+            </table>
+        </div>
+        {% if data.pages > 1 %}
+            <div class="mt-4 flex items-center justify-between text-sm text-slate-500">
+                <span>Página {{ data.page }} de {{ data.pages }}</span>
+                <div class="flex gap-2">
+                    {% if data.page > 1 %}<a href="{{ base }}?pagina={{ data.page - 1 }}" class="btn-secondary !px-3 !py-1.5 text-xs">← Anterior</a>{% endif %}
+                    {% if data.page < data.pages %}<a href="{{ base }}?pagina={{ data.page + 1 }}" class="btn-secondary !px-3 !py-1.5 text-xs">Próxima →</a>{% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

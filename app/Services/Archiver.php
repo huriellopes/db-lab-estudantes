@@ -102,6 +102,9 @@ final class Archiver
         }
 
         AuditLog::record($auditAction, $model, $id, ['batch' => $batchId, 'itens' => count($items)] + $auditMeta);
+        if (self::touchesMemberships($items)) {
+            ProfessorGrants::syncAllQuietly();
+        }
 
         return $batchId;
     }
@@ -186,6 +189,26 @@ final class Archiver
 
         DeletedModel::deleteBatch($batchId);
         AuditLog::record('archive.restored', $root['model'], $root['model_id'], ['batch' => $batchId, 'itens' => count($items), 'rotulo' => $root['label']]);
+        if (self::touchesMemberships($items)) {
+            ProfessorGrants::syncAllQuietly();
+        }
+    }
+
+    /**
+     * Vínculos mudaram (usuário, instituição ou membro)? Então as permissões de professor
+     * sobre os bancos dos alunos precisam ser recalculadas (ver ProfessorGrants).
+     *
+     * @param list<array<string, mixed>> $items
+     */
+    private static function touchesMemberships(array $items): bool
+    {
+        foreach ($items as $item) {
+            if (in_array($item['model'], ['user', 'institution', 'institution_member'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
