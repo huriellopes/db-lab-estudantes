@@ -7,6 +7,7 @@ namespace App\Core;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Archiver;
+use App\Services\ProfessorGrants;
 use App\Services\SchemaQuarantine;
 use App\Support\ByteSize;
 use App\Support\RetentionPolicy;
@@ -32,6 +33,7 @@ final class Console
             'user:promote-admin' => $this->promoteAdmin($argv[2] ?? null),
             'audit:prune' => $this->pruneAudit($argv[2] ?? null),
             'archive:purge-expired' => $this->purgeExpired(in_array('--aplicar', $argv, true)),
+            'grants:sync-professors' => $this->syncProfessorGrants(),
             default => $this->usage(),
         };
     }
@@ -213,9 +215,18 @@ final class Console
         return $failed > 0 ? 1 : 0;
     }
 
+    /** Recalcula as permissões dos professores sobre os bancos dos alunos (idempotente; roda no boot). */
+    private function syncProfessorGrants(): int
+    {
+        $done = ProfessorGrants::syncAll();
+        $this->line("Permissões de professores sincronizadas: {$done['users']} conta(s), {$done['grant']} concedida(s), {$done['revoke']} revogada(s).");
+
+        return 0;
+    }
+
     private function usage(): int
     {
-        $this->line('Uso: php bin/console.php <migrate|migrate:rollback|migrate:status|db:seed|user:promote-admin <email>|audit:prune [--days=N]|archive:purge-expired [--aplicar]>');
+        $this->line('Uso: php bin/console.php <migrate|migrate:rollback|migrate:status|db:seed|user:promote-admin <email>|audit:prune [--days=N]|archive:purge-expired [--aplicar]|grants:sync-professors>');
 
         return 1;
     }

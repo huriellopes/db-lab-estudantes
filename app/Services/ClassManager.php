@@ -129,6 +129,7 @@ final class ClassManager
             if ($current === null) {
                 InstitutionMember::add($class->institutionId, $student->id, Role::Aluno->value);
                 AuditLog::record('institution.joined_by_code', 'institution', $class->institutionId, ['via' => 'código da turma']);
+                ProfessorGrants::syncAllQuietly();
             }
             ClassMember::add($class->id, $student->id, Role::Aluno->value);
             AuditLog::record('class.joined_by_code', 'class', $class->id, ['turma' => $class->name]);
@@ -146,6 +147,7 @@ final class ClassManager
         }
         InstitutionMember::add($institution->id, $student->id, Role::Aluno->value);
         AuditLog::record('institution.joined_by_code', 'institution', $institution->id, ['via' => 'código da instituição']);
+        ProfessorGrants::syncAllQuietly();
 
         return ['type' => 'institution', 'name' => $institution->name];
     }

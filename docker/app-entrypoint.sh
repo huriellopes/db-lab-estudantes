@@ -25,6 +25,9 @@ done
 
 echo "Migrations em dia."
 
+# Permissões dos professores sobre os bancos dos alunos (idempotente) — ver ProfessorGrants.
+php bin/console.php grants:sync-professors || echo "Falha ao sincronizar permissões de professores — a app sobe mesmo assim." >&2
+
 # Só em ambiente local: cria admin/professor/aluno de dev (senha password123) se ainda não
 # existir — ver database/seeders/DevUsersSeeder.php. Falhar aqui não impede a app de subir.
 case "$APP_ENV" in
