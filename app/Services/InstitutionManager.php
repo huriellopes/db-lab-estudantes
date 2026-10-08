@@ -9,7 +9,6 @@ use App\Models\Entities\User as UserEntity;
 use App\Models\Institution;
 use App\Models\InstitutionMember;
 use App\Models\User;
-use App\Support\InviteCode;
 use App\Support\Role;
 
 /**
@@ -143,10 +142,6 @@ final class InstitutionManager
 
     private static function freshCode(): string
     {
-        do {
-            $code = InviteCode::generate();
-        } while (Institution::inviteCodeTaken($code));
-
-        return $code;
+        return InviteCodes::fresh();
     }
 }

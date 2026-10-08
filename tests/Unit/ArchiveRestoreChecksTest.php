@@ -99,3 +99,12 @@ it('checks a class name in its institution and that members still belong to it',
     ]);
     expect(array_column($institutionBatch, 'sql'))->not->toContain('SELECT 1 FROM institution_members WHERE institution_id = ? AND user_id = ?');
 });
+
+it('checks that the invite code of a restored class is free in classes and institutions', function () {
+    $sqls = array_column(ArchiveRestoreChecks::for([
+        archivedItem('class', 4, ['institution_id' => 2, 'name' => 'BD I', 'invite_code' => 'ABCD-EF23']),
+    ]), 'sql');
+
+    expect($sqls)->toContain('SELECT 1 FROM classes WHERE invite_code = ?')
+        ->and($sqls)->toContain('SELECT 1 FROM institutions WHERE invite_code = ?');
+});

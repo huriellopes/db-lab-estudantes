@@ -8,11 +8,13 @@ use App\Models\AuditLog;
 use App\Models\ClassMember;
 use App\Models\Entities\SchoolClass as SchoolClassEntity;
 use App\Models\Entities\User as UserEntity;
+use App\Models\Institution;
 use App\Models\InstitutionMember;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Support\AuthenticatedUser;
 use App\Support\ClassAccess;
+use App\Support\InviteCode;
 use App\Support\Role;
 
 /**
@@ -30,7 +32,7 @@ final class ClassManager
         }
         $name = self::validName($name, $institutionId, 0);
 
-        $id = SchoolClass::create($institutionId, $name);
+        $id = SchoolClass::create($institutionId, $name, InviteCodes::fresh());
         if ($actor->role === Role::Professor) {
             ClassMember::add($id, $actor->id, 'professor');
         }
@@ -82,6 +84,70 @@ final class ClassManager
         }
 
         Archiver::archive('class_member', $memberId, 'class.member_removed');
+    }
+
+    public static function regenerateCode(int $classId, AuthenticatedUser $actor): string
+    {
+        self::editableOrFail($classId, $actor);
+        $code = InviteCodes::fresh();
+        SchoolClass::setInviteCode($classId, $code);
+        AuditLog::record('class.code_regenerated', 'class', $classId);
+
+        return $code;
+    }
+
+    public static function disableCode(int $classId, AuthenticatedUser $actor): void
+    {
+        self::editableOrFail($classId, $actor);
+        SchoolClass::setInviteCode($classId, null);
+        AuditLog::record('class.code_disabled', 'class', $classId);
+    }
+
+    /**
+     * "Entrar com código" do dashboard do aluno: aceita código de turma ou de instituição. Código de
+     * turma também põe o aluno na instituição dela, se ele ainda não tiver uma (aluno fica em uma só).
+     *
+     * @return array{type: string, name: string}
+     */
+    public static function joinByCode(string $input, AuthenticatedUser $student): array
+    {
+        if ($student->role !== Role::Aluno) {
+            throw new ClassException('Só alunos entram por código; professores são vinculados por um admin.');
+        }
+        $code = InviteCode::normalize($input) ?? throw new ClassException('Código inválido. Confira com seu professor.');
+        $current = InstitutionMember::institutionOfStudent($student->id);
+
+        $class = SchoolClass::findByInviteCode($code);
+        if ($class !== null) {
+            if ($current !== null && $current !== $class->institutionId) {
+                $mine = Institution::find($current)?->name ?? "#{$current}";
+                throw new ClassException("Este código é de uma turma da {$class->institutionName}, e você está em {$mine}. Aluno fica em uma instituição só.");
+            }
+            if (ClassMember::isMember($class->id, $student->id)) {
+                throw new ClassException("Você já está nesta turma ({$class->name}).");
+            }
+            if ($current === null) {
+                InstitutionMember::add($class->institutionId, $student->id, Role::Aluno->value);
+                AuditLog::record('institution.joined_by_code', 'institution', $class->institutionId, ['via' => 'código da turma']);
+            }
+            ClassMember::add($class->id, $student->id, Role::Aluno->value);
+            AuditLog::record('class.joined_by_code', 'class', $class->id, ['turma' => $class->name]);
+
+            return ['type' => 'class', 'name' => $class->name];
+        }
+
+        $institution = Institution::findByInviteCode($code) ?? throw new ClassException('Código inválido. Confira com seu professor.');
+        if ($current === $institution->id) {
+            throw new ClassException("Você já está nesta instituição ({$institution->name}).");
+        }
+        if ($current !== null) {
+            $mine = Institution::find($current)?->name ?? "#{$current}";
+            throw new ClassException("Você já está na instituição {$mine}. Aluno fica em uma instituição só.");
+        }
+        InstitutionMember::add($institution->id, $student->id, Role::Aluno->value);
+        AuditLog::record('institution.joined_by_code', 'institution', $institution->id, ['via' => 'código da instituição']);
+
+        return ['type' => 'institution', 'name' => $institution->name];
     }
 
     /** O professor logado sai da turma (o vínculo vai para o arquivo). */

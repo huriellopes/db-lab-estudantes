@@ -11,6 +11,22 @@
 
     {% include 'partials/health-card.twig' with { health: health, class: 'mb-6' } %}
 
+    {% if is_aluno() %}
+        <form
+            hx-boost="false" method="post" action="/entrar-com-codigo"
+            x-data="ajaxForm({ refresh: true })" @submit.prevent="submit"
+            class="card mb-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+        >
+            {{ csrf_field() }}
+            <div>
+                <label for="codigo" class="field-label">Entrar com código</label>
+                <input type="text" id="codigo" name="codigo" required maxlength="12" autocomplete="off" placeholder="ABCD-EF23" class="field-input font-mono uppercase">
+                <p class="mt-1 text-xs text-slate-500">Código da turma ou da instituição, que seu professor passa.</p>
+            </div>
+            <button :disabled="loading" type="submit" class="btn-primary">Entrar</button>
+        </form>
+    {% endif %}
+
     {% if myClasses is not empty %}
         <div class="card mb-6">
             <h2 class="mb-3 text-base font-semibold text-slate-900">Minhas turmas</h2>
