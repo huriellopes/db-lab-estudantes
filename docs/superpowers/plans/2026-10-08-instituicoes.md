@@ -69,7 +69,9 @@ return new class extends Migration {
                 created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 -- Só preenchida para aluno: o UNIQUE abaixo garante 'aluno em no máximo uma
                 -- instituição' no próprio MySQL (NULLs não colidem), sem corrida entre requisições.
-                student_user_id INT AS (IF(role = 'aluno', user_id, NULL)) STORED,
+                -- VIRTUAL, não STORED: o MySQL recusa ON DELETE CASCADE na FK de user_id quando ele
+                -- é base de uma coluna gerada STORED (erro 1215).
+                student_user_id INT AS (IF(role = 'aluno', user_id, NULL)) VIRTUAL,
                 UNIQUE KEY uq_member (institution_id, user_id),
                 UNIQUE KEY uq_student_one_institution (student_user_id),
                 INDEX idx_user (user_id),

@@ -39,7 +39,7 @@ CREATE TABLE institution_members (
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- Só preenchida para aluno: o UNIQUE garante "aluno em no máximo uma instituição" no próprio
   -- MySQL (NULLs não colidem), sem depender de checagem em PHP sujeita a corrida.
-  student_user_id INT AS (IF(role = 'aluno', user_id, NULL)) STORED,
+  student_user_id INT AS (IF(role = 'aluno', user_id, NULL)) VIRTUAL,  -- VIRTUAL: STORED impede o CASCADE da FK de user_id
   UNIQUE KEY uq_member (institution_id, user_id),
   UNIQUE KEY uq_student_one_institution (student_user_id),
   CONSTRAINT fk_member_institution FOREIGN KEY (institution_id) REFERENCES institutions(id) ON DELETE CASCADE,
