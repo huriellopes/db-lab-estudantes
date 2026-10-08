@@ -92,6 +92,11 @@ use App\Actions\Student\IndexStudentsAction;
 use App\Actions\Student\ResetStudentPasswordAction;
 use App\Actions\Student\ToggleStudentActiveAction;
 use App\Actions\Student\UpdateStudentAction;
+use App\Actions\StudentDatabase\IndexStudentDatabasesAction;
+use App\Actions\StudentDatabase\InsertStudentRowAction;
+use App\Actions\StudentDatabase\ShowStudentDatabaseAction;
+use App\Actions\StudentDatabase\ShowStudentTableAction;
+use App\Actions\StudentDatabase\UpdateStudentRowAction;
 use App\Core\Auth;
 use App\Core\Router;
 use App\Core\View;
@@ -258,6 +263,13 @@ $router->post('/professor/alunos/{id}', UpdateStudentAction::class);
 $router->post('/professor/alunos/{id}/senha', ResetStudentPasswordAction::class);
 $router->post('/professor/alunos/{id}/status', ToggleStudentActiveAction::class);
 $router->post('/professor/alunos/{id}/excluir', DestroyStudentAction::class);
+
+// Professor: bancos dos alunos das instituições dele (ver/inserir/alterar; excluir não — ver ProfessorGrants).
+$router->get('/professor/bancos', IndexStudentDatabasesAction::class);
+$router->get('/professor/bancos/{banco}', ShowStudentDatabaseAction::class);
+$router->get('/professor/bancos/{banco}/{tabela}', ShowStudentTableAction::class);
+$router->post('/professor/bancos/{banco}/{tabela}/linhas', InsertStudentRowAction::class);
+$router->post('/professor/bancos/{banco}/{tabela}/editar', UpdateStudentRowAction::class);
 
 // Admin: controle total sobre usuários, papéis e schemas.
 $router->get('/admin', ShowAdminDashboardAction::class);

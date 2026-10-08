@@ -1,0 +1,38 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">Bancos dos alunos</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Veja a estrutura e os dados dos bancos dos alunos das suas instituições, e corrija dados para ajudá-los.
+            Você pode <strong>inserir e alterar</strong> linhas; <strong>excluir não é possível</strong> — o próprio MySQL bloqueia.
+        </p>
+    </div>
+
+    {% if groups is empty %}
+        <div class="card py-10 text-center text-sm text-slate-500">
+            {{ isAdmin ? 'Esta tela é para professores (o admin usa o phpMyAdmin).' : 'Nenhum aluno nas suas instituições ainda.' }}
+        </div>
+    {% endif %}
+
+    {% for g in groups %}
+        <h2 class="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ g.institution }}</h2>
+        <div class="card divide-y divide-slate-100">
+            {% for s in g.students %}
+                <div class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <p class="font-medium text-slate-800">{{ s.name }}</p>
+                        <p class="truncate text-xs text-slate-500">{{ s.email }}</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        {% for db in s.schemas %}
+                            <a href="/professor/bancos/{{ db|url_encode }}" class="rounded-full bg-indigo-50 px-3 py-1 font-mono text-xs text-indigo-700 hover:bg-indigo-100">{{ db }}</a>
+                        {% else %}
+                            <span class="text-xs text-slate-400">nenhum banco ainda</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+{% endblock %}
