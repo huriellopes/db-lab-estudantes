@@ -19,9 +19,13 @@ final class ArchiveRestoreChecks
     public static function for(array $items): array
     {
         $usersInBatch = [];
+        $institutionsInBatch = [];
         foreach ($items as $item) {
             if ($item['model'] === 'user') {
                 $usersInBatch[] = $item['model_id'];
+            }
+            if ($item['model'] === 'institution') {
+                $institutionsInBatch[] = $item['model_id'];
             }
         }
 
@@ -46,6 +50,28 @@ final class ArchiveRestoreChecks
                     'expect' => 'present',
                     'message' => "A quarentena de {$v['db_name']} não existe mais — não há dados para restaurar.",
                 ];
+            }
+
+            if ($item['model'] === 'institution') {
+                $checks[] = self::absent('SELECT 1 FROM institutions WHERE name = ?', [(string) $v['name']], "Já existe uma instituição chamada {$v['name']}.");
+                if (($v['invite_code'] ?? null) !== null) {
+                    $checks[] = self::absent('SELECT 1 FROM institutions WHERE invite_code = ?', [(string) $v['invite_code']], "O código {$v['invite_code']} já é de outra instituição.");
+                }
+            }
+
+            if ($item['model'] === 'institution_member') {
+                $institutionId = (int) $v['institution_id'];
+                if (!in_array($institutionId, $institutionsInBatch, true)) {
+                    $checks[] = [
+                        'sql' => 'SELECT 1 FROM institutions WHERE id = ?',
+                        'params' => [$institutionId],
+                        'expect' => 'present',
+                        'message' => "{$item['label']}: a instituição #{$institutionId} também está excluída — restaure a instituição primeiro.",
+                    ];
+                    if (($v['role'] ?? '') === 'aluno') {
+                        $checks[] = self::absent('SELECT 1 FROM institution_members WHERE student_user_id = ?', [(int) $v['user_id']], "{$item['label']}: o aluno já está em outra instituição.");
+                    }
+                }
             }
 
             $ownerId = isset($v['user_id']) ? (int) $v['user_id'] : null;

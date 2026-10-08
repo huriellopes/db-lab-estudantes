@@ -317,8 +317,11 @@ it('checks name and code of an institution and the target of a membership', func
     $sqls = array_column($withInstitution, 'sql');
     expect($sqls)->toContain('SELECT 1 FROM institutions WHERE name = ?')
         ->and($sqls)->toContain('SELECT 1 FROM institutions WHERE invite_code = ?')
-        ->and($sqls)->not->toContain('SELECT 1 FROM institutions WHERE id = ?')
         ->and($sqls)->not->toContain('SELECT 1 FROM institution_members WHERE student_user_id = ?');
+
+    // A instituição vem no mesmo lote: não se exige que ela "exista" antes (só o id livre, genérico).
+    $mustExist = array_filter($withInstitution, static fn (array $c): bool => $c['expect'] === 'present');
+    expect($mustExist)->toBe([]);
 });
 ```
 

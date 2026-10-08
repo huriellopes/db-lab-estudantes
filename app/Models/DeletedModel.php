@@ -51,6 +51,8 @@ final class DeletedModel
         'mysql_login' => ['user', '$.mysql_login'],
         'schema_prefix' => ['user', '$.schema_prefix'],
         'db_name' => ['schema', '$.db_name'],
+        'institution_name' => ['institution', '$.name'],
+        'invite_code' => ['institution', '$.invite_code'],
     ];
 
     /**
