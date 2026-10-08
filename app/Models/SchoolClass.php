@@ -53,10 +53,33 @@ final class SchoolClass
         return $stmt->fetch() !== false;
     }
 
-    public static function create(int $institutionId, string $name): int
+    public static function findByInviteCode(string $code): ?SchoolClassEntity
+    {
+        $stmt = Database::connection()->prepare(self::SELECT . ' WHERE c.invite_code = ?');
+        $stmt->execute([$code]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : SchoolClassEntity::fromRow($row);
+    }
+
+    /** Código em uso por outra turma — ou reservado por uma que está em Dados excluídos. */
+    public static function inviteCodeTaken(string $code): bool
+    {
+        $stmt = Database::connection()->prepare('SELECT 1 FROM classes WHERE invite_code = ?');
+        $stmt->execute([$code]);
+
+        return $stmt->fetch() !== false || DeletedModel::isReserved('class_invite_code', $code);
+    }
+
+    public static function setInviteCode(int $id, ?string $code): void
+    {
+        Database::connection()->prepare('UPDATE classes SET invite_code = ? WHERE id = ?')->execute([$code, $id]);
+    }
+
+    public static function create(int $institutionId, string $name, ?string $inviteCode = null): int
     {
         $pdo = Database::connection();
-        $pdo->prepare('INSERT INTO classes (institution_id, name) VALUES (?, ?)')->execute([$institutionId, $name]);
+        $pdo->prepare('INSERT INTO classes (institution_id, name, invite_code) VALUES (?, ?, ?)')->execute([$institutionId, $name, $inviteCode]);
 
         return (int) $pdo->lastInsertId();
     }
