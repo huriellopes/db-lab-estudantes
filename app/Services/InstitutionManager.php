@@ -80,7 +80,9 @@ final class InstitutionManager
 
     public static function removeMember(int $memberId): void
     {
-        InstitutionMember::find($memberId) ?? throw new InstitutionException('Vínculo não encontrado.');
+        $member = InstitutionMember::find($memberId) ?? throw new InstitutionException('Vínculo não encontrado.');
+        // Quem sai da instituição sai também das turmas dela (os vínculos de turma vão pro arquivo).
+        ClassManager::archiveMembershipsOf($member['user_id'], $member['institution_id'], 'removido da instituição');
         Archiver::archive('institution_member', $memberId, 'institution.member_removed');
     }
 
@@ -96,20 +98,26 @@ final class InstitutionManager
      */
     public static function syncRoleChange(UserEntity $user, Role $newRole): void
     {
+        if ($newRole === $user->role) {
+            return;
+        }
         $memberships = InstitutionMember::forUser($user->id);
+        if ($newRole === Role::Aluno && count($memberships) > 1) {
+            throw new InstitutionException("{$user->name} está em " . count($memberships) . ' instituições; aluno fica em uma só. Remova os vínculos extras antes de trocar o papel.');
+        }
+
+        // O papel numa turma (responsável x aluno) deixa de fazer sentido com a troca.
+        ClassManager::archiveMembershipsOf($user->id, null, 'troca de papel');
+
         if ($memberships === []) {
             return;
         }
-
         if ($newRole === Role::Admin) {
             foreach ($memberships as $m) {
                 Archiver::archive('institution_member', $m['id'], 'institution.member_removed', ['motivo' => 'promovido a admin']);
             }
 
             return;
-        }
-        if ($newRole === Role::Aluno && count($memberships) > 1) {
-            throw new InstitutionException("{$user->name} está em " . count($memberships) . ' instituições; aluno fica em uma só. Remova os vínculos extras antes de trocar o papel.');
         }
 
         InstitutionMember::setRoleForUser($user->id, $newRole->value);
