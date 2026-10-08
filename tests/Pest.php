@@ -5,9 +5,11 @@ declare(strict_types=1);
 use App\Core\Database;
 use App\Models\Entities\User as UserEntity;
 use App\Models\SchemaRecord;
+use App\Services\ClassManager;
 use App\Services\InstitutionManager;
 use App\Services\SchemaProvisioner;
 use App\Services\UserManager;
+use App\Support\AuthenticatedUser;
 use App\Support\Role;
 
 /*
@@ -107,6 +109,16 @@ function integrationInstitution(): int
     return InstitutionManager::create('it-inst-' . bin2hex(random_bytes(4)));
 }
 
+function asActor(UserEntity $user): AuthenticatedUser
+{
+    return AuthenticatedUser::fromEntity($user);
+}
+
+function integrationClass(int $institutionId, AuthenticatedUser $actor): int
+{
+    return ClassManager::create($institutionId, 'it-turma-' . bin2hex(random_bytes(4)), $actor);
+}
+
 function cleanupIntegrationData(): void
 {
     $pdo = Database::connection();
@@ -128,7 +140,7 @@ function cleanupIntegrationData(): void
         SchemaProvisioner::dropMysqlAccount($login);
     }
 
-    $pdo->exec("DELETE FROM deleted_models WHERE label REGEXP '^(Integração [0-9a-f]{8} |it[0-9a-f]{8}__|q-it |it-inst-[0-9a-f]{8})'");
+    $pdo->exec("DELETE FROM deleted_models WHERE label REGEXP '^(Integração [0-9a-f]{8} |it[0-9a-f]{8}__|q-it |it-inst-[0-9a-f]{8}|it-turma-[0-9a-f]{8})'");
     $pdo->exec("DELETE FROM institutions WHERE name REGEXP '^it-inst-[0-9a-f]{8}$'");
     $pdo->exec("DELETE FROM users WHERE email LIKE 'it-%@example.test'");
 }

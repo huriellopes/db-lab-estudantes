@@ -11,6 +11,20 @@
 
     {% include 'partials/health-card.twig' with { health: health, class: 'mb-6' } %}
 
+    {% if myClasses is not empty %}
+        <div class="card mb-6">
+            <h2 class="mb-3 text-base font-semibold text-slate-900">Minhas turmas</h2>
+            <ul class="grid gap-3 sm:grid-cols-2">
+                {% for c in myClasses %}
+                    <li class="rounded-xl border border-slate-100 px-4 py-3">
+                        <p class="font-medium text-slate-900">{{ c.name }}</p>
+                        <p class="text-xs text-slate-500">{{ c.institution }}{% if c.professors %} · {{ c.professors }}{% endif %}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
     <div class="mb-6 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 text-sm text-indigo-900">
         <svg class="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>

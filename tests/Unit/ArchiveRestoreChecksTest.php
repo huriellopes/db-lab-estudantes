@@ -72,3 +72,30 @@ it('checks name and code of an institution and the target of a membership', func
     $institutionMustExist = array_filter($withInstitution, static fn (array $c): bool => $c['expect'] === 'present' && $c['sql'] === 'SELECT 1 FROM institutions WHERE id = ?');
     expect($institutionMustExist)->toBe([]);
 });
+
+it('checks a class name in its institution and that members still belong to it', function () {
+    $alone = ArchiveRestoreChecks::for([
+        archivedItem('class_member', 8, ['class_id' => 4, 'user_id' => 9, 'role' => 'aluno']),
+    ]);
+    $sqls = array_column($alone, 'sql');
+    expect($sqls)->toContain('SELECT 1 FROM classes WHERE id = ?')
+        ->and($sqls)->toContain('SELECT 1 FROM institution_members m JOIN classes c ON c.institution_id = m.institution_id WHERE c.id = ? AND m.user_id = ?');
+
+    $classBatch = ArchiveRestoreChecks::for([
+        archivedItem('class', 4, ['institution_id' => 2, 'name' => 'BD I']),
+        archivedItem('class_member', 8, ['class_id' => 4, 'user_id' => 9, 'role' => 'aluno']),
+    ]);
+    $sqls = array_column($classBatch, 'sql');
+    expect($sqls)->toContain('SELECT 1 FROM classes WHERE institution_id = ? AND name = ?')
+        ->and($sqls)->toContain('SELECT 1 FROM institution_members WHERE institution_id = ? AND user_id = ?');
+    // A turma vem no mesmo lote: não se exige que ela "exista" antes (só o id livre, genérico).
+    $classMustExist = array_filter($classBatch, static fn (array $c): bool => $c['expect'] === 'present' && $c['sql'] === 'SELECT 1 FROM classes WHERE id = ?');
+    expect($classMustExist)->toBe([]);
+
+    $institutionBatch = ArchiveRestoreChecks::for([
+        archivedItem('institution', 2, ['name' => 'Escola', 'invite_code' => null]),
+        archivedItem('class', 4, ['institution_id' => 2, 'name' => 'BD I']),
+        archivedItem('class_member', 8, ['class_id' => 4, 'user_id' => 9, 'role' => 'aluno']),
+    ]);
+    expect(array_column($institutionBatch, 'sql'))->not->toContain('SELECT 1 FROM institution_members WHERE institution_id = ? AND user_id = ?');
+});

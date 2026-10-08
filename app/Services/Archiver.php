@@ -43,13 +43,7 @@ final class Archiver
 
         $root = self::fetchRow($pdo, $model, $id) ?? throw new ArchiveException('Registro não encontrado.');
         $items = [['model' => $model, 'row' => $root, 'is_root' => true]];
-        foreach (ArchiveGraph::children($model) as $childModel => $fk) {
-            $stmt = $pdo->prepare('SELECT * FROM ' . ArchiveGraph::table($childModel) . " WHERE {$fk} = ? ORDER BY id");
-            $stmt->execute([$id]);
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                $items[] = ['model' => $childModel, 'row' => $row, 'is_root' => false];
-            }
-        }
+        self::collectChildren($pdo, $model, $id, $items);
 
         $batchId = self::uuid();
         $undo = [];
@@ -215,14 +209,37 @@ final class Archiver
         AuditLog::record('archive.purged', $root['model'], $root['model_id'], ['batch' => $batchId, 'itens' => count($items), 'rotulo' => $root['label']]);
     }
 
+    /**
+     * Filhos em profundidade, pai antes dos filhos (instituição → turma → vínculo da turma): é a
+     * ordem que a restauração precisa pra respeitar as FKs.
+     *
+     * @param list<array{model: string, row: array<string, mixed>, is_root: bool}> $items
+     */
+    private static function collectChildren(PDO $pdo, string $model, int $id, array &$items): void
+    {
+        foreach (ArchiveGraph::children($model) as $childModel => $fk) {
+            $stmt = $pdo->prepare('SELECT * FROM ' . ArchiveGraph::table($childModel) . " WHERE {$fk} = ? ORDER BY id");
+            $stmt->execute([$id]);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $items[] = ['model' => $childModel, 'row' => $row, 'is_root' => false];
+                self::collectChildren($pdo, $childModel, (int) $row['id'], $items);
+            }
+        }
+    }
+
     /** @param array<string, mixed> $row */
     private static function labelFor(PDO $pdo, string $model, array $row): string
     {
-        if ($model !== 'institution_member') {
+        $target = match ($model) {
+            'institution_member' => ['institutions', 'institution_id'],
+            'class_member' => ['classes', 'class_id'],
+            default => null,
+        };
+        if ($target === null) {
             return ArchiveGraph::label($model, $row);
         }
-        $stmt = $pdo->prepare('SELECT u.name, i.name FROM users u, institutions i WHERE u.id = ? AND i.id = ?');
-        $stmt->execute([(int) $row['user_id'], (int) $row['institution_id']]);
+        $stmt = $pdo->prepare("SELECT u.name, t.name FROM users u, {$target[0]} t WHERE u.id = ? AND t.id = ?");
+        $stmt->execute([(int) $row['user_id'], (int) $row[$target[1]]]);
         $names = $stmt->fetch(PDO::FETCH_NUM);
 
         return $names === false

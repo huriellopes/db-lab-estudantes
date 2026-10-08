@@ -9,6 +9,7 @@ use App\Core\Auth;
 use App\Core\View;
 use App\Models\Institution;
 use App\Models\InstitutionMember;
+use App\Models\SchoolClass;
 
 /** GET /admin/instituicoes/{id}. */
 final class ShowInstitutionAction extends Action
@@ -32,6 +33,7 @@ final class ShowInstitutionAction extends Action
             'institution' => $institution,
             'professors' => array_values(array_filter($members, static fn (array $m): bool => $m['role'] === 'professor')),
             'students' => array_values(array_filter($members, static fn (array $m): bool => $m['role'] === 'aluno')),
+            'classes' => SchoolClass::forInstitutions([$institution->id]),
         ]);
     }
 }
