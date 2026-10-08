@@ -13,7 +13,7 @@ use InvalidArgumentException;
  */
 final class ArchiveGraph
 {
-    public const MODELS = ['user', 'schema', 'saved_query', 'er_diagram', 'institution', 'institution_member'];
+    public const MODELS = ['user', 'schema', 'saved_query', 'er_diagram', 'institution', 'institution_member', 'class', 'class_member'];
 
     private const TABLES = [
         'user' => 'users',
@@ -22,12 +22,15 @@ final class ArchiveGraph
         'er_diagram' => 'er_diagrams',
         'institution' => 'institutions',
         'institution_member' => 'institution_members',
+        'class' => 'classes',
+        'class_member' => 'class_members',
     ];
 
     /** Modelo => [modelo filho => coluna FK no filho]. */
     private const CHILDREN = [
-        'user' => ['schema' => 'user_id', 'saved_query' => 'user_id', 'er_diagram' => 'user_id', 'institution_member' => 'user_id'],
-        'institution' => ['institution_member' => 'institution_id'],
+        'user' => ['schema' => 'user_id', 'saved_query' => 'user_id', 'er_diagram' => 'user_id', 'institution_member' => 'user_id', 'class_member' => 'user_id'],
+        'institution' => ['institution_member' => 'institution_id', 'class' => 'institution_id'],
+        'class' => ['class_member' => 'class_id'],
     ];
 
     private const TYPE_LABELS = [
@@ -37,6 +40,8 @@ final class ArchiveGraph
         'er_diagram' => 'Diagrama ER',
         'institution' => 'Instituição',
         'institution_member' => 'Vínculo com instituição',
+        'class' => 'Turma',
+        'class_member' => 'Vínculo com turma',
     ];
 
     private const MAX_LABEL = 200;
@@ -66,8 +71,9 @@ final class ArchiveGraph
             'user' => sprintf('%s <%s>', $row['name'] ?? '?', $row['email'] ?? '?'),
             'schema' => (string) ($row['db_name'] ?? '?'),
             'saved_query', 'er_diagram' => (string) ($row['title'] ?? '?'),
-            'institution' => (string) ($row['name'] ?? '?'),
+            'institution', 'class' => (string) ($row['name'] ?? '?'),
             'institution_member' => sprintf('Usuário #%s → instituição #%s (%s)', $row['user_id'] ?? '?', $row['institution_id'] ?? '?', $row['role'] ?? '?'),
+            'class_member' => sprintf('Usuário #%s → turma #%s (%s)', $row['user_id'] ?? '?', $row['class_id'] ?? '?', $row['role'] ?? '?'),
             default => throw new InvalidArgumentException("Modelo desconhecido no arquivo: {$model}"),
         };
 

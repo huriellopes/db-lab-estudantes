@@ -20,7 +20,11 @@ final class ArchiveRestoreChecks
     {
         $usersInBatch = [];
         $institutionsInBatch = [];
+        $classInstitution = [];
         foreach ($items as $item) {
+            if ($item['model'] === 'class') {
+                $classInstitution[$item['model_id']] = (int) $item['values']['institution_id'];
+            }
             if ($item['model'] === 'user') {
                 $usersInBatch[] = $item['model_id'];
             }
@@ -71,6 +75,46 @@ final class ArchiveRestoreChecks
                     if (($v['role'] ?? '') === 'aluno') {
                         $checks[] = self::absent('SELECT 1 FROM institution_members WHERE student_user_id = ?', [(int) $v['user_id']], "{$item['label']}: o aluno já está em outra instituição.");
                     }
+                }
+            }
+
+            if ($item['model'] === 'class') {
+                $institutionId = (int) $v['institution_id'];
+                $checks[] = self::absent('SELECT 1 FROM classes WHERE institution_id = ? AND name = ?', [$institutionId, (string) $v['name']], "Já existe uma turma chamada {$v['name']} nesta instituição.");
+                if (!in_array($institutionId, $institutionsInBatch, true)) {
+                    $checks[] = [
+                        'sql' => 'SELECT 1 FROM institutions WHERE id = ?',
+                        'params' => [$institutionId],
+                        'expect' => 'present',
+                        'message' => "{$item['label']}: a instituição #{$institutionId} também está excluída — restaure a instituição primeiro.",
+                    ];
+                }
+            }
+
+            if ($item['model'] === 'class_member') {
+                $classId = (int) $v['class_id'];
+                $userId = (int) $v['user_id'];
+                $notInInstitution = "{$item['label']}: a pessoa não está mais na instituição da turma.";
+                if (!isset($classInstitution[$classId])) {
+                    $checks[] = [
+                        'sql' => 'SELECT 1 FROM classes WHERE id = ?',
+                        'params' => [$classId],
+                        'expect' => 'present',
+                        'message' => "{$item['label']}: a turma #{$classId} também está excluída — restaure a turma primeiro.",
+                    ];
+                    $checks[] = [
+                        'sql' => 'SELECT 1 FROM institution_members m JOIN classes c ON c.institution_id = m.institution_id WHERE c.id = ? AND m.user_id = ?',
+                        'params' => [$classId, $userId],
+                        'expect' => 'present',
+                        'message' => $notInInstitution,
+                    ];
+                } elseif (!in_array($classInstitution[$classId], $institutionsInBatch, true)) {
+                    $checks[] = [
+                        'sql' => 'SELECT 1 FROM institution_members WHERE institution_id = ? AND user_id = ?',
+                        'params' => [$classInstitution[$classId], $userId],
+                        'expect' => 'present',
+                        'message' => $notInInstitution,
+                    ];
                 }
             }
 
