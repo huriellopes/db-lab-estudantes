@@ -49,12 +49,13 @@ COPY composer.json ./
 COPY public ./public
 COPY --from=assets /assets/public/build ./public/build
 COPY docker/app-entrypoint.sh /usr/local/bin/app-entrypoint.sh
+COPY docker/archive-purge-loop.sh /usr/local/bin/archive-purge-loop.sh
 
 # Código fica de root (só leitura pro PHP-FPM, que roda como www-data); só storage/ (cache
 # do Twig, cache de saúde, logs de erro e backups) é gravável. Antes era chown -R da pasta inteira: uma falha que desse execução de
 # código no PHP podia reescrever os próprios arquivos da app e ficar lá de vez.
 RUN mkdir -p storage/twig-cache storage/cache storage/logs storage/backups /var/log/supervisor \
-    && chmod +x /usr/local/bin/app-entrypoint.sh bin/console.php \
+    && chmod +x /usr/local/bin/app-entrypoint.sh /usr/local/bin/archive-purge-loop.sh bin/console.php \
     && chown -R www-data:www-data storage
 
 EXPOSE 80

@@ -15,6 +15,7 @@ use App\Actions\Admin\IndexAdminUsersAction;
 use App\Actions\Admin\IndexAuditLogsAction;
 use App\Actions\Admin\IndexBackupsAction;
 use App\Actions\Admin\IndexDeletedModelsAction;
+use App\Actions\Admin\KeepDeletedBatchAction;
 use App\Actions\Admin\LiveLogsFeedAction;
 use App\Actions\Admin\PruneBackupsAction;
 use App\Actions\Admin\PruneLogsAction;
@@ -292,6 +293,7 @@ $router->post('/admin/instituicoes/{id}/excluir', DestroyInstitutionAction::clas
 $router->get('/admin/excluidos', IndexDeletedModelsAction::class);
 $router->post('/admin/excluidos/{batch}/restaurar', RestoreDeletedBatchAction::class);
 $router->post('/admin/excluidos/{batch}/excluir', PurgeDeletedBatchAction::class);
+$router->post('/admin/excluidos/{batch}/manter', KeepDeletedBatchAction::class);
 $router->get('/admin/manutencao', ShowAdminMaintenanceAction::class);
 $router->post('/admin/manutencao/status', RefreshHealthAction::class);
 $router->post('/admin/manutencao/cache-twig', ClearTwigCacheAction::class);
