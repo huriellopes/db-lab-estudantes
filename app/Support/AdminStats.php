@@ -17,7 +17,7 @@ final readonly class AdminStats
         public int $admins,
         public int $schemas,
         public int $inactiveUsers = 0,
-        public int $trashedUsers = 0,
+        public int $deletedBatches = 0,
         public int $activeLast7Days = 0,
         public int $activeLast30Days = 0,
         public int $neverLoggedIn = 0,

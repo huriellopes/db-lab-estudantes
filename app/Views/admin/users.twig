@@ -8,7 +8,7 @@
             <p class="mt-1 text-sm text-slate-500">Alunos e professores do lab (contas admin não aparecem aqui).</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="/admin/usuarios/lixeira" class="btn-secondary">Lixeira</a>
+            <a href="/admin/excluidos?tipo=user" class="btn-secondary">Dados excluídos</a>
             <a href="/admin/usuarios/novo" class="btn-primary">+ Novo usuário</a>
         </div>
     </div>
@@ -92,7 +92,7 @@
                                         <form
                                             hx-boost="false" x-data="ajaxForm({
                                                 confirmTitle: 'Excluir usuário',
-                                                confirmMessage: 'Excluir a conta de {{ user.name|e('js') }}? Fica na lixeira, dá pra restaurar depois.',
+                                                confirmMessage: 'Excluir a conta de {{ user.name|e('js') }}? Ela vai para Dados excluídos com os schemas, consultas e diagramas, e pode ser restaurada.',
                                                 confirmLabel: 'Excluir',
                                                 removeRow: true,
                                             })"

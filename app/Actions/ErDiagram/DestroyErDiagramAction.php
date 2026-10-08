@@ -8,6 +8,7 @@ use App\Core\Action;
 use App\Core\Auth;
 use App\Models\Entities\ErDiagram as ErDiagramEntity;
 use App\Models\ErDiagram;
+use App\Services\Archiver;
 use Throwable;
 
 /** POST /laboratorio/modelagem/{id}/excluir. */
@@ -25,7 +26,7 @@ final class DestroyErDiagramAction extends Action
         }
 
         try {
-            ErDiagram::delete($diagram->id);
+            Archiver::archive('er_diagram', $diagram->id, 'er_diagram.deleted');
         } catch (Throwable $e) {
             $this->json(false, $this->genericError('excluir o diagrama', $e));
         }

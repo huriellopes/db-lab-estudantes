@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Support\ArchiveRestoreChecks;
+
+function archivedItem(string $model, int $id, array $values, array $meta = []): array
+{
+    return ['model' => $model, 'model_id' => $id, 'label' => "{$model} {$id}", 'values' => $values, 'meta' => $meta];
+}
+
+it('checks id, email, login and prefix before restoring a user', function () {
+    $checks = ArchiveRestoreChecks::for([
+        archivedItem('user', 7, ['email' => 'm@x.com', 'mysql_login' => 'maria', 'schema_prefix' => 'maria']),
+    ]);
+
+    expect(array_column($checks, 'sql'))->toBe([
+        'SELECT 1 FROM users WHERE id = ?',
+        'SELECT 1 FROM users WHERE email = ?',
+        'SELECT 1 FROM users WHERE mysql_login = ? OR schema_prefix = ?',
+        'SELECT 1 FROM users WHERE mysql_login = ? OR schema_prefix = ?',
+    ])
+        ->and(array_column($checks, 'expect'))->toBe(['absent', 'absent', 'absent', 'absent'])
+        ->and($checks[1]['params'])->toBe(['m@x.com'])
+        ->and($checks[2]['params'])->toBe(['maria', 'maria']);
+});
+
+it('requires the quarantine to exist and the database name to be free for a schema', function () {
+    $checks = ArchiveRestoreChecks::for([
+        archivedItem('schema', 3, ['user_id' => 7, 'db_name' => 'maria__bio'], ['quarantine' => '_lixeira_s3']),
+    ]);
+
+    $byMessage = array_column($checks, null, 'message');
+    expect(array_column($checks, 'expect'))->toBe(['absent', 'absent', 'absent', 'present', 'present'])
+        ->and($checks[2]['sql'])->toBe('SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?')
+        ->and($checks[2]['params'])->toBe(['maria__bio'])
+        ->and($checks[3]['params'])->toBe(['_lixeira_s3'])
+        ->and($checks[4]['sql'])->toBe('SELECT 1 FROM users WHERE id = ?')
+        ->and($checks[4]['params'])->toBe([7])
+        ->and(array_keys($byMessage)[4])->toContain('restaure o usuário');
+});
+
+it('skips the owner check when the owner comes back in the same batch', function () {
+    $checks = ArchiveRestoreChecks::for([
+        archivedItem('user', 7, ['email' => 'm@x.com', 'mysql_login' => 'maria', 'schema_prefix' => 'maria']),
+        archivedItem('saved_query', 9, ['user_id' => 7, 'title' => 'q']),
+    ]);
+
+    $ownerChecks = array_filter($checks, static fn (array $c): bool => $c['expect'] === 'present');
+    expect($ownerChecks)->toBe([]);
+});

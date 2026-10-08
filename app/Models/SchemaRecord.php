@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Core\Database;
 use App\Models\Entities\Schema;
 use App\Models\Entities\SchemaWithOwner;
+use App\Services\Archiver;
 
 /**
  * Registro (na tabela schemas_criados) de quem é dono de cada database criado.
@@ -48,7 +49,7 @@ final class SchemaRecord
         $stmt = Database::connection()->prepare('SELECT id FROM schemas_criados WHERE db_name = ?');
         $stmt->execute([$dbName]);
 
-        return $stmt->fetch() !== false;
+        return $stmt->fetch() !== false || DeletedModel::isReserved('db_name', $dbName);
     }
 
     public static function create(int $userId, string $dbName): void
@@ -81,12 +82,6 @@ final class SchemaRecord
         return $row === false ? null : Schema::fromRow($row);
     }
 
-    public static function delete(int $id): void
-    {
-        $stmt = Database::connection()->prepare('DELETE FROM schemas_criados WHERE id = ?');
-        $stmt->execute([$id]);
-    }
-
     /**
      * Sincroniza os registros de um usuário com o que realmente existe no MySQL pro
      * prefixo dele — necessário porque o console SQL (ver App\Actions\SqlConsole\RunSqlAction)
@@ -116,7 +111,9 @@ final class SchemaRecord
         foreach ($tracked as $schema) {
             $withinPrefix = str_starts_with($schema->dbName, $schemaPrefix . '__');
             if ($withinPrefix && !in_array($schema->dbName, $actualDbNames, true)) {
-                self::delete($schema->id);
+                // DROP DATABASE feito por fora (console/phpMyAdmin/SGBD): não tem como evitar nem
+                // recuperar os dados, mas o registro vai pro arquivo e fica auditado.
+                Archiver::archive('schema', $schema->id, 'schema.removed_outside', origin: Archiver::ORIGIN_OUTSIDE);
             }
         }
     }

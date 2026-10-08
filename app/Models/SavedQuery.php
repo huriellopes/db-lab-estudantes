@@ -45,10 +45,4 @@ final class SavedQuery
 
         return $row === false ? null : SavedQueryEntity::fromRow($row);
     }
-
-    public static function delete(int $id): void
-    {
-        $stmt = Database::connection()->prepare('DELETE FROM saved_queries WHERE id = ?');
-        $stmt->execute([$id]);
-    }
 }
