@@ -1,14 +1,15 @@
 {% extends 'layouts/app.twig' %}
 
 {% macro members(list, class, title, empty, canEdit) %}
-    <div class="card">
+    <div class="card h-fit" x-data="pagedList(8)">
         <h2 class="mb-3 text-base font-semibold text-slate-900">{{ title }} <span class="text-sm font-normal text-slate-400">({{ list|length }})</span></h2>
         {% if list is empty %}
             <p class="text-sm text-slate-500">{{ empty }}</p>
         {% else %}
+            {% include 'partials/paged-list-controls.twig' %}
             <ul class="divide-y divide-slate-100 text-sm">
                 {% for m in list %}
-                    <li class="flex items-center justify-between gap-3 py-2" data-row>
+                    <li class="flex items-center justify-between gap-3 py-2" data-row data-paged-row data-search="{{ m.name }} {{ m.email }} {{ m.mysql_login }}" x-show="shows($el)">
                         <span class="min-w-0">
                             <span class="font-medium text-slate-800">{{ m.name }}</span>
                             <span class="block truncate text-xs text-slate-500">{{ m.email }}</span>
@@ -44,6 +45,7 @@
                     </li>
                 {% endfor %}
             </ul>
+            {% include 'partials/paged-list-pager.twig' %}
         {% endif %}
     </div>
 {% endmacro %}
