@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Services\Maintenance;
 use App\Support\ByteSize;
 use App\Support\Csrf;
 use App\Support\PasswordPolicy;
@@ -67,6 +68,8 @@ final class View
         $twig->addFunction(new TwigFunction('is_aluno', [Auth::class, 'isAluno']));
         $twig->addFunction(new TwigFunction('can_manage_students', [Auth::class, 'canManageStudents']));
         $twig->addFunction(new TwigFunction('flash', [Flash::class, 'get']));
+        // Faixa de aviso no layout pro admin enquanto o modo manutenção estiver ligado.
+        $twig->addFunction(new TwigFunction('maintenance_mode', [Maintenance::class, 'mode']));
 
         $twig->addFunction(new TwigFunction('vite', [Vite::class, 'tags'], ['is_safe' => ['html']]));
 

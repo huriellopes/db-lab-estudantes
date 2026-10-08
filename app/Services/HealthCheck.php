@@ -6,7 +6,9 @@ namespace App\Services;
 
 use App\Core\Config;
 use App\Core\Database;
+use App\Support\ByteSize;
 use App\Support\HealthStatus;
+use DateTimeImmutable;
 use Throwable;
 
 /**
@@ -16,12 +18,34 @@ use Throwable;
  */
 final class HealthCheck
 {
-    private const CACHE_TTL_SECONDS = 30;
+    public const CACHE_TTL_SECONDS = 30;
+
+    /** Abaixo disso (fração livre da partição do storage/) a Aplicação aparece offline. */
+    public const MIN_FREE_DISK_RATIO = 0.05;
+
+    public static function cacheFile(): string
+    {
+        return dirname(__DIR__, 2) . '/storage/cache/health.json';
+    }
+
+    /** Quando o resultado em cache foi gerado (null = sem cache, a próxima leitura checa na hora). */
+    public static function checkedAt(): ?DateTimeImmutable
+    {
+        $mtime = is_file(self::cacheFile()) ? filemtime(self::cacheFile()) : false;
+
+        return $mtime === false ? null : (new DateTimeImmutable())->setTimestamp($mtime);
+    }
+
+    /** Joga o cache fora — o próximo all() checa os três serviços de novo ("Reverificar agora"). */
+    public static function forget(): void
+    {
+        @unlink(self::cacheFile());
+    }
 
     /** @return list<HealthStatus> */
     public static function all(): array
     {
-        $cacheFile = dirname(__DIR__, 2) . '/storage/cache/health.json';
+        $cacheFile = self::cacheFile();
 
         if (is_file($cacheFile) && time() - (int) filemtime($cacheFile) < self::CACHE_TTL_SECONDS) {
             $rows = json_decode((string) file_get_contents($cacheFile), true);
@@ -48,12 +72,45 @@ final class HealthCheck
         $storage = dirname(__DIR__, 2) . '/storage';
         $free = @disk_free_space($storage);
         $total = @disk_total_space($storage);
-        $diskOk = $free === false || $total === false || $total <= 0 || $free / $total > 0.05;
-        $disk = $free !== false && $total !== false && $total > 0
-            ? sprintf(', disco %d%% livre', (int) round($free / $total * 100))
-            : '';
 
-        return new HealthStatus('Aplicação', $diskOk && is_writable($storage), null, 'PHP ' . PHP_VERSION . $disk);
+        return self::describeApp(
+            PHP_VERSION,
+            $free === false ? null : $free,
+            $total === false ? null : $total,
+            is_writable($storage),
+        );
+    }
+
+    /**
+     * O "% livre" é do DISCO (partição onde fica storage/: logs, backups, caches), não do PHP —
+     * por isso o texto diz "disco" explicitamente. Sem leitura de disco (null), não reprova.
+     */
+    public static function describeApp(string $phpVersion, ?float $freeBytes, ?float $totalBytes, bool $storageWritable): HealthStatus
+    {
+        $hasDisk = $freeBytes !== null && $totalBytes !== null && $totalBytes > 0;
+        $diskOk = !$hasDisk || $freeBytes / $totalBytes > self::MIN_FREE_DISK_RATIO;
+
+        $detail = 'PHP ' . $phpVersion;
+        if ($hasDisk) {
+            $detail .= sprintf(
+                ' · disco: %s livres de %s (%d%%)',
+                ByteSize::format($freeBytes),
+                ByteSize::format($totalBytes),
+                (int) round($freeBytes / $totalBytes * 100),
+            );
+        }
+
+        $hint = '';
+        if (!$storageWritable) {
+            $detail .= ' · storage/ sem permissão de escrita';
+            $hint = 'Corrija a permissão no servidor: docker compose exec app chown -R www-data:www-data storage';
+        } elseif (!$diskOk) {
+            $detail .= ' · disco com menos de ' . (int) (self::MIN_FREE_DISK_RATIO * 100) . '% livre';
+            $hint = 'Use "Liberar espaço" em /admin/manutencao (logs e backups antigos) ou, no servidor, '
+                . 'docker system prune para apagar imagens e containers parados.';
+        }
+
+        return new HealthStatus('Aplicação', $diskOk && $storageWritable, null, $detail, $hint);
     }
 
     private static function mysql(): HealthStatus
@@ -79,7 +136,14 @@ final class HealthCheck
         } catch (Throwable $e) {
             error_log('HealthCheck MySQL: ' . $e->getMessage());
 
-            return new HealthStatus('Banco de dados (MySQL)', false, null, 'Sem resposta');
+            return new HealthStatus(
+                'Banco de dados (MySQL)',
+                false,
+                null,
+                'Sem resposta',
+                'No servidor: docker compose ps mysql para ver o estado, docker compose logs --tail=100 mysql '
+                . 'para o motivo e docker compose restart mysql para reiniciar.',
+            );
         }
     }
 
@@ -102,7 +166,14 @@ final class HealthCheck
 
         $ok = $code >= 200 && $code < 400;
 
-        return new HealthStatus('phpMyAdmin', $ok, $ok ? $latency : null, $ok ? "HTTP {$code}" : 'Sem resposta');
+        return new HealthStatus(
+            'phpMyAdmin',
+            $ok,
+            $ok ? $latency : null,
+            $ok ? "HTTP {$code}" : ($code > 0 ? "HTTP {$code}" : 'Sem resposta'),
+            $ok ? '' : 'No servidor: docker compose restart phpmyadmin (veja o motivo em docker compose logs --tail=100 phpmyadmin). '
+                . 'O lab continua funcionando sem ele — só o acesso pelo phpMyAdmin fica fora.',
+        );
     }
 
     public static function humanDuration(int $seconds): string

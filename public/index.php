@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use App\Actions\Admin\ClearTwigCacheAction;
 use App\Actions\Admin\CreateAdminUserAction;
 use App\Actions\Admin\DestroyAdminSchemaAction;
 use App\Actions\Admin\DestroyAdminUserAction;
@@ -13,14 +14,22 @@ use App\Actions\Admin\EditAdminUserAction;
 use App\Actions\Admin\IndexAdminUsersAction;
 use App\Actions\Admin\IndexAuditLogsAction;
 use App\Actions\Admin\IndexBackupsAction;
+use App\Actions\Admin\LiveLogsFeedAction;
+use App\Actions\Admin\PruneBackupsAction;
+use App\Actions\Admin\PruneLogsAction;
+use App\Actions\Admin\RefreshHealthAction;
 use App\Actions\Admin\ResetAdminUserPasswordAction;
+use App\Actions\Admin\ResetOpcacheAction;
 use App\Actions\Admin\RestoreAdminUserAction;
 use App\Actions\Admin\ShowAdminDashboardAction;
 use App\Actions\Admin\ShowAdminLogsAction;
+use App\Actions\Admin\ShowAdminMaintenanceAction;
 use App\Actions\Admin\ShowAdminSchemasAction;
+use App\Actions\Admin\ShowLiveLogsAction;
 use App\Actions\Admin\StoreAdminUserAction;
 use App\Actions\Admin\StoreBackupAction;
 use App\Actions\Admin\ToggleAdminUserActiveAction;
+use App\Actions\Admin\ToggleMaintenanceModeAction;
 use App\Actions\Admin\TrashAdminUsersAction;
 use App\Actions\Admin\UpdateAdminUserAction;
 use App\Actions\Admin\UpdateAdminUserRoleAction;
@@ -63,6 +72,7 @@ use App\Actions\Student\UpdateStudentAction;
 use App\Core\Auth;
 use App\Core\Router;
 use App\Core\View;
+use App\Services\Maintenance;
 use App\Support\Csrf;
 use App\Support\ErrorLogger;
 use App\Support\RequestScheme;
@@ -118,6 +128,25 @@ Auth::enforceSession();
 // Sem sessão ativa, mas com um cookie "lembrar de mim" válido? Reabre sozinho — ver
 // App\Core\Auth::attemptRememberLogin(). Roda uma vez só, aqui, antes de qualquer rota.
 Auth::attemptRememberLogin();
+
+// Modo manutenção (ligado em /admin/manutencao): quem não é admin recebe 503 em tudo,
+// menos login/logout/token CSRF — senão nem o próprio admin conseguiria entrar pra desligar.
+// Antes do CSRF e do roteador: nenhuma ação de aluno/professor chega a rodar.
+$requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if (Maintenance::isOn() && !Maintenance::allows(is_string($requestPath) ? $requestPath : '/', Auth::isAdmin())) {
+    http_response_code(503);
+    header('Retry-After: 300');
+    $mode = Maintenance::mode();
+
+    if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'O lab está em manutenção — tente de novo em alguns minutos.']);
+    } else {
+        echo View::render('errors/503', ['mode' => $mode]);
+    }
+
+    exit;
+}
 
 // Toda requisição POST precisa do token CSRF da própria sessão — via campo _csrf (forms
 // clássicos, ver csrf_field() no Twig) ou header X-CSRF-Token (Axios, ver resources/js/app.js).
@@ -212,10 +241,19 @@ $router->get('/admin/schemas', ShowAdminSchemasAction::class);
 $router->post('/admin/schemas/excluir', DestroyAdminSchemaAction::class);
 $router->get('/admin/auditoria', IndexAuditLogsAction::class);
 $router->get('/admin/logs', ShowAdminLogsAction::class);
+$router->get('/admin/logs/ao-vivo', ShowLiveLogsAction::class);
+$router->get('/admin/logs/ao-vivo/feed', LiveLogsFeedAction::class);
 $router->get('/admin/backups', IndexBackupsAction::class);
 $router->post('/admin/backups', StoreBackupAction::class);
 $router->get('/admin/backups/{name}', DownloadBackupAction::class);
 $router->post('/admin/backups/{name}/excluir', DestroyBackupAction::class);
+$router->get('/admin/manutencao', ShowAdminMaintenanceAction::class);
+$router->post('/admin/manutencao/status', RefreshHealthAction::class);
+$router->post('/admin/manutencao/cache-twig', ClearTwigCacheAction::class);
+$router->post('/admin/manutencao/opcache', ResetOpcacheAction::class);
+$router->post('/admin/manutencao/logs', PruneLogsAction::class);
+$router->post('/admin/manutencao/backups', PruneBackupsAction::class);
+$router->post('/admin/manutencao/modo', ToggleMaintenanceModeAction::class);
 
 // parse_url() pode devolver null/false para uma REQUEST_URI malformada; com
 // strict_types, isso não pode ser passado direto para o parâmetro string do dispatch().
