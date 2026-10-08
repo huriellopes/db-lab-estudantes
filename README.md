@@ -151,6 +151,7 @@ composer migrate:status      # lista o que já rodou
 composer migrate:rollback     # desfaz o último lote
 composer db:seed               # roda database/seeders/DatabaseSeeder (com APP_ENV=local, cria admin/professor/aluno de dev)
 php bin/console.php user:promote-admin <email>   # promove uma conta existente a admin (pede confirmação)
+php bin/vincular-alunos-instituicao.php "ETB" [--aplicar]   # vincula a uma instituição os alunos sem nenhuma (sem --aplicar só simula)
 ```
 
 - `database/migrations/*.php`: cada arquivo devolve uma classe anônima `extends
