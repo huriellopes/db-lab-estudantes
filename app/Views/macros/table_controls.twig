@@ -1,7 +1,7 @@
 {# Busca + ordenação + paginação server-side (App\Support\TableQuery/TableFilter/Paginator).
    Tudo aqui é link/form GET puro — funciona mesmo sem JS, igual o resto da app.
 
-   A busca usa hx-get com debounce (dispara sozinha enquanto digita, sem precisar de Enter
+   A busca usa hx-get com debounce (dispara sozinha enquanto digita, ou na hora com Enter
    nem de recarregar a página) e troca só o container de resultados via hx-select/hx-swap,
    pra não perder o foco do campo de busca — por isso todo call site precisa envolver a
    tabela/lista + paginação num <div id="{results_id}">. O form em si fica com
@@ -9,7 +9,9 @@
    sem JS, o Enter ainda funciona, é um <form method="get"> de verdade. #}
 
 {% macro search_form(action, query, placeholder, results_id) %}
-    <form hx-boost="false" method="get" action="{{ action }}" class="relative mb-4 max-w-sm">
+    {# Com JS, o Enter não faz o GET nativo (que recarregava a página inteira): o input já
+       dispara o hx-get no Enter (keyup — o evento "search" não existe no Firefox). #}
+    <form hx-boost="false" method="get" action="{{ action }}" class="relative mb-4 max-w-sm" x-data @submit="window.htmx && $event.preventDefault()">
         {% if query.sort %}<input type="hidden" name="sort" value="{{ query.sort }}">{% endif %}
         {% if query.direction == 'desc' %}<input type="hidden" name="dir" value="desc">{% endif %}
         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -19,7 +21,7 @@
             type="search" name="q" value="{{ query.search }}" placeholder="{{ placeholder }}"
             class="field-input pl-9"
             hx-get="{{ action }}"
-            hx-trigger="input changed delay:400ms, search"
+            hx-trigger="input changed delay:400ms, keyup[key=='Enter']"
             hx-select="#{{ results_id }}"
             hx-target="#{{ results_id }}"
             hx-swap="outerHTML"

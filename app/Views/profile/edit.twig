@@ -65,7 +65,7 @@
                     confirmTitle: 'Renomear login',
                     confirmMessage: (e) => `Renomear seu login MySQL de '{{ user.mysqlLogin|e('js') }}' para '${e.target.querySelector('#mysql_login').value}'? Conexões já salvas em algum SGBD local vão parar de funcionar até você atualizar o usuário lá.`,
                     confirmLabel: 'Renomear',
-                    onSuccess: () => location.reload(),
+                    refresh: true,
                 })"
                 @submit.prevent="submit"
                 method="post" action="/profile/mysql-login" class="flex flex-col gap-3 sm:flex-row sm:items-end"
