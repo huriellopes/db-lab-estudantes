@@ -24,6 +24,13 @@ services:
     # do /guia rodava no laboratório. A trava existe pra replicação baseada em comandos
     # (binlog_format=STATEMENT); aqui é ROW e não há réplica. O trigger continua rodando com as
     # permissões do próprio aluno (DEFINER = ele mesmo), só no schema dele.
+    #
+    # Performance (calibrado com docker/prod-diagnose.sh): os dados do lab são pequenos (dezenas
+    # de MB), então o buffer pool padrão de 128M já cabe tudo em memória — ajustável por
+    # MYSQL_INNODB_BUFFER_POOL_SIZE se crescer (regra: ~tamanho dos dados + folga, e bem abaixo
+    # de MYSQL_MEM_LIMIT). O_DIRECT: o InnoDB já faz cache próprio; sem isso os mesmos dados
+    # ficavam duas vezes na RAM (buffer pool + cache de página do kernel). Binlog: sem réplica,
+    # só serve pra recuperação recente — 7 dias em vez dos 30 do padrão.
     command: >-
       --default-authentication-plugin=mysql_native_password
       --default-time-zone=America/Sao_Paulo
@@ -32,6 +39,9 @@ services:
       --loose-connection-control-min-connection-delay=1000
       --loose-connection-control-max-connection-delay=30000
       --log-bin-trust-function-creators=1
+      --innodb-buffer-pool-size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-128M}
+      --innodb-flush-method=O_DIRECT
+      --binlog-expire-logs-seconds=604800
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       # Root só via socket/localhost de dentro do container (healthcheck, manutenção com
@@ -59,11 +69,12 @@ services:
         max-file: "3"
     networks:
       - dblab
+    # Limites ajustáveis no .env (MYSQL_CPUS/MYSQL_MEM_LIMIT) — ver "Desempenho" no README.
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 1G
+          cpus: "${MYSQL_CPUS:-1.0}"
+          memory: ${MYSQL_MEM_LIMIT:-1G}
 
   phpmyadmin:
     image: phpmyadmin:5.2.3
@@ -88,8 +99,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 256M
+          cpus: "${PMA_CPUS:-0.5}"
+          memory: ${PMA_MEM_LIMIT:-256M}
 
   app:
     build:
@@ -106,6 +117,15 @@ services:
       # Endereço interno (rede docker) só pro health check — nunca exibido na UI.
       PMA_INTERNAL_URL: ${PMA_INTERNAL_URL:-http://phpmyadmin}
       APP_KEY: ${APP_KEY}
+      # "local" libera o DevUsersSeeder (contas com senha padrão) — sem a variável, vale production.
+      APP_ENV: ${APP_ENV:-production}
+      # Tuning do PHP-FPM/OPcache (docker/php-fpm-pool.conf, docker/php-performance.ini).
+      # FPM_MAX_CHILDREN x ~40MB precisa caber em APP_MEM_LIMIT.
+      FPM_MAX_CHILDREN: ${FPM_MAX_CHILDREN:-10}
+      FPM_START_SERVERS: ${FPM_START_SERVERS:-2}
+      FPM_MIN_SPARE_SERVERS: ${FPM_MIN_SPARE_SERVERS:-2}
+      FPM_MAX_SPARE_SERVERS: ${FPM_MAX_SPARE_SERVERS:-4}
+      OPCACHE_VALIDATE_TIMESTAMPS: ${OPCACHE_VALIDATE_TIMESTAMPS:-1}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -134,8 +154,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 512M
+          cpus: "${APP_CPUS:-1.0}"
+          memory: ${APP_MEM_LIMIT:-512M}
 
 networks:
   dblab:
