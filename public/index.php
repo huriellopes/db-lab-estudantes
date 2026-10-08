@@ -71,6 +71,13 @@ use App\Actions\SavedQuery\DestroySavedQueryAction;
 use App\Actions\SavedQuery\StoreSavedQueryAction;
 use App\Actions\Schema\DestroySchemaAction;
 use App\Actions\Schema\StoreSchemaAction;
+use App\Actions\SchoolClass\AddClassMemberAction;
+use App\Actions\SchoolClass\DestroyClassAction;
+use App\Actions\SchoolClass\IndexClassesAction;
+use App\Actions\SchoolClass\RemoveClassMemberAction;
+use App\Actions\SchoolClass\ShowClassAction;
+use App\Actions\SchoolClass\StoreClassAction;
+use App\Actions\SchoolClass\UpdateClassAction;
 use App\Actions\SqlConsole\ConfirmMysqlPasswordAction;
 use App\Actions\SqlConsole\RunSqlAction;
 use App\Actions\Student\DestroyStudentAction;
@@ -225,6 +232,14 @@ $router->get('/laboratorio/modelagem/{id}', ShowErDiagramAction::class);
 $router->post('/laboratorio/modelagem', StoreErDiagramAction::class);
 $router->post('/laboratorio/modelagem/{id}', UpdateErDiagramAction::class);
 $router->post('/laboratorio/modelagem/{id}/excluir', DestroyErDiagramAction::class);
+
+$router->get('/turmas', IndexClassesAction::class);
+$router->post('/turmas', StoreClassAction::class);
+$router->get('/turmas/{id}', ShowClassAction::class);
+$router->post('/turmas/{id}', UpdateClassAction::class);
+$router->post('/turmas/{id}/membros', AddClassMemberAction::class);
+$router->post('/turmas/{id}/membros/{member}/remover', RemoveClassMemberAction::class);
+$router->post('/turmas/{id}/excluir', DestroyClassAction::class);
 
 // Professor (e admin): gestão de contas de aluno.
 $router->get('/professor/alunos', IndexStudentsAction::class);
