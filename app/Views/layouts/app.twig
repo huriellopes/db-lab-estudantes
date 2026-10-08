@@ -13,7 +13,8 @@
         <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
             <a href="/dashboard" class="flex items-center gap-2 text-lg font-semibold text-slate-900">
                 <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">DB</span>
-                <span class="hidden sm:inline">{{ app_name }}</span>
+                {# Nome por extenso só a partir do lg: entre md e lg o menu dividia o espaço com ele e o nome quebrava em 2 linhas. No celular (abaixo do md) o menu vira o botão sanduíche e o nome cabe. #}
+                <span class="hidden whitespace-nowrap sm:inline md:hidden lg:inline">{{ app_name }}</span>
             </a>
 
             <nav class="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">

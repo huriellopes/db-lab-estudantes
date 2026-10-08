@@ -10,6 +10,17 @@
         </p>
     </div>
 
+    {% if retentionDays > 0 %}
+        <p class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <strong>Expurgo automático ligado:</strong> lotes com mais de {{ retentionDays }} dias são excluídos definitivamente, uma vez por dia.
+            Marque "Não apagar" no que quiser guardar.
+        </p>
+    {% else %}
+        <p class="mb-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+            Expurgo automático desligado: nada sai daqui sozinho. Para ligar, defina <code>ARCHIVE_RETENTION_DAYS</code> no <code>.env</code> (ex.: 90).
+        </p>
+    {% endif %}
+
     <form method="get" action="/admin/excluidos" class="card mb-6 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
         <input type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por nome, e-mail, schema…" class="field-input">
         <select name="tipo" class="field-input !w-auto">
@@ -42,11 +53,28 @@
                                 excluído {% if b.deleted_by_name %}por {{ b.deleted_by_name }} {% endif %}em {{ b.deleted_at|date('d/m/Y H:i') }}
                                 {% if b.quarantine_bytes > 0 %} · {{ b.quarantine_bytes|bytes }} em quarentena{% endif %}
                             </p>
+                            {% if b.keep %}
+                                <span class="mt-2 inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">não apagar</span>
+                            {% elseif b.days_left is not null %}
+                                <span class="mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium {{ b.days_left <= 7 ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600' }}">
+                                    {{ b.days_left == 0 ? 'será apagado no próximo expurgo' : 'será apagado em ' ~ b.days_left ~ ' dia' ~ (b.days_left == 1 ? '' : 's') }}
+                                </span>
+                            {% endif %}
                             {% if b.removed_outside %}
                                 <span class="mt-2 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">removido fora da plataforma — sem dados para restaurar</span>
                             {% endif %}
                         </button>
                         <div class="flex shrink-0 flex-wrap gap-2">
+                            {% if retentionDays > 0 or b.keep %}
+                                <form
+                                    hx-boost="false" method="post" action="/admin/excluidos/{{ b.batch_id }}/manter"
+                                    x-data="ajaxForm({ refresh: true })" @submit.prevent="submit"
+                                >
+                                    {{ csrf_field() }}
+                                    <input type="hidden" name="manter" value="{{ b.keep ? '0' : '1' }}">
+                                    <button :disabled="loading" type="submit" class="btn-secondary !px-3 !py-1.5 text-xs">{{ b.keep ? 'Permitir expurgo' : 'Não apagar' }}</button>
+                                </form>
+                            {% endif %}
                             {% if not b.removed_outside %}
                                 <form
                                     hx-boost="false" method="post" action="/admin/excluidos/{{ b.batch_id }}/restaurar"

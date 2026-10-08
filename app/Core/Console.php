@@ -6,6 +6,10 @@ namespace App\Core;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Archiver;
+use App\Services\SchemaQuarantine;
+use App\Support\ByteSize;
+use App\Support\RetentionPolicy;
 use App\Support\Role;
 use Database\Seeders\DatabaseSeeder;
 use Throwable;
@@ -27,6 +31,7 @@ final class Console
             'db:seed' => $this->seed(),
             'user:promote-admin' => $this->promoteAdmin($argv[2] ?? null),
             'audit:prune' => $this->pruneAudit($argv[2] ?? null),
+            'archive:purge-expired' => $this->purgeExpired(in_array('--aplicar', $argv, true)),
             default => $this->usage(),
         };
     }
@@ -165,9 +170,52 @@ final class Console
         return 0;
     }
 
+    /**
+     * Expurgo automático de Dados excluídos (ARCHIVE_RETENTION_DAYS; 0/vazio = desligado). Sem
+     * --aplicar só mostra o que sairia. Roda sozinho uma vez por dia (docker/archive-purge-loop.sh).
+     */
+    private function purgeExpired(bool $apply): int
+    {
+        $days = RetentionPolicy::days(Config::get('ARCHIVE_RETENTION_DAYS'));
+        if ($days === 0) {
+            $this->line('Expurgo automático desligado (ARCHIVE_RETENTION_DAYS vazio ou 0). Nada a fazer.');
+
+            return 0;
+        }
+
+        $expired = Archiver::purgeExpired($days, apply: false);
+        $quarantines = [];
+        foreach ($expired as $batch) {
+            foreach (\App\Models\DeletedModel::itemsOfBatch($batch['batch_id']) as $item) {
+                if (isset($item['meta']['quarantine'])) {
+                    $quarantines[] = (string) $item['meta']['quarantine'];
+                }
+            }
+        }
+        $bytes = array_sum(SchemaQuarantine::sizeBytes($quarantines));
+
+        $this->line(($apply ? 'Expurgando' : 'Simulação: seriam expurgados') . ' ' . count($expired) . " lote(s) com mais de {$days} dias (libera ~" . ByteSize::format($bytes) . ' de schemas em quarentena).');
+        if (!$apply) {
+            foreach ($expired as $batch) {
+                $this->line("  - {$batch['label']} ({$batch['model']}, excluído em {$batch['deleted_at']})");
+            }
+
+            return 0;
+        }
+
+        $failed = 0;
+        foreach (Archiver::purgeExpired($days, apply: true) as $batch) {
+            $ok = !isset($batch['error']);
+            $failed += $ok ? 0 : 1;
+            $this->line(($ok ? '  ✓ ' : '  ✗ ') . $batch['label'] . ($ok ? '' : ": {$batch['error']}"), !$ok);
+        }
+
+        return $failed > 0 ? 1 : 0;
+    }
+
     private function usage(): int
     {
-        $this->line('Uso: php bin/console.php <migrate|migrate:rollback|migrate:status|db:seed|user:promote-admin <email>|audit:prune [--days=N]>');
+        $this->line('Uso: php bin/console.php <migrate|migrate:rollback|migrate:status|db:seed|user:promote-admin <email>|audit:prune [--days=N]|archive:purge-expired [--aplicar]>');
 
         return 1;
     }

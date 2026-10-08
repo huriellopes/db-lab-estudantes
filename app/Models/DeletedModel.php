@@ -37,7 +37,7 @@ final class DeletedModel
         ]);
     }
 
-    /** @return list<array{id: int, batch_id: string, is_root: bool, model: string, model_id: int, label: string, values: array<string, mixed>, meta: array<string, mixed>, deleted_by_name: ?string, deleted_at: string}> */
+    /** @return list<array{id: int, batch_id: string, is_root: bool, model: string, model_id: int, label: string, values: array<string, mixed>, meta: array<string, mixed>, deleted_by_name: ?string, keep: bool, deleted_at: string}> */
     public static function itemsOfBatch(string $batchId): array
     {
         $stmt = Database::connection()->prepare('SELECT * FROM deleted_models WHERE batch_id = ? ORDER BY is_root DESC, id');
@@ -70,6 +70,31 @@ final class DeletedModel
         $stmt->execute([$model, $path, $value]);
 
         return $stmt->fetch() !== false;
+    }
+
+    /** "Não apagar" (ou liberar de novo) um lote para o expurgo automático por tempo. */
+    public static function setKeep(string $batchId, bool $keep): void
+    {
+        Database::connection()->prepare('UPDATE deleted_models SET keep = ? WHERE batch_id = ? AND is_root = 1')->execute([$keep ? 1 : 0, $batchId]);
+    }
+
+    /**
+     * Lotes vencidos para o expurgo: raiz excluída há mais de $days dias e não marcada "não apagar".
+     *
+     * @return list<array{batch_id: string, model: string, label: string, deleted_at: string}>
+     */
+    public static function expiredBatches(int $days): array
+    {
+        if ($days <= 0) {
+            return [];
+        }
+        $stmt = Database::connection()->prepare(
+            'SELECT batch_id, model, label, deleted_at FROM deleted_models
+             WHERE is_root = 1 AND keep = 0 AND deleted_at < NOW() - INTERVAL ? DAY ORDER BY deleted_at',
+        );
+        $stmt->execute([$days]);
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     public static function deleteBatch(string $batchId): void
@@ -157,6 +182,7 @@ final class DeletedModel
                 'label' => $root['label'],
                 'deleted_by_name' => $root['deleted_by_name'],
                 'deleted_at' => $root['deleted_at'],
+                'keep' => $root['keep'],
                 'removed_outside' => ($root['meta']['removed_outside'] ?? false) === true,
                 'related' => $related,
                 'quarantine_bytes' => $bytes,
@@ -179,7 +205,7 @@ final class DeletedModel
 
     /**
      * @param array<string, mixed> $row
-     * @return array{id: int, batch_id: string, is_root: bool, model: string, model_id: int, label: string, values: array<string, mixed>, meta: array<string, mixed>, deleted_by_name: ?string, deleted_at: string}
+     * @return array{id: int, batch_id: string, is_root: bool, model: string, model_id: int, label: string, values: array<string, mixed>, meta: array<string, mixed>, deleted_by_name: ?string, keep: bool, deleted_at: string}
      */
     public static function hydrate(array $row): array
     {
@@ -193,6 +219,7 @@ final class DeletedModel
             'values' => json_decode((string) $row['values'], true) ?: [],
             'meta' => $row['meta'] !== null ? (json_decode((string) $row['meta'], true) ?: []) : [],
             'deleted_by_name' => $row['deleted_by_name'] !== null ? (string) $row['deleted_by_name'] : null,
+            'keep' => (bool) ($row['keep'] ?? false),
             'deleted_at' => (string) $row['deleted_at'],
         ];
     }
