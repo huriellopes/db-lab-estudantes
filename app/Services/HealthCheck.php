@@ -103,7 +103,7 @@ final class HealthCheck
         $hint = '';
         if (!$storageWritable) {
             $detail .= ' · storage/ sem permissão de escrita';
-            $hint = 'Corrija a permissão no servidor: docker compose exec app chown -R www-data:www-data storage';
+            $hint = 'Corrija a permissão no servidor: docker compose exec app chown -R www-data:www-data storage (ou reinicie o container: o entrypoint corrige)';
         } elseif (!$diskOk) {
             $detail .= ' · disco com menos de ' . (int) (self::MIN_FREE_DISK_RATIO * 100) . '% livre';
             $hint = 'Use "Liberar espaço" em /admin/manutencao (logs e backups antigos) ou, no servidor, '

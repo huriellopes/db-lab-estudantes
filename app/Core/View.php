@@ -37,7 +37,7 @@ final class View
         $cacheDir = dirname(__DIR__, 2) . '/storage/twig-cache';
 
         $twig = new Environment($loader, [
-            'cache' => is_writable(dirname($cacheDir)) ? $cacheDir : false,
+            'cache' => is_writable(dirname($cacheDir)) ? new ResilientTwigCache($cacheDir) : false,
             'autoescape' => 'html',
             'strict_variables' => false,
             // Sem isso, o cache do Twig por padrão só invalida em modo debug — um
