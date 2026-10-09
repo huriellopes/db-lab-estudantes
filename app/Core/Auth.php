@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Models\AuditLog;
 use App\Models\Entities\User;
 use App\Models\RememberToken;
 use App\Models\User as UserModel;
@@ -12,10 +13,14 @@ use App\Support\Crypto;
 use App\Support\Csrf;
 use App\Support\Policy;
 use App\Support\RequestScheme;
+use App\Support\Role;
 use App\Support\SessionTimeout;
 
 final class Auth
 {
+    /** Console SQL e bancos dos alunos conectam no MySQL como a própria pessoa — a senha do alvo ninguém tem. */
+    public const IMPERSONATION_NO_MYSQL = 'Indisponível enquanto você está como outra pessoa: o MySQL conecta com a senha dela. Volte para a sua conta para usar.';
+
     /** Nome do cookie de "lembrar de mim" — separado do cookie de sessão do PHP. */
     private const REMEMBER_COOKIE = 'remember_token';
     public static function check(): bool
@@ -44,7 +49,7 @@ final class Auth
      */
     public static function login(User $user, ?string $plainPassword = null): void
     {
-        session_regenerate_id(true);
+        self::regenerateId();
         // Token CSRF novo junto com o ID novo: o de antes do login pode ter sido visto por
         // quem plantou a sessão (o próximo GET gera outro, ver App\Support\Csrf::token).
         unset($_SESSION[Csrf::SESSION_KEY]);
@@ -95,8 +100,23 @@ final class Auth
             return;
         }
 
+        // Impersonando: o admin por trás também é revalidado — perdeu o papel ou a sessão dele
+        // foi invalidada, encerra tudo; já a conta-alvo sumir/desativar só devolve o admin.
+        if (self::isImpersonating() && self::impersonatorAccount() === null) {
+            self::clearRememberCookie();
+            self::endSession();
+
+            return;
+        }
+
         $user = UserModel::find($sessionUser->id);
         if ($user === null || !$user->active || $user->sessionVersion !== (self::sessionInt('session_version') ?? 0)) {
+            if (self::isImpersonating()) {
+                AuditLog::record('impersonation.stop', 'user', $sessionUser->id, ['motivo' => 'conta impersonada ficou indisponível']);
+                self::stopImpersonating();
+
+                return;
+            }
             self::clearRememberCookie();
             self::endSession();
 
@@ -207,6 +227,87 @@ final class Auth
         session_destroy();
     }
 
+    /**
+     * "Entrar como" (só admin, ver Policy::canImpersonate): a sessão passa a ser a de $target,
+     * guardando o admin por trás em $_SESSION['impersonator'] pra voltar depois e pra
+     * AuditLog::record marcar toda ação do período como "admin X como Y".
+     *
+     * A senha MySQL em cache é a do admin — sai da sessão (guardada pra voltar): o console SQL
+     * conecta como a própria pessoa e a senha do alvo ninguém tem, então ele fica indisponível.
+     */
+    public static function impersonate(User $target): void
+    {
+        $admin = self::user();
+        if ($admin === null || self::isImpersonating()) {
+            return;
+        }
+
+        $impersonator = [
+            'id' => $admin->id,
+            'name' => $admin->name,
+            'session_version' => self::sessionInt('session_version') ?? 0,
+            'mysql_password_enc' => $_SESSION['mysql_password_enc'] ?? null,
+            'started_at' => time(),
+        ];
+
+        self::regenerateId();
+        unset($_SESSION[Csrf::SESSION_KEY], $_SESSION['mysql_password_enc']);
+        self::storeSnapshot($target);
+        $_SESSION['impersonator'] = $impersonator;
+    }
+
+    /**
+     * Volta pra conta do admin. Se ela não vale mais (desativada, rebaixada, senha trocada),
+     * encerra a sessão. @return bool true = voltou pro admin.
+     */
+    public static function stopImpersonating(): bool
+    {
+        $impersonator = self::impersonator();
+        if ($impersonator === null) {
+            return false;
+        }
+
+        $admin = self::impersonatorAccount();
+        self::regenerateId();
+        unset($_SESSION[Csrf::SESSION_KEY], $_SESSION['impersonator'], $_SESSION['mysql_password_enc']);
+        if ($admin === null) {
+            self::endSession();
+
+            return false;
+        }
+
+        self::storeSnapshot($admin);
+        if (is_string($impersonator['mysql_password_enc'] ?? null)) {
+            $_SESSION['mysql_password_enc'] = $impersonator['mysql_password_enc'];
+        }
+
+        return true;
+    }
+
+    /** @return ?array{id: int, name: string, session_version: int, mysql_password_enc: ?string, started_at: int} */
+    public static function impersonator(): ?array
+    {
+        $impersonator = $_SESSION['impersonator'] ?? null;
+
+        return is_array($impersonator) && is_int($impersonator['id'] ?? null) ? $impersonator : null;
+    }
+
+    public static function isImpersonating(): bool
+    {
+        return self::impersonator() !== null;
+    }
+
+    /** A conta do admin por trás da impersonação, se ainda for um admin ativo com a mesma sessão. */
+    private static function impersonatorAccount(): ?User
+    {
+        $impersonator = self::impersonator();
+        $admin = $impersonator === null ? null : UserModel::find($impersonator['id']);
+
+        return $admin !== null && $admin->active && $admin->role === Role::Admin && $admin->sessionVersion === $impersonator['session_version']
+            ? $admin
+            : null;
+    }
+
     public static function isAdmin(): bool
     {
         return Policy::isAdmin(self::user());
@@ -298,7 +399,15 @@ final class Auth
         if (is_string($csrf)) {
             $_SESSION[Csrf::SESSION_KEY] = $csrf;
         }
-        session_regenerate_id(true);
+        self::regenerateId();
+    }
+
+    /** ID de sessão novo a cada troca de privilégio. Sem sessão PHP ativa (CLI/testes) não há o que trocar. */
+    private static function regenerateId(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
     }
 
     private static function forbidden(): never

@@ -69,6 +69,10 @@ final class RunSqlAction extends Action
             $this->json(false, 'Nenhum comando válido encontrado (só comentários ou espaços em branco).');
         }
 
+        if (Auth::isImpersonating()) {
+            $this->json(false, Auth::IMPERSONATION_NO_MYSQL);
+        }
+
         $user = Auth::user();
         $password = Auth::mysqlPassword();
         if ($user === null || $password === null) {

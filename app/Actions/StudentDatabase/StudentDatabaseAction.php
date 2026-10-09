@@ -27,6 +27,9 @@ abstract class StudentDatabaseAction extends Action
     /** Conexão como o professor, ou a tela de confirmar senha (GET) / JSON pedindo a senha (POST). */
     protected function professorConnection(string $db): PDO
     {
+        if (Auth::isImpersonating()) {
+            $this->respond(false, Auth::IMPERSONATION_NO_MYSQL, '/professor/bancos');
+        }
         $pdo = StudentDatabases::connectionFor(Auth::user());
         if ($pdo !== null) {
             return $pdo;

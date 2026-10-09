@@ -57,3 +57,26 @@ it('does nothing when the retention is off', function () {
     expect(Archiver::purgeExpired(0, apply: true))->toBe([])
         ->and(DeletedModel::itemsOfBatch($batch))->not->toBe([]);
 });
+
+it('uses the retention saved in the platform over the environment value', function () {
+    $pdo = Database::connection();
+    $previous = App\Models\AppSetting::find(App\Models\AppSetting::ARCHIVE_RETENTION_DAYS);
+    $_ENV['ARCHIVE_RETENTION_DAYS'] = '90';
+
+    try {
+        $pdo->exec("DELETE FROM app_settings WHERE name = 'archive_retention_days'");
+        expect(App\Support\RetentionPolicy::current())->toBe(90);
+
+        App\Models\AppSetting::set(App\Models\AppSetting::ARCHIVE_RETENTION_DAYS, '15', 'teste');
+        expect(App\Support\RetentionPolicy::current())->toBe(15);
+
+        App\Models\AppSetting::set(App\Models\AppSetting::ARCHIVE_RETENTION_DAYS, '0', 'teste');
+        expect(App\Support\RetentionPolicy::current())->toBe(0);
+    } finally {
+        unset($_ENV['ARCHIVE_RETENTION_DAYS']);
+        $pdo->exec("DELETE FROM app_settings WHERE name = 'archive_retention_days'");
+        if ($previous !== null) {
+            App\Models\AppSetting::set(App\Models\AppSetting::ARCHIVE_RETENTION_DAYS, $previous['value'], $previous['updated_by']);
+        }
+    }
+});

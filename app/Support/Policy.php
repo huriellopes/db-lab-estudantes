@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\Entities\User;
+
 /**
  * Regras de autorização, como funções puras sobre o usuário autenticado (ou null, se
  * visitante). Sem I/O, fácil de testar.
@@ -41,5 +43,18 @@ final class Policy
     public static function canManageAllSchemas(?AuthenticatedUser $user): bool
     {
         return self::isAdmin($user);
+    }
+
+    /**
+     * "Entrar como" (ver App\Core\Auth::impersonate): só admin, só em conta ativa de professor
+     * ou aluno, nunca na própria nem encadeando uma impersonação dentro de outra.
+     */
+    public static function canImpersonate(?AuthenticatedUser $actor, bool $actorIsImpersonating, User $target): bool
+    {
+        return self::isAdmin($actor)
+            && !$actorIsImpersonating
+            && $target->id !== $actor->id
+            && $target->active
+            && in_array($target->role, [Role::Professor, Role::Aluno], true);
     }
 }

@@ -7,6 +7,7 @@ namespace App\Actions\Admin;
 use App\Core\Action;
 use App\Core\Auth;
 use App\Core\Config;
+use App\Models\AppSetting;
 use App\Models\DeletedModel;
 use App\Support\ArchiveGraph;
 use App\Support\ArchiveSnapshot;
@@ -28,7 +29,9 @@ final class IndexDeletedModelsAction extends Action
         $days = in_array((int) ($_GET['dias'] ?? 0), self::PERIODS, true) ? (int) ($_GET['dias'] ?? 0) : 0;
         $page = max(1, (int) ($_GET['page'] ?? 1));
 
-        $retention = RetentionPolicy::days(Config::get('ARCHIVE_RETENTION_DAYS'));
+        $setting = AppSetting::find(AppSetting::ARCHIVE_RETENTION_DAYS);
+        $env = Config::get('ARCHIVE_RETENTION_DAYS');
+        $retention = RetentionPolicy::resolve($setting['value'] ?? null, $env);
         $now = new DateTimeImmutable();
         $found = DeletedModel::paginateBatches($model, $search, $days, $page);
         // Segredos e textos longos nunca chegam no template (Paginator é readonly: monta outro).
@@ -46,6 +49,13 @@ final class IndexDeletedModelsAction extends Action
             'periods' => self::PERIODS,
             'filters' => ['tipo' => $model, 'q' => $search, 'dias' => $days],
             'retentionDays' => $retention,
+            'retention' => [
+                'source' => RetentionPolicy::source($setting['value'] ?? null, $env),
+                'updatedBy' => $setting['updated_by'] ?? null,
+                'updatedAt' => $setting['updated_at'] ?? null,
+                // Sugestão do campo "dias" quando está desligado.
+                'suggested' => $retention > 0 ? $retention : (RetentionPolicy::days($env) ?: 90),
+            ],
         ]);
     }
 }

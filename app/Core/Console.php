@@ -173,14 +173,15 @@ final class Console
     }
 
     /**
-     * Expurgo automático de Dados excluídos (ARCHIVE_RETENTION_DAYS; 0/vazio = desligado). Sem
+     * Expurgo automático de Dados excluídos (configurado em /admin/excluidos ou, sem isso,
+     * ARCHIVE_RETENTION_DAYS; 0/vazio = desligado). Sem
      * --aplicar só mostra o que sairia. Roda sozinho uma vez por dia (docker/archive-purge-loop.sh).
      */
     private function purgeExpired(bool $apply): int
     {
-        $days = RetentionPolicy::days(Config::get('ARCHIVE_RETENTION_DAYS'));
+        $days = RetentionPolicy::current();
         if ($days === 0) {
-            $this->line('Expurgo automático desligado (ARCHIVE_RETENTION_DAYS vazio ou 0). Nada a fazer.');
+            $this->line('Expurgo automático desligado (em /admin/excluidos ou ARCHIVE_RETENTION_DAYS vazio/0). Nada a fazer.');
 
             return 0;
         }

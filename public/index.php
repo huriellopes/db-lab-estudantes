@@ -11,6 +11,7 @@ use App\Actions\Admin\DestroyAdminUserAction;
 use App\Actions\Admin\DestroyBackupAction;
 use App\Actions\Admin\DownloadBackupAction;
 use App\Actions\Admin\EditAdminUserAction;
+use App\Actions\Admin\ImpersonateUserAction;
 use App\Actions\Admin\IndexAdminUsersAction;
 use App\Actions\Admin\IndexAuditLogsAction;
 use App\Actions\Admin\IndexBackupsAction;
@@ -36,6 +37,7 @@ use App\Actions\Admin\ToggleAdminUserActiveAction;
 use App\Actions\Admin\ToggleMaintenanceModeAction;
 use App\Actions\Admin\UpdateAdminUserAction;
 use App\Actions\Admin\UpdateAdminUserRoleAction;
+use App\Actions\Admin\UpdateRetentionAction;
 use App\Actions\Auth\CsrfTokenAction;
 use App\Actions\Auth\LoginAction;
 use App\Actions\Auth\LogoutAction;
@@ -43,6 +45,7 @@ use App\Actions\Auth\RedirectHomeAction;
 use App\Actions\Auth\RegisterAction;
 use App\Actions\Auth\ShowLoginAction;
 use App\Actions\Auth\ShowRegisterAction;
+use App\Actions\Auth\StopImpersonatingAction;
 use App\Actions\Connection\ShowConnectionAction;
 use App\Actions\Dashboard\ShowDashboardAction;
 use App\Actions\ErDiagram\DestroyErDiagramAction;
@@ -159,9 +162,10 @@ Auth::attemptRememberLogin();
 
 // Modo manutenção (ligado em /admin/manutencao): quem não é admin recebe 503 em tudo,
 // menos login/logout/token CSRF — senão nem o próprio admin conseguiria entrar pra desligar.
-// Antes do CSRF e do roteador: nenhuma ação de aluno/professor chega a rodar.
+// Antes do CSRF e do roteador: nenhuma ação de aluno/professor chega a rodar. O admin
+// "entrando como" alguém (Auth::impersonate) continua passando.
 $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if (Maintenance::isOn() && !Maintenance::allows(is_string($requestPath) ? $requestPath : '/', Auth::isAdmin())) {
+if (Maintenance::isOn() && !Maintenance::allows(is_string($requestPath) ? $requestPath : '/', Auth::isAdmin() || Auth::isImpersonating())) {
     http_response_code(503);
     header('Retry-After: 300');
     $mode = Maintenance::mode();
@@ -211,6 +215,7 @@ $router->post('/login', LoginAction::class);
 $router->get('/register', ShowRegisterAction::class);
 $router->post('/register', RegisterAction::class);
 $router->post('/logout', LogoutAction::class);
+$router->post('/impersonacao/sair', StopImpersonatingAction::class);
 $router->get('/esqueci-senha', ShowForgotPasswordAction::class);
 $router->post('/esqueci-senha', SendResetLinkAction::class);
 $router->get('/redefinir-senha/{token}', ShowResetPasswordAction::class);
@@ -283,6 +288,7 @@ $router->post('/admin/usuarios/{id}/papel', UpdateAdminUserRoleAction::class);
 $router->post('/admin/usuarios/{id}/status', ToggleAdminUserActiveAction::class);
 $router->post('/admin/usuarios/{id}/senha', ResetAdminUserPasswordAction::class);
 $router->post('/admin/usuarios/{id}/excluir', DestroyAdminUserAction::class);
+$router->post('/admin/usuarios/{id}/impersonar', ImpersonateUserAction::class);
 $router->get('/admin/schemas', ShowAdminSchemasAction::class);
 $router->post('/admin/schemas/excluir', DestroyAdminSchemaAction::class);
 $router->get('/admin/auditoria', IndexAuditLogsAction::class);
@@ -303,6 +309,7 @@ $router->post('/admin/instituicoes/{id}/membros', AddInstitutionMemberAction::cl
 $router->post('/admin/instituicoes/{id}/membros/{member}/remover', RemoveInstitutionMemberAction::class);
 $router->post('/admin/instituicoes/{id}/excluir', DestroyInstitutionAction::class);
 $router->get('/admin/excluidos', IndexDeletedModelsAction::class);
+$router->post('/admin/excluidos/expurgo', UpdateRetentionAction::class);
 $router->post('/admin/excluidos/{batch}/restaurar', RestoreDeletedBatchAction::class);
 $router->post('/admin/excluidos/{batch}/excluir', PurgeDeletedBatchAction::class);
 $router->post('/admin/excluidos/{batch}/manter', KeepDeletedBatchAction::class);

@@ -33,14 +33,18 @@ final class AuditLog
             $user = Auth::user();
             $actor ??= $user !== null ? ['id' => $user->id, 'name' => $user->name] : null;
             $meta = AuditMeta::sanitize($meta);
+            // Durante um "entrar como" (Auth::impersonate), toda ação leva junto o admin por trás.
+            $impersonator = Auth::impersonator();
 
             $stmt = Database::connection()->prepare(
-                'INSERT INTO audit_logs (user_id, user_name, action, target_type, target_id, meta, ip)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO audit_logs (user_id, user_name, impersonator_id, impersonator_name, action, target_type, target_id, meta, ip)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             );
             $stmt->execute([
                 $actor['id'] ?? null,
                 $actor['name'] ?? null,
+                $impersonator['id'] ?? null,
+                $impersonator['name'] ?? null,
                 $action,
                 $targetType,
                 $targetId === null ? null : (string) $targetId,
@@ -53,14 +57,14 @@ final class AuditLog
         }
     }
 
-    /** Busca por ação, nome de quem fez, alvo ou IP; mais recente primeiro. */
+    /** Busca por ação, nome de quem fez (ou do admin por trás), alvo ou IP; mais recente primeiro. */
     public static function paginate(string $search, ?string $action, int $days, int $page, int $perPage = 25): Paginator
     {
         $where = ['created_at >= NOW() - INTERVAL ? DAY'];
         $args = [$days];
         if ($search !== '') {
-            $where[] = '(action LIKE ? OR user_name LIKE ? OR target_id LIKE ? OR ip LIKE ? OR meta LIKE ?)';
-            array_push($args, ...array_fill(0, 5, '%' . $search . '%'));
+            $where[] = '(action LIKE ? OR user_name LIKE ? OR impersonator_name LIKE ? OR target_id LIKE ? OR ip LIKE ? OR meta LIKE ?)';
+            array_push($args, ...array_fill(0, 6, '%' . $search . '%'));
         }
         if ($action !== null && $action !== '') {
             $where[] = 'action = ?';

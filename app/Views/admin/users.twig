@@ -1,5 +1,6 @@
 {% extends 'layouts/app.twig' %}
 {% import 'macros/table_controls.twig' as tc %}
+{% import 'macros/icons.twig' as ic %}
 
 {% block content %}
     <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -87,8 +88,35 @@
                                     {% endif %}
                                 </td>
                                 <td class="py-3">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <a href="/admin/usuarios/{{ user.id }}/editar" class="btn-secondary !px-3 !py-1.5 text-xs">Editar</a>
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <a
+                                            href="/admin/usuarios/{{ user.id }}/editar" hx-boost="false" aria-label="Editar {{ user.name }}"
+                                            x-data @click.prevent="window.confirmAction({
+                                                title: 'Editar usuário',
+                                                message: 'Abrir a edição de {{ user.name|e('js') }}?',
+                                                confirmLabel: 'Editar',
+                                                danger: false,
+                                            }).then((ok) => ok && window.navigate($el.getAttribute('href')))"
+                                            class="btn-secondary group relative !p-1.5"
+                                        >
+                                            {{ ic.icon('pencil') }}{{ ic.tooltip('Editar') }}
+                                        </a>
+                                        {% if user.active %}
+                                            <form
+                                                hx-boost="false" method="post" action="/admin/usuarios/{{ user.id }}/impersonar"
+                                                x-data @submit.prevent="window.confirmAction({
+                                                    title: 'Entrar como',
+                                                    message: 'Entrar na plataforma como {{ user.name|e('js') }}? Tudo o que você fizer fica na auditoria como feito por você em nome dessa pessoa. O console SQL fica indisponível enquanto isso.',
+                                                    confirmLabel: 'Entrar como',
+                                                    danger: false,
+                                                }).then((ok) => ok && $el.submit())"
+                                            >
+                                                {{ csrf_field() }}
+                                                <button type="submit" aria-label="Entrar como {{ user.name }}" class="btn-secondary group relative !p-1.5">
+                                                    {{ ic.icon('login-as') }}{{ ic.tooltip('Entrar como') }}
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                         <form
                                             hx-boost="false" x-data="ajaxForm({
                                                 confirmTitle: 'Excluir usuário',
@@ -100,9 +128,8 @@
                                             method="post" action="/admin/usuarios/{{ user.id }}/excluir"
                                         >
                                             {{ csrf_field() }}
-                                            <button :disabled="loading" type="submit" class="btn-danger !px-3 !py-1.5 text-xs">
-                                                <span x-show="!loading">Excluir</span>
-                                                <span x-show="loading" x-cloak>Excluindo…</span>
+                                            <button :disabled="loading" type="submit" aria-label="Excluir {{ user.name }}" class="btn-danger group relative !p-1.5">
+                                                {{ ic.icon('trash') }}{{ ic.tooltip('Excluir') }}
                                             </button>
                                         </form>
                                     </div>

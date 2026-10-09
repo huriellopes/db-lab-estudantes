@@ -20,6 +20,9 @@ final class ConfirmMysqlPasswordAction extends Action
     public function __invoke(array $params = []): void
     {
         Auth::requireLogin();
+        if (Auth::isImpersonating()) {
+            $this->json(false, Auth::IMPERSONATION_NO_MYSQL);
+        }
 
         $password = (string) ($_POST['password'] ?? '');
 
