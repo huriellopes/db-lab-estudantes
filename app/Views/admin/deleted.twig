@@ -10,16 +10,48 @@
         </p>
     </div>
 
-    {% if retentionDays > 0 %}
-        <p class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <strong>Expurgo automático ligado:</strong> lotes com mais de {{ retentionDays }} dias são excluídos definitivamente, uma vez por dia.
-            Marque "Não apagar" no que quiser guardar.
+    <div x-data="{ on: {{ retentionDays > 0 ? 'true' : 'false' }} }">
+    <form
+        hx-boost="false" method="post" action="/admin/excluidos/expurgo"
+        x-data="ajaxForm({
+            confirmTitle: 'Salvar expurgo automático',
+            confirmMessage: (e) => e.target.ativo.checked
+                ? 'Lotes com mais de ' + e.target.dias.value + ' dias serão excluídos definitivamente, uma vez por dia (menos os marcados &quot;Não apagar&quot;). Não tem volta.'
+                : 'Desligar o expurgo automático? Nada mais sai daqui sozinho.',
+            confirmLabel: 'Salvar',
+            refresh: true,
+        })"
+        @submit.prevent="submit"
+        class="mb-6 rounded-xl border px-4 py-3 text-sm"
+        :class="on ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-slate-200 bg-white text-slate-600'"
+    >
+        {{ csrf_field() }}
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <label class="inline-flex items-center gap-2 font-medium">
+                <input type="checkbox" name="ativo" value="1" x-model="on" class="h-4 w-4 rounded border-slate-300">
+                Expurgo automático
+            </label>
+            <label class="inline-flex items-center gap-2" x-show="on" x-cloak>
+                excluir lotes com mais de
+                <input type="number" name="dias" min="1" max="3650" required :disabled="!on" value="{{ retention.suggested }}" class="field-input !w-24 !py-1 text-sm">
+                dias
+            </label>
+            <button type="submit" :disabled="loading" class="btn-secondary !px-3 !py-1.5 text-xs">Salvar</button>
+        </div>
+        <p class="mt-2 text-xs">
+            {% if retentionDays > 0 %}
+                <strong>Ligado:</strong> lotes com mais de {{ retentionDays }} dias são excluídos definitivamente, uma vez por dia. Marque "Não apagar" no que quiser guardar.
+            {% else %}
+                <strong>Desligado:</strong> nada sai daqui sozinho.
+            {% endif %}
+            {% if retention.source == 'tela' %}
+                Configurado na plataforma{% if retention.updatedBy %} por {{ retention.updatedBy }}{% endif %}{% if retention.updatedAt %} em {{ retention.updatedAt|date('d/m/Y H:i') }}{% endif %}.
+            {% elseif retention.source == 'env' %}
+                Valor vindo de <code>ARCHIVE_RETENTION_DAYS</code> no <code>.env</code> — ao salvar aqui, a plataforma passa a mandar.
+            {% endif %}
         </p>
-    {% else %}
-        <p class="mb-6 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-            Expurgo automático desligado: nada sai daqui sozinho. Para ligar, defina <code>ARCHIVE_RETENTION_DAYS</code> no <code>.env</code> (ex.: 90).
-        </p>
-    {% endif %}
+    </form>
+    </div>
 
     <form method="get" action="/admin/excluidos" class="card mb-6 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
         <input type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por nome, e-mail, schema…" class="field-input">
