@@ -91,6 +91,18 @@ it('empties the twig cache without following symlinks out of it', function () {
         ->and(file_get_contents($outside))->toBe('keep');
 });
 
+it('swaps the twig cache for an empty one instead of deleting under live requests', function () {
+    mkdir($this->storage . '/twig-cache/76', 0777, true);
+    file_put_contents($this->storage . '/twig-cache/76/x.php', '123');
+
+    $removed = Maintenance::clearTwigCache();
+
+    // Nada de twig-cache.old-* sobrando, e o diretório novo já nasce gravável.
+    expect($removed)->toBe(['files' => 1, 'bytes' => 3])
+        ->and(glob($this->storage . '/twig-cache*'))->toBe([$this->storage . '/twig-cache'])
+        ->and(is_writable($this->storage . '/twig-cache'))->toBeTrue();
+});
+
 it('measures storage folders', function () {
     file_put_contents($this->storage . '/logs/app-2026-10-08.log', str_repeat('x', 100));
     mkdir($this->storage . '/twig-cache/cd');
