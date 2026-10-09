@@ -32,3 +32,16 @@ it('reads the retention from the environment value', function () {
         ->and(RetentionPolicy::days('abc'))->toBe(0)
         ->and(RetentionPolicy::days('-3'))->toBe(0);
 });
+
+it('prefers the value saved in the platform over the environment', function () {
+    expect(RetentionPolicy::resolve('30', '90'))->toBe(30)
+        ->and(RetentionPolicy::resolve('0', '90'))->toBe(0)
+        ->and(RetentionPolicy::resolve(null, '90'))->toBe(90)
+        ->and(RetentionPolicy::resolve(null, null))->toBe(0);
+});
+
+it('tells where the retention in force comes from', function () {
+    expect(RetentionPolicy::source('0', '90'))->toBe('tela')
+        ->and(RetentionPolicy::source(null, '90'))->toBe('env')
+        ->and(RetentionPolicy::source(null, ''))->toBe('padrão');
+});

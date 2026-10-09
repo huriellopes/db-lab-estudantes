@@ -64,6 +64,7 @@ final class View
         $twig->addFunction(new TwigFunction('logged_in', [Auth::class, 'check']));
         $twig->addFunction(new TwigFunction('auth_user', [Auth::class, 'user']));
         $twig->addFunction(new TwigFunction('is_admin', [Auth::class, 'isAdmin']));
+        $twig->addFunction(new TwigFunction('impersonator', [Auth::class, 'impersonator']));
         $twig->addFunction(new TwigFunction('is_professor', [Auth::class, 'isProfessor']));
         $twig->addFunction(new TwigFunction('is_aluno', [Auth::class, 'isAluno']));
         $twig->addFunction(new TwigFunction('can_manage_students', [Auth::class, 'canManageStudents']));

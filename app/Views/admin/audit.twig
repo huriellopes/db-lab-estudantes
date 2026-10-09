@@ -44,7 +44,13 @@
                         {% for log in paginator.items %}
                             <tr>
                                 <td class="whitespace-nowrap py-3 pr-4 text-slate-500">{{ log.created_at|date('d/m/Y H:i:s') }}</td>
-                                <td class="py-3 pr-4 text-slate-800">{{ log.user_name ?? '—' }}{% if log.user_id %} <span class="text-xs text-slate-400">#{{ log.user_id }}</span>{% endif %}</td>
+                                <td class="py-3 pr-4 text-slate-800">
+                                    {% if log.impersonator_id %}
+                                        <span class="font-medium">{{ log.impersonator_name }}</span> <span class="text-xs text-slate-400">#{{ log.impersonator_id }}</span>
+                                        <span class="badge-amber">como</span>
+                                    {% endif %}
+                                    {{ log.user_name ?? '—' }}{% if log.user_id %} <span class="text-xs text-slate-400">#{{ log.user_id }}</span>{% endif %}
+                                </td>
                                 <td class="py-3 pr-4">
                                     <span class="{{ log.action ends with 'failed' or log.action ends with 'deleted' ? 'badge-rose' : 'badge-slate' }} font-mono">{{ log.action }}</span>
                                 </td>
