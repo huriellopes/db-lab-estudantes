@@ -37,4 +37,9 @@ case "$APP_ENV" in
         ;;
 esac
 
+# Tudo acima roda como root: um log do dia ou cache criado agora ficaria com dono root e o
+# PHP-FPM (www-data) não escreveria mais nele. Os volumes de logs/backups também passam por
+# aqui, então um arquivo de root deixado por um `docker compose exec` antigo se corrige no boot.
+chown -R www-data:www-data /var/www/html/storage
+
 exec supervisord -c /etc/supervisor/conf.d/supervisord.conf

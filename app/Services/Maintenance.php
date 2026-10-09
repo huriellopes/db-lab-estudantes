@@ -102,11 +102,25 @@ final class Maintenance
      * Esvazia o cache dos templates compilados do Twig (storage/twig-cache) — ele se recria
      * sozinho na próxima página. Útil se um template ficou servindo versão velha/corrompida.
      *
+     * Troca a pasta por uma vazia (rename é atômico) e só então apaga a antiga: apagar no
+     * lugar fazia rmdir de subpastas enquanto outras requisições compilavam nelas, e o Twig
+     * respondia "Unable to write in the cache directory" (ver ResilientTwigCache).
+     *
      * @return array{files: int, bytes: int}
      */
     public static function clearTwigCache(): array
     {
-        return self::emptyDirectory(self::storage() . '/twig-cache');
+        $dir = self::storage() . '/twig-cache';
+        $old = $dir . '.old-' . bin2hex(random_bytes(4));
+        if (!is_dir($dir) || !@rename($dir, $old)) {
+            return self::emptyDirectory($dir);
+        }
+        @mkdir($dir, 0775);
+
+        $removed = self::emptyDirectory($old);
+        @rmdir($old);
+
+        return $removed;
     }
 
     /** opcache_reset() vale só pro pool do PHP-FPM que atendeu a requisição — que, aqui, é o único. */

@@ -55,8 +55,12 @@ flowchart LR
 ```bash
 cp .env.example .env                                   # 1. ajuste as senhas e gere o APP_KEY (ver comentário no arquivo)
 docker compose up -d --build                           # 2. sobe MySQL + phpMyAdmin + app (migrations rodam sozinhas)
-docker compose exec app php bin/console.php user:promote-admin voce@exemplo.com   # 3. depois de se cadastrar em /register
+docker compose exec -u www-data app php bin/console.php user:promote-admin voce@exemplo.com   # 3. depois de se cadastrar em /register
 ```
+
+> Comandos na mão dentro do container: sempre com `-u www-data`. Sem isso rodam como root, e
+> o que criarem em `storage/` (log do dia, cache) fica sem permissão de escrita pro PHP-FPM até
+> o próximo restart do container.
 
 | Serviço | URL |
 |---|---|
@@ -172,7 +176,7 @@ php bin/vincular-alunos-instituicao.php "ETB" [--aplicar]   # vincula a uma inst
   Só com `APP_ENV=local` no `.env`; sem a variável ou com outro valor, não cria nada (os
   seeders vão na imagem de produção, e essa senha também abre a conta MySQL). Conta que já
   existe não é tocada. Com `APP_ENV=local`, o `docker/app-entrypoint.sh` já roda o `db:seed`
-  sozinho ao subir o container; na mão: `docker compose exec app php bin/console.php db:seed`.
+  sozinho ao subir o container; na mão: `docker compose exec -u www-data app php bin/console.php db:seed`.
 - `database/factories/UserFactory.php`: no estilo das factories do Laravel, com
   [`fakerphp/faker`](https://fakerphp.org/) (`require-dev`, só disponível localmente, não
   na imagem de produção).
