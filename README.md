@@ -95,9 +95,10 @@ de cada achado e do que ainda está pendente fica no **[SECURITY.md](SECURITY.md
 | 📦 Cadeia de suprimentos | Imagens e actions com versão fixa (actions por SHA), `composer audit` + `npm audit` no CI, Dependabot. |
 
 > [!WARNING]
-> **O MySQL de produção é público de propósito** (conexão direta por SGBD local, sem túnel
-> SSH). As proteções acima existem por causa disso, mas a senha de cada conta continua sendo
-> a principal defesa. Reforce isso com a turma.
+> **Em produção o MySQL não é público**: a porta escuta só em `127.0.0.1` e o SGBD local chega
+> nela por um **túnel SSH** com uma conta sem shell, que só encaminha pro MySQL. As proteções
+> acima continuam valendo (a senha da conta ainda é a principal defesa — a senha do túnel é
+> compartilhada pela turma). Reforce isso com a turma.
 
 ## 👥 Papéis
 
@@ -349,9 +350,11 @@ dinâmicos (`/professor/alunos/{id}/editar`) via regex.
 Manual de auto-ajuda pra quem prefere um cliente de banco na própria máquina (TablePlus,
 DBeaver, MySQL Workbench, DataGrip/PhpStorm, HeidiSQL...) em vez do phpMyAdmin: destaque pro
 link público do phpMyAdmin quando `PMA_URL` está configurada, comando `mysql -h ... -P ...`
-pronto pra copiar (conexão **direta, sem túnel** — o MySQL é público de propósito, ver
-"Produção" abaixo), passo a passo por ferramenta e uma seção de erros comuns.
-Host/porta exibidos vêm de `DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`).
+pronto pra copiar, passo a passo por ferramenta e uma seção de erros comuns. Com
+`SSH_TUNNEL_HOST`/`SSH_TUNNEL_USER` configurados (produção), tudo é via **túnel SSH**: a
+página mostra os dados do túnel, o MySQL em `127.0.0.1:MYSQL_PORT` do lado do servidor e o
+`ssh -N -L 3307:...` pra linha de comando (`App\Support\SshTunnel`). Sem túnel (dev local),
+mostra a conexão direta em `DB_PUBLIC_HOST`/`MYSQL_EXTERNAL_PORT` (ver `.env.example`).
 
 ### Console SQL (`POST /dashboard/sql`)
 
@@ -415,8 +418,10 @@ nginx do container só confia no `X-Forwarded-For` vindo de rede privada — ver
   sua vez, lê o repositório com uma *deploy key* só de leitura.
 - **Segredos**: host, usuário e chave do deploy ficam nos *secrets* do repositório; o `.env` de
   produção existe só no servidor (formato em `.env.production.example`), nunca no git.
-- **MySQL acessível diretamente**, de propósito, pra alunos usarem o SGBD que preferirem — as
-  camadas que protegem isso estão no [SECURITY.md](SECURITY.md#mysql-acessível-diretamente-decisão-de-projeto).
+- **MySQL só via túnel SSH**: a porta é publicada em `127.0.0.1` e a conta `SSH_TUNNEL_USER`
+  (sem shell, `PermitOpen` só pro MySQL) leva o SGBD do aluno até ela — passo a passo do
+  servidor no `.env.production.example`; as camadas do próprio MySQL estão no
+  [SECURITY.md](SECURITY.md#mysql-por-túnel-ssh-decisão-de-projeto).
 
 > [!TIP]
 > **Ao fazer o deploy de uma instalação existente**, confira o que a automação não faz sozinha:
