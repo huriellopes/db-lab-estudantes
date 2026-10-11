@@ -1,5 +1,19 @@
 {% extends 'layouts/app.twig' %}
 
+{% macro copy_block(command) %}
+    <div x-data="copyable('{{ command|e('js') }}')" class="group relative">
+        <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>{{ command }}</code></pre>
+        <button
+            @click="copy" type="button" aria-label="Copiar comando"
+            class="absolute right-2 top-2 rounded-md bg-white/10 p-1.5 text-slate-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100"
+        >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
+            </svg>
+        </button>
+    </div>
+{% endmacro %}
+
 {% block content %}
     {% set user = auth_user() %}
 
@@ -7,37 +21,98 @@
         <h1 class="text-2xl font-semibold text-slate-900">Conectar via SGBD local</h1>
         <p class="mt-1 text-sm text-slate-500">
             Use qualquer cliente de banco na sua máquina (TablePlus, DBeaver, MySQL Workbench, DataGrip/PhpStorm,
-            HeidiSQL...) em vez do phpMyAdmin, se preferir. Conexão direta, sem túnel — o manual abaixo cobre os
-            clientes mais comuns.
+            HeidiSQL...) em vez do phpMyAdmin, se preferir.
+            {% if tunnel %}
+                Por segurança, o MySQL não fica aberto na internet: você entra por um <strong>túnel SSH</strong>,
+                que todos esses clientes já sabem abrir sozinhos — é só preencher a aba SSH.
+            {% else %}
+                Conexão direta — o manual abaixo cobre os clientes mais comuns.
+            {% endif %}
         </p>
     </div>
 
-    <div class="mb-6 card">
-        <h2 class="mb-4 text-base font-semibold text-slate-900">Suas credenciais</h2>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-                <p class="field-label">Host</p>
-                <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ publicHost }}</p>
+    {% if tunnel %}
+        <div class="mb-6 card">
+            <h2 class="mb-1 text-base font-semibold text-slate-900">1. Túnel SSH</h2>
+            <p class="mb-4 text-sm text-slate-500">Vai na aba/seção <strong>SSH</strong> do seu cliente (autenticação por senha).</p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <p class="field-label">Host SSH</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ tunnel.host }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Porta SSH</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ tunnel.port }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Usuário SSH</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ tunnel.user }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Senha SSH</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ tunnel.password }}</p>
+                </div>
             </div>
-            <div>
-                <p class="field-label">Porta</p>
-                <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ externalPort }}</p>
-            </div>
-            <div>
-                <p class="field-label">Usuário</p>
-                <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ user.mysqlLogin }}</p>
-            </div>
-            <div>
-                <p class="field-label">Senha</p>
-                <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">A mesma da sua conta aqui na plataforma.</p>
-            </div>
+            <p class="mt-4 text-xs text-slate-400">
+                Essa conta é compartilhada pela turma e não abre terminal: ela só leva até o MySQL, que ainda
+                pede o <strong>seu</strong> usuário e senha. Não publique esses dados fora da plataforma.
+            </p>
         </div>
-        <p class="mt-4 text-xs text-slate-400">
-            Quer trocar esse login? Isso é feito em <a href="/profile" class="text-indigo-600 hover:text-indigo-700">Meu perfil</a>.
-            Se seu cliente tiver a opção "Use SSL"/"Usar SSL", pode ligar — o servidor aceita conexão
-            criptografada (não é obrigatório, mas é mais seguro numa rede pública).
-        </p>
-    </div>
+
+        <div class="mb-6 card">
+            <h2 class="mb-1 text-base font-semibold text-slate-900">2. MySQL (dentro do túnel)</h2>
+            <p class="mb-4 text-sm text-slate-500">Vai na aba principal (<strong>Main</strong>/<strong>General</strong>) do cliente.</p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <p class="field-label">Host</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ tunnel.dbHost }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Porta</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ tunnel.dbPort }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Usuário</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ user.mysqlLogin }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Senha</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">A mesma da sua conta aqui na plataforma.</p>
+                </div>
+            </div>
+            <p class="mt-4 text-xs text-slate-400">
+                Quer trocar esse login? Isso é feito em <a href="/profile" class="text-indigo-600 hover:text-indigo-700">Meu perfil</a>.
+                O host é <code>127.0.0.1</code> mesmo: ele é lido do lado do servidor, depois do túnel.
+            </p>
+        </div>
+    {% else %}
+        <div class="mb-6 card">
+            <h2 class="mb-4 text-base font-semibold text-slate-900">Suas credenciais</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <p class="field-label">Host</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ publicHost }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Porta</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ externalPort }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Usuário</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-700">{{ user.mysqlLogin }}</p>
+                </div>
+                <div>
+                    <p class="field-label">Senha</p>
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">A mesma da sua conta aqui na plataforma.</p>
+                </div>
+            </div>
+            <p class="mt-4 text-xs text-slate-400">
+                Quer trocar esse login? Isso é feito em <a href="/profile" class="text-indigo-600 hover:text-indigo-700">Meu perfil</a>.
+                Se seu cliente tiver a opção "Use SSL"/"Usar SSL", pode ligar — o servidor aceita conexão
+                criptografada (não é obrigatório, mas é mais seguro numa rede pública).
+            </p>
+        </div>
+    {% endif %}
 
     {% if pmaUrl %}
         <div class="mb-6 flex items-start gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
@@ -58,32 +133,36 @@
 
     <div class="mb-6 card">
         <h2 class="mb-1 text-base font-semibold text-slate-900">Linha de comando</h2>
-        <p class="mb-4 text-sm text-slate-500">Direto, sem túnel — funciona de qualquer lugar.</p>
-        <div
-            x-data="copyable('mysql -h {{ publicHost }} -P {{ externalPort }} -u {{ user.mysqlLogin }} -p')"
-            class="group relative"
-        >
-            <pre class="overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100"><code>mysql -h {{ publicHost }} -P {{ externalPort }} -u {{ user.mysqlLogin }} -p</code></pre>
-            <button
-                @click="copy" type="button" aria-label="Copiar comando"
-                class="absolute right-2 top-2 rounded-md bg-white/10 p-1.5 text-slate-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100"
-            >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
-                </svg>
-            </button>
-        </div>
+        {% if tunnel %}
+            <p class="mb-4 text-sm text-slate-500">
+                Num terminal, abra o túnel (pede a senha SSH e fica "parado" — deixe aberto):
+            </p>
+            {{ _self.copy_block(tunnel.forwardCommand()) }}
+            <p class="my-4 text-sm text-slate-500">Em outro terminal, conecte pela porta local {{ constant('App\\Support\\SshTunnel::LOCAL_PORT') }}:</p>
+            {{ _self.copy_block('mysql -h 127.0.0.1 -P ' ~ constant('App\\Support\\SshTunnel::LOCAL_PORT') ~ ' -u ' ~ user.mysqlLogin ~ ' -p') }}
+        {% else %}
+            <p class="mb-4 text-sm text-slate-500">Direto, sem túnel — funciona de qualquer lugar.</p>
+            {{ _self.copy_block('mysql -h ' ~ publicHost ~ ' -P ' ~ externalPort ~ ' -u ' ~ user.mysqlLogin ~ ' -p') }}
+        {% endif %}
     </div>
 
     <div class="mb-6 card">
         <h2 class="mb-1 text-base font-semibold text-slate-900">Manual por SGBD</h2>
+        {% if tunnel %}
         <p class="mb-4 text-sm text-slate-500">
-            Os campos são sempre os mesmos, direto — sem túnel, sem passo extra:
+            Em todos eles são dois blocos: o <strong>SSH</strong> (host, porta, usuário e senha do passo 1) e o
+            <strong>MySQL</strong> (host <code class="rounded bg-slate-100 px-1 py-0.5">{{ tunnel.dbHost }}</code>,
+            porta <code class="rounded bg-slate-100 px-1 py-0.5">{{ tunnel.dbPort }}</code>, seu usuário e sua senha).
+        </p>
+        {% else %}
+        <p class="mb-4 text-sm text-slate-500">
+            Os campos são sempre os mesmos, direto — sem passo extra:
             <strong>Host <code class="rounded bg-slate-100 px-1 py-0.5">{{ publicHost }}</code></strong>,
             <strong>Porta <code class="rounded bg-slate-100 px-1 py-0.5">{{ externalPort }}</code></strong>,
             <strong>Usuário <code class="rounded bg-slate-100 px-1 py-0.5">{{ user.mysqlLogin }}</code></strong> e a
             sua senha da plataforma — só muda onde cada ferramenta pede isso.
         </p>
+        {% endif %}
 
         <div class="space-y-2">
             <details class="group rounded-lg border border-slate-200 open:border-slate-300">
@@ -94,6 +173,7 @@
                     <ol class="list-inside list-decimal space-y-1">
                         <li>Create a new connection → <strong>MySQL</strong>.</li>
                         <li>Preencha <strong>Host</strong>, <strong>Port</strong>, <strong>User</strong> e <strong>Password</strong> com os valores acima.</li>
+                        {% if tunnel %}<li>Clique em <strong>Over SSH</strong> (ícone de chave/cadeado) e preencha <strong>Server</strong>, <strong>Port</strong>, <strong>User</strong> e <strong>Password</strong> do túnel; nos campos de cima, Host <strong>{{ tunnel.dbHost }}</strong> e Port <strong>{{ tunnel.dbPort }}</strong>.</li>{% endif %}
                         <li>Clique em <strong>Test</strong> e depois <strong>Connect</strong>.</li>
                     </ol>
                 </div>
@@ -107,6 +187,7 @@
                     <ol class="list-inside list-decimal space-y-1">
                         <li><strong>Database → New Database Connection</strong> → escolha <strong>MySQL</strong>.</li>
                         <li>Na aba <strong>Main</strong>: <strong>Server Host</strong>, <strong>Port</strong>, <strong>Username</strong> e <strong>Password</strong> com os valores acima.</li>
+                        {% if tunnel %}<li>Aba <strong>SSH</strong>: marque <strong>Use SSH Tunnel</strong>, preencha Host/IP, Port, User Name, <strong>Authentication: Password</strong> e a senha do túnel.</li>{% endif %}
                         <li><strong>Test Connection</strong> — se pedir pra baixar o driver, aceite.</li>
                     </ol>
                 </div>
@@ -119,7 +200,7 @@
                 <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
                     <ol class="list-inside list-decimal space-y-1">
                         <li><strong>Database → Manage Connections → New</strong>.</li>
-                        <li><strong>Connection Method: Standard (TCP/IP)</strong>. Preencha <strong>Hostname</strong>, <strong>Port</strong> e <strong>Username</strong> acima.</li>
+                        {% if tunnel %}<li><strong>Connection Method: Standard TCP/IP over SSH</strong>. <strong>SSH Hostname</strong> <code>{{ tunnel.host }}:{{ tunnel.port }}</code>, <strong>SSH Username</strong> {{ tunnel.user }} e <strong>Store in Vault…</strong> na senha SSH; depois <strong>MySQL Hostname</strong> {{ tunnel.dbHost }}, <strong>Port</strong> {{ tunnel.dbPort }} e seu <strong>Username</strong>.</li>{% else %}<li><strong>Connection Method: Standard (TCP/IP)</strong>. Preencha <strong>Hostname</strong>, <strong>Port</strong> e <strong>Username</strong> acima.</li>{% endif %}
                         <li><strong>Store in Vault…</strong> pra salvar a senha, depois <strong>Test Connection</strong>.</li>
                     </ol>
                 </div>
@@ -133,6 +214,7 @@
                     <ol class="list-inside list-decimal space-y-1">
                         <li>Aba <strong>Database</strong> → <strong>+</strong> → <strong>Data Source</strong> → <strong>MySQL</strong>.</li>
                         <li>Aba <strong>General</strong>: <strong>Host</strong>, <strong>Port</strong>, <strong>User</strong> e <strong>Password</strong> com os valores acima.</li>
+                        {% if tunnel %}<li>Aba <strong>SSH/SSL</strong>: marque <strong>Use SSH tunnel</strong>, clique em <strong>…</strong> e crie a configuração SSH (Host, Port, Username, <strong>Authentication type: Password</strong>).</li>{% endif %}
                         <li>Se pedir, clique em <strong>Download driver files</strong> (só na primeira vez).</li>
                         <li><strong>Test Connection</strong> (canto inferior esquerdo) e depois <strong>OK</strong>.</li>
                     </ol>
@@ -145,8 +227,9 @@
                 </summary>
                 <div class="border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
                     <ol class="list-inside list-decimal space-y-1">
-                        <li>Tela inicial → <strong>Nova</strong>, tipo de rede <strong>MariaDB or MySQL (TCP/IP)</strong>.</li>
-                        <li>Preencha <strong>Hostname / IP</strong>, <strong>Usuário</strong>, <strong>Senha</strong> e <strong>Porta</strong> com os valores acima.</li>
+                        <li>Tela inicial → <strong>Nova</strong>, tipo de rede {% if tunnel %}<strong>MariaDB or MySQL (SSH tunnel)</strong>{% else %}<strong>MariaDB or MySQL (TCP/IP)</strong>{% endif %}.</li>
+                        <li>Preencha <strong>Hostname / IP</strong>, <strong>Usuário</strong>, <strong>Senha</strong> e <strong>Porta</strong> com os valores {% if tunnel %}do MySQL (passo 2){% else %}acima{% endif %}.</li>
+                        {% if tunnel %}<li>Aba <strong>SSH tunnel</strong>: SSH host + port, usuário e senha do túnel (o HeidiSQL usa o <strong>plink</strong> — se pedir, aponte o caminho dele).</li>{% endif %}
                         <li><strong>Abrir</strong>.</li>
                     </ol>
                 </div>
@@ -155,8 +238,15 @@
 
         <div class="mt-4 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
             <strong>Deu erro?</strong>
-            "Connection refused" ou timeout: confira se digitou host e porta certinho (sem espaço extra). "Access
-            denied" mesmo com a senha certa: confira usuário e senha sem espaço extra (tente digitar em vez de
+            {% if tunnel %}
+                Erro na parte SSH ("Auth fail", "Permission denied"): confira usuário e senha <strong>do túnel</strong>
+                (passo 1) e se marcou autenticação por <strong>senha</strong> — muitas tentativas erradas bloqueiam
+                seu IP por um tempo. Na aba principal o host é <code>{{ tunnel.dbHost }}</code>, não o endereço do
+                servidor.
+            {% else %}
+                "Connection refused" ou timeout: confira se digitou host e porta certinho (sem espaço extra).
+            {% endif %}
+            "Access denied" mesmo com a senha certa: confira usuário e senha sem espaço extra (tente digitar em vez de
             colar), ou troque a senha em <a href="/profile" class="font-medium underline">Meu perfil</a> se não
             lembrar a atual.
         </div>

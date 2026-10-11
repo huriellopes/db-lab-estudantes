@@ -173,11 +173,17 @@ descartável, tentei violar o isolamento na mão:
 | `SHOW DATABASES` | Só `information_schema`/`performance_schema` — nem `schoolapp` nem schema de outra pessoa aparece |
 | `SHOW PROCESSLIST` / `performance_schema.processlist` | Só a própria sessão — não vê query de outros usuários |
 
-## MySQL acessível diretamente (decisão de projeto)
+## MySQL por túnel SSH (decisão de projeto)
 
-O MySQL aceita conexão direta, de propósito: alunos e professores usam o SGBD que preferirem
-(DBeaver, TablePlus, Workbench), sem túnel SSH. Isso torna a porta uma superfície pública,
-então a segurança não pode depender da rede. Ela se apoia em camadas que valem de qualquer
+Alunos e professores usam o SGBD que preferirem (DBeaver, TablePlus, Workbench), mas o MySQL
+**não fica na internet**: em produção a porta é publicada só em `127.0.0.1` e o firewall do
+servidor (chain `DOCKER-USER`) descarta tudo que não é 80/443. O SGBD chega nela por um túnel
+SSH com uma conta compartilhada (`SSH_TUNNEL_USER`) sem shell, sem TTY e com
+`PermitOpen 127.0.0.1:<MYSQL_PORT>` — com a senha do túnel só dá pra abrir esse encaminhamento,
+e o MySQL ainda pede a conta de cada um. Tentativas erradas no SSH caem no fail2ban do servidor.
+
+A senha do túnel é visível pra qualquer usuário logado (e vaza com facilidade), então a
+segurança continua não dependendo da rede. Ela se apoia em camadas que valem de qualquer
 lugar:
 
 - **Isolamento pelo próprio MySQL**: cada conta pessoal só tem `GRANT` nos próprios schemas
