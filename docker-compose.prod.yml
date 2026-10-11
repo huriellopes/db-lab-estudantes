@@ -62,9 +62,10 @@ services:
       - dblab-mysql-data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d:ro
     # Porta configurável (MYSQL_PORT) pra não colidir com outros serviços do servidor.
-    # Pública de propósito — conexão direta por SGBD local.
+    # Só em 127.0.0.1: o MySQL não fica na internet. Alunos chegam nele por túnel SSH
+    # (conta SSH_TUNNEL_USER, que só encaminha pra 127.0.0.1:MYSQL_PORT — ver SshTunnel).
     ports:
-      - "${MYSQL_PORT}:3306"
+      - "127.0.0.1:${MYSQL_PORT}:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
@@ -98,6 +99,9 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       UPLOAD_LIMIT: 64M
+    volumes:
+      # AllowRoot=false: ninguém tenta (nem adivinha) login de root pela página pública.
+      - ./docker/phpmyadmin-config.user.inc.php:/etc/phpmyadmin/config.user.inc.php:ro
     # Só em 127.0.0.1 (acesso de manutenção por túnel SSH) — o acesso público passa pelo
     # proxy reverso, via rede 'proxy' abaixo, apontando pro container na porta 80.
     ports:
