@@ -1,41 +1,99 @@
 WEBVTT
 
-00:00.000 --> 00:10.000
-O console SQL roda comandos direto no seu
-schema, sem instalar nada no computador.
+00:03.465 --> 00:08.204
+O console SQL é o lugar onde você
+conversa com o banco de dados.
 
-00:10.000 --> 00:22.000
-Primeiro, escolha em qual schema os
-comandos vão rodar.
+00:08.337 --> 00:13.928
+Você escreve um comando, manda executar, e
+o MySQL responde na hora.
 
-00:22.000 --> 00:31.000
-Vou colar os dados de exemplo do guia.
-Vários comandos separados por ponto e
-vírgula
+00:14.092 --> 00:17.921
+Tudo pelo navegador, sem instalar nada no
+computador.
 
-00:31.000 --> 00:40.000
-rodam em sequência. Executar tudo.
+00:20.706 --> 00:25.844
+O primeiro passo é escolher em qual
+schema os comandos vão rodar. É aqui,
 
-00:40.000 --> 00:48.000
-Agora uma consulta. Se eu selecionar só um
-trecho, o botão vira Executar seleção e
+00:25.864 --> 00:31.056
+no campo Schema. Vou usar o escola,
+que a gente criou no vídeo anterior.
 
-00:48.000 --> 00:56.000
-roda só ele. Ctrl mais Enter também
-funciona.
+00:33.869 --> 00:39.774
+Agora vou colar os dados de exemplo do
+guia de MySQL. São vários comandos:
 
-00:56.000 --> 01:03.000
-O resultado aparece em tabela. E se eu
-errar o nome da tabela, o console mostra o
+00:39.879 --> 00:45.186
+o CREATE TABLE cria as tabelas, e o
+INSERT coloca as linhas dentro delas.
 
-01:03.000 --> 01:10.000
-erro do MySQL: leia com calma, ele diz o
-que faltou.
+00:45.334 --> 00:48.033
+Cada comando termina com ponto e vírgula,
 
-01:10.000 --> 01:20.000
-Consultas que você usa sempre podem ser
-salvas. Elas ficam em Consultas salvas, a
-um
+00:48.033 --> 00:51.891
+e é assim que o console sabe
+onde um acaba e o outro começa.
 
-01:20.000 --> 01:30.000
-clique de distância.
+00:52.023 --> 00:55.951
+Clique em Executar tudo, e eles rodam um
+depois do outro.
+
+00:58.747 --> 01:04.945
+Agora uma consulta. Numa linha nova,
+escrevo SELECT asterisco FROM cliente.
+
+01:05.096 --> 01:10.616
+Se eu selecionar só essa linha, olha o
+botão: ele muda pra Executar seleção.
+
+01:10.748 --> 01:15.742
+Assim, só o trecho selecionado
+roda, e o resto fica guardado.
+
+01:15.890 --> 01:19.464
+Dá pra usar o atalho também: Ctrl mais
+Enter.
+
+01:22.275 --> 01:25.684
+O resultado aparece numa tabela, logo
+abaixo,
+
+01:25.684 --> 01:29.585
+com uma linha pra cada cliente
+e uma coluna pra cada campo.
+
+01:32.389 --> 01:38.335
+E se eu errar? Vou escrever clientes,
+no plural, e essa tabela não existe.
+
+01:38.469 --> 01:44.557
+O console mostra a mensagem de erro do
+próprio MySQL. Não se assuste com o erro:
+
+01:44.690 --> 01:49.528
+leia com calma, porque ele quase sempre
+diz exatamente o que está errado.
+
+01:49.692 --> 01:52.669
+Corrijo o nome, e tudo volta a funcionar.
+
+01:55.478 --> 02:01.594
+Por último: a consulta que você usa sempre
+pode ser salva. Clique em Salvar comando,
+
+02:01.614 --> 02:06.799
+dê um nome, e confirme em Salvar.
+Ela fica na lista Consultas salvas,
+
+02:06.799 --> 02:10.146
+e um clique carrega o comando de volta no
+console.
+
+02:12.944 --> 02:19.024
+Resumindo: escolha o schema, escreva o
+comando, execute tudo ou só a seleção,
+
+02:19.024 --> 02:24.304
+e leia o resultado, ou o erro,
+com atenção. Agora é praticar!

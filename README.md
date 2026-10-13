@@ -436,8 +436,12 @@ Os vídeos recomendados do YouTube ficam em `GuideVideos::YOUTUBE`. Ao incluir u
 ele permite incorporação: `curl -s -o /dev/null -w '%{http_code}' "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=ID"`
 precisa responder `200` (`401` = o dono bloqueou a incorporação).
 
+Os 5 vídeos atuais são gerados por `docs/videos/gerar-videos/gerar.sh` (narração neural + app
+guiado pelo Playwright, ver o README de `docs/videos/`); a saída fica em `docs/videos/saida/<arquivo>/`.
+Para subir pra produção, use o `scp`/`docker cp` abaixo com esses arquivos.
+
 ```bash
-# Gravação (OBS) → MP4 720p leve, pôster e upload
+# Gravação manual (OBS) → MP4 720p leve, pôster e upload
 ffmpeg -i in.mkv -vf scale=-2:720 -c:v libx264 -crf 28 -preset slow -c:a aac -b:a 96k -movflags +faststart sql-ansi-join.mp4
 ffmpeg -ss 3 -i sql-ansi-join.mp4 -frames:v 1 sql-ansi-join.webp
 scp sql-ansi-join.{mp4,webp,vtt} servidor:/tmp/ && ssh servidor 'for f in /tmp/sql-ansi-join.*; do docker cp "$f" dblab-app:/var/www/html/storage/guide-videos/; done'

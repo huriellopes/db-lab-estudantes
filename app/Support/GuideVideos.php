@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 /**
- * Vídeo-aulas curtas do guia ("pílulas" de 1–2 min). Os arquivos ficam FORA do git, no
+ * Vídeo-aulas curtas do guia ("pílulas" de 2–3 min). Os arquivos ficam FORA do git, no
  * volume montado em storage/guide-videos (sobem por rsync/scp), e são entregues pelo nginx
  * via X-Accel-Redirect depois do login (ver App\Actions\Guide\ServeGuideVideoAction).
  *
@@ -22,11 +22,11 @@ final class GuideVideos
      * @var list<array{arquivo: string, topic: string, title: string, duration: string}>
      */
     public const ALL = [
-        ['arquivo' => 'modelagem-er-der-no-lab', 'topic' => 'modelagem-er', 'title' => 'Desenhando um DER no lab de modelagem', 'duration' => '2:00'],
-        ['arquivo' => 'mysql-primeiro-schema', 'topic' => 'mysql', 'title' => 'Criando seu primeiro schema', 'duration' => '1:30'],
-        ['arquivo' => 'mysql-console-sql', 'topic' => 'mysql', 'title' => 'Usando o console SQL', 'duration' => '1:30'],
-        ['arquivo' => 'sql-ansi-select-where', 'topic' => 'sql-ansi', 'title' => 'SELECT e WHERE em 2 minutos', 'duration' => '2:00'],
-        ['arquivo' => 'sql-ansi-join', 'topic' => 'sql-ansi', 'title' => 'JOIN na prática', 'duration' => '2:00'],
+        ['arquivo' => 'modelagem-er-der-no-lab', 'topic' => 'modelagem-er', 'title' => 'Desenhando um DER no lab de modelagem', 'duration' => '3:19'],
+        ['arquivo' => 'mysql-primeiro-schema', 'topic' => 'mysql', 'title' => 'Criando seu primeiro schema', 'duration' => '2:12'],
+        ['arquivo' => 'mysql-console-sql', 'topic' => 'mysql', 'title' => 'Usando o console SQL', 'duration' => '2:28'],
+        ['arquivo' => 'sql-ansi-select-where', 'topic' => 'sql-ansi', 'title' => 'SELECT e WHERE: filtrando dados', 'duration' => '2:37'],
+        ['arquivo' => 'sql-ansi-join', 'topic' => 'sql-ansi', 'title' => 'JOIN na prática', 'duration' => '2:27'],
     ];
 
     /**
@@ -85,7 +85,11 @@ final class GuideVideos
     /**
      * Vídeos que já estão no ar (têm .mp4 e .vtt no volume), na ordem da trilha.
      *
-     * @return list<array{arquivo: string, topic: string, title: string, duration: string, hasPoster: bool}>
+     * `version` é o mtime mais recente dos arquivos do vídeo: entra na URL (?v=) porque a rota
+     * manda o navegador guardar os arquivos por um dia. Assim, substituir um vídeo no volume
+     * (mesmo nome) muda a URL e ninguém fica preso na versão antiga do cache.
+     *
+     * @return list<array{arquivo: string, topic: string, title: string, duration: string, hasPoster: bool, version: int}>
      */
     public static function available(?string $topic = null): array
     {
@@ -97,7 +101,12 @@ final class GuideVideos
             if (!is_file(self::path("{$video['arquivo']}.mp4")) || !is_file(self::path("{$video['arquivo']}.vtt"))) {
                 continue;
             }
-            $videos[] = $video + ['hasPoster' => is_file(self::path("{$video['arquivo']}.webp"))];
+            $poster = is_file(self::path("{$video['arquivo']}.webp"));
+            $mtimes = array_map(
+                static fn (string $ext): int => (int) filemtime(self::path("{$video['arquivo']}.{$ext}")),
+                $poster ? ['mp4', 'vtt', 'webp'] : ['mp4', 'vtt'],
+            );
+            $videos[] = $video + ['hasPoster' => $poster, 'version' => max($mtimes)];
         }
 
         return $videos;
