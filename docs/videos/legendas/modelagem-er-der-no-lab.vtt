@@ -1,0 +1,64 @@
+WEBVTT
+
+00:00.000 --> 00:04.000
+Antes de criar tabelas, a gente desenha o
+banco. Vamos montar um diagrama de alunos
+
+00:04.000 --> 00:08.000
+e cursos aqui no laboratório de modelagem.
+
+00:08.000 --> 00:20.000
+Clique em Novo diagrama e dê um nome pra
+ele. Eu vou chamar de Escola.
+
+00:20.000 --> 00:29.000
+Cada coisa importante do sistema vira uma
+entidade. A primeira é aluno. Agora os
+
+00:29.000 --> 00:38.000
+atributos: o que eu quero guardar sobre
+cada aluno? Id, nome e e-mail.
+
+00:38.000 --> 00:44.000
+O id identifica cada aluno sem repetir.
+Por isso ele é a chave primária: é só
+clicar
+
+00:44.000 --> 00:50.000
+na chave.
+
+00:50.000 --> 00:57.000
+Mesma coisa pro curso: id como chave, nome
+e carga horária. Posso arrastar as caixas
+
+00:57.000 --> 01:04.000
+pra organizar.
+
+01:04.000 --> 01:10.667
+Agora o relacionamento. Clique em
+Relacionamento, depois na origem, aluno, e
+no
+
+01:10.667 --> 01:17.333
+destino, curso. Um aluno faz vários cursos
+e um curso tem vários alunos: então é N
+
+01:17.333 --> 01:24.000
+pra N.
+
+01:24.000 --> 01:34.000
+Clicando em Gerar SQL, o laboratório
+escreve o CREATE TABLE de cada entidade.
+Repare
+
+01:34.000 --> 01:44.000
+no final: o N pra N virou uma tabela nova,
+com as duas chaves estrangeiras.
+
+01:44.000 --> 01:52.000
+Com Abrir no console SQL, esse código vai
+direto pro console, pronto pra criar as
+
+01:52.000 --> 02:00.000
+tabelas no seu schema. No próximo vídeo, a
+gente cria esse schema.

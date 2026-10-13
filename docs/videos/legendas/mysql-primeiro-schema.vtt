@@ -1,0 +1,43 @@
+WEBVTT
+
+00:00.000 --> 00:05.000
+Pra guardar tabelas você precisa de um
+schema. Pense nele como uma pasta onde
+ficam
+
+00:05.000 --> 00:10.000
+as tabelas de um projeto.
+
+00:10.000 --> 00:18.000
+No painel, use o card Criar novo schema.
+Esse começo do nome é o seu prefixo: ele
+
+00:18.000 --> 00:26.000
+evita conflito com schemas de outras
+pessoas do laboratório.
+
+00:26.000 --> 00:34.000
+Escolha um nome curto, só com letras,
+números e sublinhado. Espaço não vale. Vou
+
+00:34.000 --> 00:42.000
+usar escola.
+
+00:42.000 --> 00:56.000
+Clique em Criar schema. Pronto: ele já
+aparece em Meus schemas.
+
+00:56.000 --> 01:05.000
+E já pode ser escolhido no console SQL,
+logo abaixo. É lá que você vai criar as
+
+01:05.000 --> 01:14.000
+tabelas e consultar os dados.
+
+01:14.000 --> 01:22.000
+Os exemplos do guia têm o botão Testar no
+console. Ele leva o código direto pro
+
+01:22.000 --> 01:30.000
+console, pronto pra rodar no schema que
+você acabou de criar.

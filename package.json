@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "format": "prettier --write \"resources/**/*.{js,css}\"",
-    "format:check": "prettier --check \"resources/**/*.{js,css}\""
+    "format:check": "prettier --check \"resources/**/*.{js,css}\"",
+    "test:js": "node --test tests/js/*.test.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

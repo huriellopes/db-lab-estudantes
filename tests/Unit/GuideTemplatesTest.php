@@ -46,3 +46,11 @@ it('only offers "Testar no console" on MySQL examples (the lab console is MySQL)
 
     expect(array_values(array_diff(array_unique($matches[1]), ['mysql'])))->toBe([]);
 })->with(array_keys(GuideTopics::ALL));
+
+it('embeds the interactive animations where the concept is taught', function (string $slug, string $component) {
+    expect(renderGuide($slug))->toContain("x-data=\"{$component}\"");
+})->with([
+    ['sql-ansi', 'whereAnimation'],
+    ['sql-ansi', 'joinAnimation'],
+    ['formas-normais', 'normalizationSteps'],
+]);

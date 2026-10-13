@@ -146,6 +146,8 @@ services:
     volumes:
       - dblab_app_logs:/var/www/html/storage/logs
       - dblab_app_backups:/var/www/html/storage/backups
+      # Vídeo-aulas do guia (fora do git; ver App\Support\GuideVideos).
+      - dblab_guide_videos:/var/www/html/storage/guide-videos
     logging:
       driver: json-file
       options:
@@ -167,3 +169,4 @@ volumes:
   mysql_data:
   dblab_app_logs:
   dblab_app_backups:
+  dblab_guide_videos:

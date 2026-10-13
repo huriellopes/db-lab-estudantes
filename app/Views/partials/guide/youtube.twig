@@ -1,0 +1,26 @@
+{# Um vídeo recomendado do YouTube (item de App\Support\GuideVideos::youtube()), numa linha
+   compacta. O <iframe> (youtube-nocookie.com) só é criado no clique: até lá, abrir a página não
+   manda nada pro Google. hx-boost="false" no link externo pro htmx não tentar carregá-lo. #}
+<li x-data="{ aberto: false }" class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <button type="button" @click="aberto = !aberto" :aria-expanded="aberto" class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-50">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-600 text-xs text-white" aria-hidden="true" x-text="aberto ? '✕' : '▶'">▶</span>
+        <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium text-slate-900">{{ video.title }}</span>
+            <span class="block text-xs text-slate-500">{{ video.channel }} · {{ video.duration == 'playlist' ? '📚 curso completo (playlist)' : '⏱ ' ~ video.duration }}</span>
+        </span>
+    </button>
+    <template x-if="aberto">
+        <div class="px-3 pb-3">
+            <iframe
+                src="{{ video.embed }}" title="{{ video.title }} — {{ video.channel }}"
+                class="aspect-video w-full rounded-lg bg-slate-900"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                referrerpolicy="strict-origin-when-cross-origin"
+            ></iframe>
+            <p class="mt-1 text-xs text-slate-500">
+                Vídeo do canal <strong>{{ video.channel }}</strong> no YouTube ·
+                <a href="{{ video.watch }}" target="_blank" rel="noopener" hx-boost="false" class="underline">abrir no YouTube ↗</a>
+            </p>
+        </div>
+    </template>
+</li>

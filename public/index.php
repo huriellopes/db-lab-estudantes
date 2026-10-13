@@ -53,8 +53,10 @@ use App\Actions\ErDiagram\ShowErDiagramAction;
 use App\Actions\ErDiagram\ShowErDiagramLabAction;
 use App\Actions\ErDiagram\StoreErDiagramAction;
 use App\Actions\ErDiagram\UpdateErDiagramAction;
+use App\Actions\Guide\ServeGuideVideoAction;
 use App\Actions\Guide\ShowGuideIndexAction;
 use App\Actions\Guide\ShowGuideTopicAction;
+use App\Actions\Guide\ShowGuideVideosAction;
 use App\Actions\Institution\AddInstitutionMemberAction;
 use App\Actions\Institution\DestroyInstitutionAction;
 use App\Actions\Institution\IndexInstitutionsAction;
@@ -241,6 +243,9 @@ $router->post('/profile/mysql-login', UpdateMysqlLoginAction::class);
 $router->get('/conectar', ShowConnectionAction::class);
 
 $router->get('/guia', ShowGuideIndexAction::class);
+// Antes de /guia/{slug}: o router fica com a primeira rota que casar.
+$router->get('/guia/videos', ShowGuideVideosAction::class);
+$router->get('/guia/video/{file}', ServeGuideVideoAction::class);
 $router->get('/guia/{slug}', ShowGuideTopicAction::class);
 
 $router->get('/laboratorio/modelagem', ShowErDiagramLabAction::class);

@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import axios from 'axios';
 import htmx from 'htmx.org';
+import { registerGuideAnimations } from './guide-animations.js';
 
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -121,6 +122,8 @@ axios.interceptors.response.use(
 window.axios = axios;
 
 document.addEventListener('alpine:init', () => {
+  registerGuideAnimations(Alpine);
+
   /**
    * Toaster global — qualquer parte da app chama Alpine.store('toasts').push(type, message).
    * O container que efetivamente desenha os toasts vive em partials/toaster.twig
