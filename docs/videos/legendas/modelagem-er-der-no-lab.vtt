@@ -1,64 +1,145 @@
 WEBVTT
 
-00:00.000 --> 00:04.000
-Antes de criar tabelas, a gente desenha o
-banco. Vamos montar um diagrama de alunos
+00:03.470 --> 00:07.797
+Antes de sair criando tabelas,
+vale a pena desenhar o banco.
 
-00:04.000 --> 00:08.000
-e cursos aqui no laboratório de modelagem.
+00:07.928 --> 00:12.979
+Esse desenho se chama DER, o diagrama
+entidade-relacionamento.
 
-00:08.000 --> 00:20.000
-Clique em Novo diagrama e dê um nome pra
-ele. Eu vou chamar de Escola.
+00:13.127 --> 00:17.568
+Ele mostra o que o sistema precisa
+guardar e como essas coisas se ligam.
 
-00:20.000 --> 00:29.000
-Cada coisa importante do sistema vira uma
-entidade. A primeira é aluno. Agora os
+00:17.715 --> 00:21.985
+Vamos montar o exemplo de uma
+escola, com alunos e cursos.
 
-00:29.000 --> 00:38.000
-atributos: o que eu quero guardar sobre
-cada aluno? Id, nome e e-mail.
+00:24.793 --> 00:30.043
+Primeiro, dê um nome pro diagrama, aqui
+nesse campo ao lado do botão Salvar.
 
-00:38.000 --> 00:44.000
-O id identifica cada aluno sem repetir.
-Por isso ele é a chave primária: é só
-clicar
+00:30.189 --> 00:33.003
+Vou chamar de Escola. Com um nome,
 
-00:44.000 --> 00:50.000
-na chave.
+00:33.003 --> 00:36.435
+dá pra salvar e abrir o
+desenho de novo outro dia.
 
-00:50.000 --> 00:57.000
-Mesma coisa pro curso: id como chave, nome
-e carga horária. Posso arrastar as caixas
+00:39.224 --> 00:41.818
+Agora clique em Nova entidade.
 
-00:57.000 --> 01:04.000
-pra organizar.
+00:41.967 --> 00:45.357
+Uma entidade é algo importante que o
+sistema guarda,
 
-01:04.000 --> 01:10.667
-Agora o relacionamento. Clique em
-Relacionamento, depois na origem, aluno, e
-no
+00:45.362 --> 00:50.255
+e no banco ela vai virar uma tabela.
+A nossa primeira entidade é aluno:
 
-01:10.667 --> 01:17.333
-destino, curso. Um aluno faz vários cursos
-e um curso tem vários alunos: então é N
+00:50.318 --> 00:53.153
+é só clicar no nome da caixa e digitar.
 
-01:17.333 --> 01:24.000
-pra N.
+00:55.944 --> 01:00.811
+Repare que a caixa já vem com um atributo
+chamado id, marcado como PK,
 
-01:24.000 --> 01:34.000
-Clicando em Gerar SQL, o laboratório
-escreve o CREATE TABLE de cada entidade.
-Repare
+01:00.859 --> 01:06.372
+a chave primária. A chave primária
+identifica cada aluno sem nunca repetir,
 
-01:34.000 --> 01:44.000
-no final: o N pra N virou uma tabela nova,
-com as duas chaves estrangeiras.
+01:06.372 --> 01:08.270
+como o número de uma matrícula.
 
-01:44.000 --> 01:52.000
-Com Abrir no console SQL, esse código vai
-direto pro console, pronto pra criar as
+01:11.072 --> 01:15.229
+Agora os atributos, que são
+as informações de cada aluno.
 
-01:52.000 --> 02:00.000
-tabelas no seu schema. No próximo vídeo, a
-gente cria esse schema.
+01:15.364 --> 01:21.474
+Clique em mais atributo e escreva
+nome. Mais um: e-mail. Do lado,
+
+01:21.474 --> 01:27.176
+fica o tipo do dado. Os dois são texto,
+então o VARCHAR que já vem marcado serve.
+
+01:29.996 --> 01:35.522
+A segunda entidade é curso, do mesmo
+jeito: Nova entidade, o nome curso,
+
+01:35.522 --> 01:40.396
+e os atributos nome e carga horária. Carga
+horária é um número,
+
+01:40.396 --> 01:44.513
+então troco o tipo pra INT.
+E arrasto a caixa pro lado,
+
+01:44.513 --> 01:47.235
+pra sobrar espaço pra linha que vem agora.
+
+01:51.884 --> 01:56.018
+Agora vamos ligar as duas.
+Clique em Relacionamento,
+
+01:56.018 --> 02:00.742
+depois na entidade de origem,
+aluno, e na de destino, curso.
+
+02:00.876 --> 02:07.447
+Apareceu uma linha entre elas. No meio da
+linha, escrevo o nome do relacionamento:
+
+02:07.452 --> 02:08.652
+matrícula.
+
+02:11.256 --> 02:13.997
+Nas pontas da linha fica a cardinalidade:
+
+02:13.997 --> 02:18.359
+quantos de um lado se ligam com
+quantos do outro. Pense assim:
+
+02:18.379 --> 02:23.388
+um aluno pode fazer vários cursos, e um
+curso tem vários alunos.
+
+02:23.520 --> 02:28.459
+Então os dois lados são N.
+Clico no 1, e ele vira N.
+
+02:28.591 --> 02:31.454
+Isso é um relacionamento N pra N.
+
+02:34.273 --> 02:38.756
+Clique em Salvar pra guardar o
+desenho, e depois em Gerar SQL.
+
+02:38.904 --> 02:44.608
+O laboratório escreve o CREATE TABLE de
+cada entidade, já com a chave primária.
+
+02:44.742 --> 02:49.941
+E olha o final: o N pra N virou uma
+tabela nova, a tabela associativa,
+
+02:49.941 --> 02:54.850
+com duas chaves estrangeiras, uma
+apontando pra aluno e outra pra curso.
+
+02:54.999 --> 02:59.056
+É assim que o banco guarda quem
+está matriculado em qual curso.
+
+03:01.861 --> 03:06.756
+Pra criar essas tabelas de verdade, clique
+em Abrir no console SQL.
+
+03:06.890 --> 03:10.435
+O código vai direto pro
+console, pronto pra rodar.
+
+03:10.584 --> 03:15.579
+Só falta um schema pra guardar tudo, e é
+isso que a gente faz no próximo vídeo.

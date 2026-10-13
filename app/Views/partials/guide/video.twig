@@ -1,14 +1,16 @@
 {# Player de uma vídeo-aula do guia. Espera 'video' (item de App\Support\GuideVideos::available()).
    preload="none": nada é baixado até o aluno dar play — a página do guia continua leve. #}
 {% set base = '/guia/video/' ~ video.arquivo %}
+{# ?v= muda quando o arquivo é substituído no volume: fura o cache de um dia (ver GuideVideos::available). #}
+{% set v = '?v=' ~ video.version %}
 <figure class="overflow-hidden rounded-xl border border-slate-200 bg-white">
     <video
         controls preload="none" playsinline class="aspect-video w-full bg-slate-900"
-        {% if video.hasPoster %}poster="{{ base }}.webp"{% endif %}
+        {% if video.hasPoster %}poster="{{ base }}.webp{{ v }}"{% endif %}
     >
-        <source src="{{ base }}.mp4" type="video/mp4">
-        <track kind="captions" src="{{ base }}.vtt" srclang="pt-BR" label="Português" default>
-        Seu navegador não conseguiu tocar o vídeo. <a href="{{ base }}.mp4" class="underline">Baixe o arquivo</a>.
+        <source src="{{ base }}.mp4{{ v }}" type="video/mp4">
+        <track kind="captions" src="{{ base }}.vtt{{ v }}" srclang="pt-BR" label="Português" default>
+        Seu navegador não conseguiu tocar o vídeo. <a href="{{ base }}.mp4{{ v }}" class="underline">Baixe o arquivo</a>.
     </video>
     <figcaption class="flex items-center justify-between gap-3 px-4 py-2 text-sm">
         <span class="font-medium text-slate-800">{{ video.title }}</span>

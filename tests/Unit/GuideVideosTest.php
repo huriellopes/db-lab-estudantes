@@ -51,6 +51,20 @@ it('only lists a video once its mp4 and captions are uploaded', function () {
         ->and(GuideVideos::countByTopic()[$video['topic']])->toBe(1 + count(GuideVideos::youtube($video['topic'])));
 });
 
+it('changes the video version when a file is replaced, so the browser cache does not keep the old one', function () {
+    $video = GuideVideos::ALL[0];
+    uploadVideo($this->dir, $video['arquivo']);
+    touch("{$this->dir}/{$video['arquivo']}.mp4", 1_700_000_000);
+    touch("{$this->dir}/{$video['arquivo']}.vtt", 1_700_000_000);
+    touch("{$this->dir}/{$video['arquivo']}.webp", 1_700_000_000);
+    clearstatcache();
+    expect(GuideVideos::available()[0]['version'])->toBe(1_700_000_000);
+
+    touch("{$this->dir}/{$video['arquivo']}.mp4", 1_800_000_000);
+    clearstatcache();
+    expect(GuideVideos::available()[0]['version'])->toBe(1_800_000_000);
+});
+
 it('only serves files that belong to a declared video', function () {
     $arquivo = GuideVideos::ALL[0]['arquivo'];
 
@@ -76,18 +90,18 @@ it('shows the video box with player and captions on the topic page', function ()
     ]);
 
     expect($html)
-        ->toContain('▶ Ver em 2 minutos')
+        ->toContain('▶ Ver em poucos minutos')
         ->toContain('🎬 Aprenda vendo')
-        ->toContain("src=\"/guia/video/{$video['arquivo']}.mp4\"")
-        ->toContain("<track kind=\"captions\" src=\"/guia/video/{$video['arquivo']}.vtt\"")
-        ->toContain("poster=\"/guia/video/{$video['arquivo']}.webp\"")
+        ->toContain("src=\"/guia/video/{$video['arquivo']}.mp4?v=")
+        ->toContain("<track kind=\"captions\" src=\"/guia/video/{$video['arquivo']}.vtt?v=")
+        ->toContain("poster=\"/guia/video/{$video['arquivo']}.webp?v=")
         ->toContain('preload="none"');
 });
 
 it('leaves the topic page without a video box when there is no video', function () {
     $html = View::render('guide/redis', ['topics' => GuideTopics::ALL, 'currentSlug' => 'redis', 'pageTitle' => 'Guia', 'topicVideos' => []]);
 
-    expect($html)->not->toContain('<video')->not->toContain('Ver em 2 minutos');
+    expect($html)->not->toContain('<video')->not->toContain('Ver em poucos minutos');
 });
 
 it('lists the available videos in trail order on /guia/videos', function () {

@@ -1,43 +1,88 @@
 WEBVTT
 
-00:00.000 --> 00:05.000
-Pra guardar tabelas você precisa de um
-schema. Pense nele como uma pasta onde
-ficam
+00:03.487 --> 00:07.444
+Antes de criar qualquer tabela, você
+precisa de um schema.
 
-00:05.000 --> 00:10.000
-as tabelas de um projeto.
+00:07.578 --> 00:12.331
+Pense nele como uma pasta: dentro
+dela ficam as tabelas de um projeto.
 
-00:10.000 --> 00:18.000
-No painel, use o card Criar novo schema.
-Esse começo do nome é o seu prefixo: ele
+00:12.463 --> 00:17.883
+Aqui no painel dá pra ver que ainda não tem
+nenhum: a lista Meus schemas está vazia.
 
-00:18.000 --> 00:26.000
-evita conflito com schemas de outras
-pessoas do laboratório.
+00:20.690 --> 00:26.810
+Pra criar o primeiro, use o card Criar
+novo schema. Repare nesse começo do nome,
 
-00:26.000 --> 00:34.000
-Escolha um nome curto, só com letras,
-números e sublinhado. Espaço não vale. Vou
+00:26.810 --> 00:32.232
+que já vem preenchido. Esse é o seu
+prefixo, feito a partir do seu usuário.
 
-00:34.000 --> 00:42.000
-usar escola.
+00:32.394 --> 00:35.306
+Como o laboratório é
+usado pela turma toda,
 
-00:42.000 --> 00:56.000
-Clique em Criar schema. Pronto: ele já
-aparece em Meus schemas.
+00:35.306 --> 00:40.258
+o prefixo garante que o seu schema nunca
+vai ter o mesmo nome que o de outra pessoa.
 
-00:56.000 --> 01:05.000
-E já pode ser escolhido no console SQL,
-logo abaixo. É lá que você vai criar as
+00:43.067 --> 00:48.335
+Agora escolha um nome curto, que
+lembre o projeto. Use só letras,
 
-01:05.000 --> 01:14.000
-tabelas e consultar os dados.
+00:48.335 --> 00:54.340
+números e o sublinhado. Espaço não pode,
+como avisa a dica logo abaixo do campo.
 
-01:14.000 --> 01:22.000
-Os exemplos do guia têm o botão Testar no
-console. Ele leva o código direto pro
+00:54.471 --> 00:59.778
+Então, no lugar de minha escola,
+separado, vou usar só escola.
 
-01:22.000 --> 01:30.000
-console, pronto pra rodar no schema que
-você acabou de criar.
+01:02.586 --> 01:07.714
+Clique em Criar schema. Pronto!
+Apareceu o aviso de sucesso,
+
+01:07.714 --> 01:12.941
+e o schema já está na lista Meus schemas,
+com o nome completo: o seu prefixo,
+
+01:12.941 --> 01:15.990
+dois sublinhados, e o
+nome que você escolheu.
+
+01:18.793 --> 01:24.413
+Ele também já aparece aqui embaixo,
+escolhido no campo Schema do console SQL.
+
+01:24.548 --> 01:28.824
+O console é onde você vai escrever os
+comandos: criar tabelas,
+
+01:28.824 --> 01:34.897
+colocar dados e fazer consultas. A gente
+vê o console com calma no próximo vídeo.
+
+01:37.718 --> 01:44.119
+Uma dica pra estudar: no guia de MySQL, os
+exemplos têm o botão Testar no console.
+
+01:44.254 --> 01:47.691
+Clicando nele, o código
+vai direto pro console,
+
+01:47.691 --> 01:52.798
+pronto pra rodar no schema que você acabou
+de criar. Assim você aprende fazendo,
+
+01:52.818 --> 01:54.872
+sem copiar e colar nada.
+
+01:57.669 --> 02:03.692
+Resumindo: o schema é a pasta das suas
+tabelas, o nome dele leva o seu prefixo,
+
+02:03.692 --> 02:08.702
+e é nele que os comandos do console vão
+rodar. Agora é só começar!

@@ -21,3 +21,8 @@ mysql_data/
 /storage/logs/
 /storage/backups/
 /storage/guide-videos/
+
+# Vídeo-aulas geradas (docs/videos/gerar-videos/): áudio, quadros e .mp4 ficam fora do git
+/docs/videos/saida/
+/docs/videos/gerar-videos/node_modules/
+/docs/videos/__pycache__/
