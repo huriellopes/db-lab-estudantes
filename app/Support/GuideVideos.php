@@ -85,7 +85,11 @@ final class GuideVideos
     /**
      * Vídeos que já estão no ar (têm .mp4 e .vtt no volume), na ordem da trilha.
      *
-     * @return list<array{arquivo: string, topic: string, title: string, duration: string, hasPoster: bool}>
+     * `version` é o mtime mais recente dos arquivos do vídeo: entra na URL (?v=) porque a rota
+     * manda o navegador guardar os arquivos por um dia. Assim, substituir um vídeo no volume
+     * (mesmo nome) muda a URL e ninguém fica preso na versão antiga do cache.
+     *
+     * @return list<array{arquivo: string, topic: string, title: string, duration: string, hasPoster: bool, version: int}>
      */
     public static function available(?string $topic = null): array
     {
@@ -97,7 +101,12 @@ final class GuideVideos
             if (!is_file(self::path("{$video['arquivo']}.mp4")) || !is_file(self::path("{$video['arquivo']}.vtt"))) {
                 continue;
             }
-            $videos[] = $video + ['hasPoster' => is_file(self::path("{$video['arquivo']}.webp"))];
+            $poster = is_file(self::path("{$video['arquivo']}.webp"));
+            $mtimes = array_map(
+                static fn (string $ext): int => (int) filemtime(self::path("{$video['arquivo']}.{$ext}")),
+                $poster ? ['mp4', 'vtt', 'webp'] : ['mp4', 'vtt'],
+            );
+            $videos[] = $video + ['hasPoster' => $poster, 'version' => max($mtimes)];
         }
 
         return $videos;
