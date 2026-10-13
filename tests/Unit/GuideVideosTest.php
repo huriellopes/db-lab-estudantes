@@ -76,7 +76,7 @@ it('shows the video box with player and captions on the topic page', function ()
     ]);
 
     expect($html)
-        ->toContain('▶ Ver em 2 minutos')
+        ->toContain('▶ Ver em poucos minutos')
         ->toContain('🎬 Aprenda vendo')
         ->toContain("src=\"/guia/video/{$video['arquivo']}.mp4\"")
         ->toContain("<track kind=\"captions\" src=\"/guia/video/{$video['arquivo']}.vtt\"")
@@ -87,7 +87,7 @@ it('shows the video box with player and captions on the topic page', function ()
 it('leaves the topic page without a video box when there is no video', function () {
     $html = View::render('guide/redis', ['topics' => GuideTopics::ALL, 'currentSlug' => 'redis', 'pageTitle' => 'Guia', 'topicVideos' => []]);
 
-    expect($html)->not->toContain('<video')->not->toContain('Ver em 2 minutos');
+    expect($html)->not->toContain('<video')->not->toContain('Ver em poucos minutos');
 });
 
 it('lists the available videos in trail order on /guia/videos', function () {

@@ -17,7 +17,7 @@
 {% if aulas is not empty or recomendados is not empty %}
     {% embed 'partials/guide/box.twig' with {tipo: 'video'} %}{% block body %}
         {% if aulas is not empty %}
-            <p class="font-medium">▶ Ver em 2 minutos, aqui no laboratório</p>
+            <p class="font-medium">▶ Ver em poucos minutos, aqui no laboratório</p>
             <div class="grid gap-4 {{ aulas|length > 1 ? 'md:grid-cols-2' }}">
                 {% for video in aulas %}
                     {% include 'partials/guide/video.twig' %}

@@ -1,0 +1,9 @@
+{
+  "name": "dblab-gerar-videos",
+  "private": true,
+  "type": "module",
+  "description": "Gera as vídeo-aulas do guia: narração (edge-tts) + tela (Playwright) + ffmpeg. Ver ../README.md.",
+  "dependencies": {
+    "playwright": "1.64.0"
+  }
+}

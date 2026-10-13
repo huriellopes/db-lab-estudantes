@@ -1,0 +1,886 @@
+{
+ "modelagem-er-der-no-lab": {
+  "cenas": [
+   [
+    2.81,
+    24.13
+   ],
+   [
+    24.14,
+    38.57
+   ],
+   [
+    38.57,
+    55.28
+   ],
+   [
+    55.29,
+    70.42
+   ],
+   [
+    70.42,
+    89.34
+   ],
+   [
+    89.34,
+    111.23
+   ],
+   [
+    111.23,
+    130.61
+   ],
+   [
+    130.61,
+    153.61
+   ],
+   [
+    153.62,
+    181.2
+   ],
+   [
+    181.21,
+    197.73
+   ]
+  ],
+  "legendas": [
+   [
+    3.47,
+    7.797,
+    "Antes de sair criando tabelas, vale a pena desenhar o banco."
+   ],
+   [
+    7.928,
+    12.979,
+    "Esse desenho se chama DER, o diagrama entidade-relacionamento."
+   ],
+   [
+    13.127,
+    17.568,
+    "Ele mostra o que o sistema precisa guardar e como essas coisas se ligam."
+   ],
+   [
+    17.715,
+    21.985,
+    "Vamos montar o exemplo de uma escola, com alunos e cursos."
+   ],
+   [
+    24.793,
+    30.043,
+    "Primeiro, dê um nome pro diagrama, aqui nesse campo ao lado do botão Salvar."
+   ],
+   [
+    30.189,
+    33.003,
+    "Vou chamar de Escola. Com um nome,"
+   ],
+   [
+    33.003,
+    36.435,
+    "dá pra salvar e abrir o desenho de novo outro dia."
+   ],
+   [
+    39.224,
+    41.818,
+    "Agora clique em Nova entidade."
+   ],
+   [
+    41.967,
+    45.357,
+    "Uma entidade é algo importante que o sistema guarda,"
+   ],
+   [
+    45.362,
+    50.255,
+    "e no banco ela vai virar uma tabela. A nossa primeira entidade é aluno:"
+   ],
+   [
+    50.318,
+    53.153,
+    "é só clicar no nome da caixa e digitar."
+   ],
+   [
+    55.944,
+    60.811,
+    "Repare que a caixa já vem com um atributo chamado id, marcado como PK,"
+   ],
+   [
+    60.859,
+    66.372,
+    "a chave primária. A chave primária identifica cada aluno sem nunca repetir,"
+   ],
+   [
+    66.372,
+    68.27,
+    "como o número de uma matrícula."
+   ],
+   [
+    71.072,
+    75.229,
+    "Agora os atributos, que são as informações de cada aluno."
+   ],
+   [
+    75.364,
+    81.474,
+    "Clique em mais atributo e escreva nome. Mais um: e-mail. Do lado,"
+   ],
+   [
+    81.474,
+    87.176,
+    "fica o tipo do dado. Os dois são texto, então o VARCHAR que já vem marcado serve."
+   ],
+   [
+    89.996,
+    95.522,
+    "A segunda entidade é curso, do mesmo jeito: Nova entidade, o nome curso,"
+   ],
+   [
+    95.522,
+    100.396,
+    "e os atributos nome e carga horária. Carga horária é um número,"
+   ],
+   [
+    100.396,
+    104.513,
+    "então troco o tipo pra INT. E arrasto a caixa pro lado,"
+   ],
+   [
+    104.513,
+    107.235,
+    "pra sobrar espaço pra linha que vem agora."
+   ],
+   [
+    111.884,
+    116.018,
+    "Agora vamos ligar as duas. Clique em Relacionamento,"
+   ],
+   [
+    116.018,
+    120.742,
+    "depois na entidade de origem, aluno, e na de destino, curso."
+   ],
+   [
+    120.876,
+    127.447,
+    "Apareceu uma linha entre elas. No meio da linha, escrevo o nome do relacionamento:"
+   ],
+   [
+    127.452,
+    128.652,
+    "matrícula."
+   ],
+   [
+    131.256,
+    133.997,
+    "Nas pontas da linha fica a cardinalidade:"
+   ],
+   [
+    133.997,
+    138.359,
+    "quantos de um lado se ligam com quantos do outro. Pense assim:"
+   ],
+   [
+    138.379,
+    143.388,
+    "um aluno pode fazer vários cursos, e um curso tem vários alunos."
+   ],
+   [
+    143.52,
+    148.459,
+    "Então os dois lados são N. Clico no 1, e ele vira N."
+   ],
+   [
+    148.591,
+    151.454,
+    "Isso é um relacionamento N pra N."
+   ],
+   [
+    154.273,
+    158.756,
+    "Clique em Salvar pra guardar o desenho, e depois em Gerar SQL."
+   ],
+   [
+    158.904,
+    164.608,
+    "O laboratório escreve o CREATE TABLE de cada entidade, já com a chave primária."
+   ],
+   [
+    164.742,
+    169.941,
+    "E olha o final: o N pra N virou uma tabela nova, a tabela associativa,"
+   ],
+   [
+    169.941,
+    174.85,
+    "com duas chaves estrangeiras, uma apontando pra aluno e outra pra curso."
+   ],
+   [
+    174.999,
+    179.056,
+    "É assim que o banco guarda quem está matriculado em qual curso."
+   ],
+   [
+    181.861,
+    186.756,
+    "Pra criar essas tabelas de verdade, clique em Abrir no console SQL."
+   ],
+   [
+    186.89,
+    190.435,
+    "O código vai direto pro console, pronto pra rodar."
+   ],
+   [
+    190.584,
+    195.579,
+    "Só falta um schema pra guardar tudo, e é isso que a gente faz no próximo vídeo."
+   ]
+  ]
+ },
+ "mysql-console-sql": {
+  "cenas": [
+   [
+    2.81,
+    20.05
+   ],
+   [
+    20.05,
+    33.21
+   ],
+   [
+    33.21,
+    58.09
+   ],
+   [
+    58.09,
+    81.62
+   ],
+   [
+    81.62,
+    91.73
+   ],
+   [
+    91.73,
+    114.81
+   ],
+   [
+    114.81,
+    132.29
+   ],
+   [
+    132.29,
+    146.46
+   ]
+  ],
+  "legendas": [
+   [
+    3.465,
+    8.204,
+    "O console SQL é o lugar onde você conversa com o banco de dados."
+   ],
+   [
+    8.337,
+    13.928,
+    "Você escreve um comando, manda executar, e o MySQL responde na hora."
+   ],
+   [
+    14.092,
+    17.921,
+    "Tudo pelo navegador, sem instalar nada no computador."
+   ],
+   [
+    20.706,
+    25.844,
+    "O primeiro passo é escolher em qual schema os comandos vão rodar. É aqui,"
+   ],
+   [
+    25.864,
+    31.056,
+    "no campo Schema. Vou usar o escola, que a gente criou no vídeo anterior."
+   ],
+   [
+    33.869,
+    39.774,
+    "Agora vou colar os dados de exemplo do guia de MySQL. São vários comandos:"
+   ],
+   [
+    39.879,
+    45.186,
+    "o CREATE TABLE cria as tabelas, e o INSERT coloca as linhas dentro delas."
+   ],
+   [
+    45.334,
+    48.033,
+    "Cada comando termina com ponto e vírgula,"
+   ],
+   [
+    48.033,
+    51.891,
+    "e é assim que o console sabe onde um acaba e o outro começa."
+   ],
+   [
+    52.023,
+    55.951,
+    "Clique em Executar tudo, e eles rodam um depois do outro."
+   ],
+   [
+    58.747,
+    64.945,
+    "Agora uma consulta. Numa linha nova, escrevo SELECT asterisco FROM cliente."
+   ],
+   [
+    65.096,
+    70.616,
+    "Se eu selecionar só essa linha, olha o botão: ele muda pra Executar seleção."
+   ],
+   [
+    70.748,
+    75.742,
+    "Assim, só o trecho selecionado roda, e o resto fica guardado."
+   ],
+   [
+    75.89,
+    79.464,
+    "Dá pra usar o atalho também: Ctrl mais Enter."
+   ],
+   [
+    82.275,
+    85.684,
+    "O resultado aparece numa tabela, logo abaixo,"
+   ],
+   [
+    85.684,
+    89.585,
+    "com uma linha pra cada cliente e uma coluna pra cada campo."
+   ],
+   [
+    92.389,
+    98.335,
+    "E se eu errar? Vou escrever clientes, no plural, e essa tabela não existe."
+   ],
+   [
+    98.469,
+    104.557,
+    "O console mostra a mensagem de erro do próprio MySQL. Não se assuste com o erro:"
+   ],
+   [
+    104.69,
+    109.528,
+    "leia com calma, porque ele quase sempre diz exatamente o que está errado."
+   ],
+   [
+    109.692,
+    112.669,
+    "Corrijo o nome, e tudo volta a funcionar."
+   ],
+   [
+    115.478,
+    121.594,
+    "Por último: a consulta que você usa sempre pode ser salva. Clique em Salvar comando,"
+   ],
+   [
+    121.614,
+    126.799,
+    "dê um nome, e confirme em Salvar. Ela fica na lista Consultas salvas,"
+   ],
+   [
+    126.799,
+    130.146,
+    "e um clique carrega o comando de volta no console."
+   ],
+   [
+    132.944,
+    139.024,
+    "Resumindo: escolha o schema, escreva o comando, execute tudo ou só a seleção,"
+   ],
+   [
+    139.024,
+    144.304,
+    "e leia o resultado, ou o erro, com atenção. Agora é praticar!"
+   ]
+  ]
+ },
+ "mysql-primeiro-schema": {
+  "cenas": [
+   [
+    2.82,
+    20.03
+   ],
+   [
+    20.03,
+    42.41
+   ],
+   [
+    42.41,
+    61.93
+   ],
+   [
+    61.93,
+    78.14
+   ],
+   [
+    78.14,
+    97.06
+   ],
+   [
+    97.06,
+    117.02
+   ],
+   [
+    117.02,
+    130.85
+   ]
+  ],
+  "legendas": [
+   [
+    3.487,
+    7.444,
+    "Antes de criar qualquer tabela, você precisa de um schema."
+   ],
+   [
+    7.578,
+    12.331,
+    "Pense nele como uma pasta: dentro dela ficam as tabelas de um projeto."
+   ],
+   [
+    12.463,
+    17.883,
+    "Aqui no painel dá pra ver que ainda não tem nenhum: a lista Meus schemas está vazia."
+   ],
+   [
+    20.69,
+    26.81,
+    "Pra criar o primeiro, use o card Criar novo schema. Repare nesse começo do nome,"
+   ],
+   [
+    26.81,
+    32.232,
+    "que já vem preenchido. Esse é o seu prefixo, feito a partir do seu usuário."
+   ],
+   [
+    32.394,
+    35.306,
+    "Como o laboratório é usado pela turma toda,"
+   ],
+   [
+    35.306,
+    40.258,
+    "o prefixo garante que o seu schema nunca vai ter o mesmo nome que o de outra pessoa."
+   ],
+   [
+    43.067,
+    48.335,
+    "Agora escolha um nome curto, que lembre o projeto. Use só letras,"
+   ],
+   [
+    48.335,
+    54.34,
+    "números e o sublinhado. Espaço não pode, como avisa a dica logo abaixo do campo."
+   ],
+   [
+    54.471,
+    59.778,
+    "Então, no lugar de minha escola, separado, vou usar só escola."
+   ],
+   [
+    62.586,
+    67.714,
+    "Clique em Criar schema. Pronto! Apareceu o aviso de sucesso,"
+   ],
+   [
+    67.714,
+    72.941,
+    "e o schema já está na lista Meus schemas, com o nome completo: o seu prefixo,"
+   ],
+   [
+    72.941,
+    75.99,
+    "dois sublinhados, e o nome que você escolheu."
+   ],
+   [
+    78.793,
+    84.413,
+    "Ele também já aparece aqui embaixo, escolhido no campo Schema do console SQL."
+   ],
+   [
+    84.548,
+    88.824,
+    "O console é onde você vai escrever os comandos: criar tabelas,"
+   ],
+   [
+    88.824,
+    94.897,
+    "colocar dados e fazer consultas. A gente vê o console com calma no próximo vídeo."
+   ],
+   [
+    97.718,
+    104.119,
+    "Uma dica pra estudar: no guia de MySQL, os exemplos têm o botão Testar no console."
+   ],
+   [
+    104.254,
+    107.691,
+    "Clicando nele, o código vai direto pro console,"
+   ],
+   [
+    107.691,
+    112.798,
+    "pronto pra rodar no schema que você acabou de criar. Assim você aprende fazendo,"
+   ],
+   [
+    112.818,
+    114.872,
+    "sem copiar e colar nada."
+   ],
+   [
+    117.669,
+    123.692,
+    "Resumindo: o schema é a pasta das suas tabelas, o nome dele leva o seu prefixo,"
+   ],
+   [
+    123.692,
+    128.702,
+    "e é nele que os comandos do console vão rodar. Agora é só começar!"
+   ]
+  ]
+ },
+ "sql-ansi-join": {
+  "cenas": [
+   [
+    2.81,
+    23.38
+   ],
+   [
+    23.39,
+    40.75
+   ],
+   [
+    40.75,
+    59.21
+   ],
+   [
+    59.21,
+    72.2
+   ],
+   [
+    72.2,
+    92.96
+   ],
+   [
+    92.96,
+    109.12
+   ],
+   [
+    109.12,
+    123.89
+   ],
+   [
+    123.89,
+    145.07
+   ]
+  ],
+  "legendas": [
+   [
+    3.466,
+    9.673,
+    "Olhe a tabela matrícula. Ela só tem números: o id do aluno, o id do curso,"
+   ],
+   [
+    9.673,
+    12.778,
+    "a data e a nota. Isso é de propósito:"
+   ],
+   [
+    12.798,
+    17.48,
+    "guardar só o id evita repetir o nome do aluno em todo lugar."
+   ],
+   [
+    17.626,
+    20.561,
+    "Mas aí fica a pergunta: quem é o aluno número 1?"
+   ],
+   [
+    24.042,
+    29.269,
+    "Pra responder, a gente junta as tabelas com o JOIN. Na primeira linha,"
+   ],
+   [
+    29.269,
+    34.468,
+    "escolho as colunas: o nome do aluno e o id do curso. Depois,"
+   ],
+   [
+    34.468,
+    38.596,
+    "digo que parto da tabela matrícula, e junto com a tabela aluno."
+   ],
+   [
+    41.403,
+    47.085,
+    "O ON é a parte mais importante: ele diz como as linhas se encaixam. Aqui,"
+   ],
+   [
+    47.085,
+    50.985,
+    "o id do aluno tem que ser igual ao aluno id da matrícula."
+   ],
+   [
+    51.133,
+    54.528,
+    "E esse m e esse a são apelidos das tabelas,"
+   ],
+   [
+    54.528,
+    57.051,
+    "pra não escrever o nome inteiro toda vez."
+   ],
+   [
+    59.884,
+    65.674,
+    "Executando... pronto! Cada matrícula agora aparece com o nome do aluno."
+   ],
+   [
+    65.82,
+    70.075,
+    "A Ana aparece duas vezes, porque ela está em dois cursos."
+   ],
+   [
+    72.86,
+    78.288,
+    "Pra entender o que acontece por dentro, o guia tem uma animação. Pra cada aluno,"
+   ],
+   [
+    78.288,
+    82.686,
+    "o banco procura as matrículas com o mesmo id e junta as linhas."
+   ],
+   [
+    82.817,
+    89.394,
+    "Vou avançar até o Diego. Ele não tem nenhuma matrícula, então, no INNER JOIN,"
+   ],
+   [
+    89.394,
+    90.766,
+    "ele fica de fora."
+   ],
+   [
+    93.663,
+    100.219,
+    "Agora troque pra LEFT JOIN. Nele, todos os alunos da tabela da esquerda aparecem,"
+   ],
+   [
+    100.238,
+    104.061,
+    "mesmo quem não tem par. Olha o Diego: ele entrou,"
+   ],
+   [
+    104.061,
+    106.982,
+    "e as colunas da matrícula vieram como NULL."
+   ],
+   [
+    109.78,
+    115.485,
+    "Isso abre um truque muito usado: LEFT JOIN mais IS NULL encontra quem não tem par."
+   ],
+   [
+    115.632,
+    121.749,
+    "Aqui, os alunos sem nenhuma matrícula. E o resultado é exatamente o Diego."
+   ],
+   [
+    124.546,
+    130.848,
+    "No guia tem o exemplo completo, juntando três tabelas com dois JOINs: aluno,"
+   ],
+   [
+    130.853,
+    136.233,
+    "matrícula e curso. Resumindo: o INNER JOIN traz só quem tem par,"
+   ],
+   [
+    136.309,
+    139.855,
+    "e o LEFT JOIN traz todo mundo da tabela da esquerda."
+   ],
+   [
+    139.99,
+    142.939,
+    "Teste no console e brinque com a animação!"
+   ]
+  ]
+ },
+ "sql-ansi-select-where": {
+  "cenas": [
+   [
+    2.81,
+    22.38
+   ],
+   [
+    22.38,
+    41.18
+   ],
+   [
+    41.18,
+    60.03
+   ],
+   [
+    60.03,
+    80.94
+   ],
+   [
+    80.94,
+    98.95
+   ],
+   [
+    98.95,
+    120.88
+   ],
+   [
+    120.88,
+    137.68
+   ],
+   [
+    137.68,
+    155.33
+   ]
+  ],
+  "legendas": [
+   [
+    3.464,
+    7.62,
+    "O SELECT é o comando que você mais vai usar no SQL."
+   ],
+   [
+    7.77,
+    13.375,
+    "Ele serve pra fazer perguntas pro banco, e a resposta sempre volta como uma tabela."
+   ],
+   [
+    13.507,
+    18.521,
+    "Vamos praticar com os dados de exemplo do guia de SQL ANSI: alunos,"
+   ],
+   [
+    18.521,
+    20.248,
+    "cursos e matrículas."
+   ],
+   [
+    23.036,
+    27.192,
+    "A pergunta mais simples é: me mostre tudo da tabela aluno."
+   ],
+   [
+    27.342,
+    33.172,
+    "SELECT asterisco FROM aluno. O asterisco quer dizer todas as colunas."
+   ],
+   [
+    33.32,
+    39.039,
+    "Aqui estão os cinco alunos, com nome, e-mail, cidade e data de nascimento."
+   ],
+   [
+    41.837,
+    47.334,
+    "Na maioria das vezes, você não precisa de todas as colunas. Então,"
+   ],
+   [
+    47.334,
+    52.641,
+    "no lugar do asterisco, escreva só as que interessam, separadas por vírgula:"
+   ],
+   [
+    52.704,
+    57.883,
+    "nome e cidade. O resultado fica mais limpo e mais fácil de ler."
+   ],
+   [
+    60.686,
+    65.396,
+    "E se eu quiser só os alunos de Recife? É pra isso que serve o WHERE:"
+   ],
+   [
+    65.601,
+    67.214,
+    "ele filtra as linhas."
+   ],
+   [
+    67.348,
+    73.215,
+    "O banco testa a condição em cada linha e só devolve as que deram verdadeiro. Aqui,"
+   ],
+   [
+    73.215,
+    78.775,
+    "a Ana e a Carla. Repare que o texto Recife vai entre aspas simples."
+   ],
+   [
+    81.599,
+    86.086,
+    "Agora o contrário: quem não é de Recife. No SQL,"
+   ],
+   [
+    86.086,
+    91.778,
+    "o sinal de diferente é o menor e o maior juntos. Vieram o Bruno e a Elisa."
+   ],
+   [
+    91.912,
+    96.822,
+    "Mas espera aí: cadê o Diego? Ele também não é de Recife."
+   ],
+   [
+    99.611,
+    105.555,
+    "Essa animação do guia mostra o teste linha por linha. A cidade do Diego está vazia:"
+   ],
+   [
+    105.575,
+    109.76,
+    "é NULL. E NULL não é um valor, é a falta de valor."
+   ],
+   [
+    109.923,
+    115.614,
+    "Comparar NULL com qualquer coisa não dá verdadeiro nem falso: dá desconhecido."
+   ],
+   [
+    115.745,
+    118.737,
+    "E o WHERE só deixa passar o que é verdadeiro."
+   ],
+   [
+    121.533,
+    128.613,
+    "Então, pra encontrar valores vazios, use IS NULL. Nunca igual NULL. Agora sim:"
+   ],
+   [
+    128.676,
+    133.577,
+    "o Diego aparece. E pro contrário, quem tem a cidade preenchida,"
+   ],
+   [
+    133.577,
+    135.517,
+    "existe o IS NOT NULL."
+   ],
+   [
+    138.337,
+    143.437,
+    "Resumindo: o SELECT escolhe as colunas, o FROM diz de qual tabela,"
+   ],
+   [
+    143.437,
+    148.928,
+    "e o WHERE filtra as linhas. No guia tem essa animação e vários exercícios."
+   ],
+   [
+    149.064,
+    153.177,
+    "Experimente trocar a condição e ver o que acontece com o Diego!"
+   ]
+  ]
+ }
+}
