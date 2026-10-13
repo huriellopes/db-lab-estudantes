@@ -8,13 +8,6 @@ on:
     types: [completed]
     branches: [main]
 
-# Um deploy por vez, em fila (sem cancelar o que já está rodando, pra não interromper um
-# `docker compose up` no meio). Antes dois deploys simultâneos brigavam pra recriar o
-# dblab-app e um falhava com "container name ... is already in use".
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 jobs:
   deploy:
     name: Deploy em produção
@@ -22,6 +15,15 @@ jobs:
     # Só o CI disparado por push na main: o merge de um PR também roda o CI pelo evento
     # pull_request com branch main, e sem esse filtro cada merge virava dois deploys.
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    # Um deploy por vez, em fila (sem cancelar o que já está rodando, pra não interromper um
+    # `docker compose up` no meio). Antes dois deploys simultâneos brigavam pra recriar o
+    # dblab-app e um falhava com "container name ... is already in use". Fica no JOB, não no
+    # workflow: assim um run que o `if` acima descarta nem entra na fila. No nível do
+    # workflow ele ocupava a vaga de "pendente" (o GitHub guarda só uma) e podia tomar o
+    # lugar de um deploy de verdade.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     environment: production
     steps:
       - name: Rodar deploy.sh via SSH
