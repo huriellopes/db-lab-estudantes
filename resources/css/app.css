@@ -132,3 +132,24 @@
     @apply cursor-pointer font-medium text-slate-900;
   }
 }
+
+/* Linha/tabela que acabou de aparecer numa animação do guia (resources/js/guide-animations.js):
+   surge de leve, pra o olho achar o que mudou. Quem pediu menos movimento no sistema não vê. */
+@keyframes guide-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.guide-pop {
+  animation: guide-pop 0.35s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-pop {
+    animation: none;
+  }
+}

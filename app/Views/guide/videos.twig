@@ -1,0 +1,70 @@
+{% extends 'layouts/app.twig' %}
+
+{% block content %}
+    <div class="mb-6">
+        <a href="/guia" class="text-sm text-slate-500 hover:text-slate-700">← Guia</a>
+    </div>
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-slate-900">🎬 Trilha em vídeo</h1>
+        <p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+            Pra quem aprende melhor vendo. Primeiro, aulas curtas do próprio laboratório mostrando na tela como cada
+            coisa é feita. Depois, explicações de canais brasileiros do YouTube, na ordem da trilha do guia: planejar o
+            banco, praticar SQL e conhecer outros bancos. Depois de cada vídeo, abra o tópico do guia pra ler com calma e
+            testar os exemplos no console.
+        </p>
+    </div>
+
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Aulas do laboratório (1 a 2 min)</h2>
+    {% if videos is empty %}
+        <div class="card text-sm text-slate-600">
+            <p class="font-medium text-slate-900">Os vídeos estão sendo gravados.</p>
+            <p class="mt-1">
+                A primeira leva tem {{ plannedCount }} aulas e elas vão aparecendo aqui assim que ficarem prontas. Enquanto isso,
+                assista aos recomendados abaixo ou siga o <a href="/guia" class="font-medium text-indigo-600 hover:text-indigo-700">guia em texto</a>.
+            </p>
+        </div>
+    {% else %}
+        <ol class="space-y-8">
+            {% for video in videos %}
+                {% set topic = topics[video.topic] %}
+                <li>
+                    <h3 class="mb-2 text-base font-semibold text-slate-900">
+                        <span class="text-slate-400">{{ loop.index }}.</span> {{ video.title }}
+                    </h3>
+                    {% include 'partials/guide/video.twig' %}
+                    <p class="mt-2 text-sm text-slate-500">
+                        Continue lendo: <a href="/guia/{{ video.topic }}" class="font-medium text-indigo-600 hover:text-indigo-700">{{ topic.icon }} {{ topic.title }}</a>
+                    </p>
+                </li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+
+    {% if youtube is not empty %}
+        <h2 class="mb-1 mt-10 text-sm font-semibold uppercase tracking-wide text-slate-500">Recomendados no YouTube</h2>
+        <p class="mb-4 text-xs text-slate-500">
+            Os vídeos são dos canais citados e tocam aqui mesmo. Nada é carregado do YouTube até você clicar.
+        </p>
+        {% set porTopico = {} %}
+        {% for video in youtube %}
+            {% set porTopico = porTopico|merge({(video.topic): (porTopico[video.topic] ?? [])|merge([video])}) %}
+        {% endfor %}
+        <div class="space-y-6">
+            {% for slug, lista in porTopico %}
+                {% set topic = topics[slug] %}
+                <section>
+                    <h3 class="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-base font-semibold text-slate-900">
+                        <span>{{ topic.icon }} {{ topic.title }}</span>
+                        <a href="/guia/{{ slug }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">ler o tópico →</a>
+                    </h3>
+                    <ul class="grid items-start gap-2 md:grid-cols-2">
+                        {% for video in lista %}
+                            {% include 'partials/guide/youtube.twig' %}
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

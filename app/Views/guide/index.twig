@@ -31,6 +31,10 @@
                 <p class="mt-1 text-sm text-slate-700">PostgreSQL, SQL Server e Oracle (relacionais) e MongoDB e Redis (NoSQL): quando cada um faz mais sentido.</p>
             </li>
         </ol>
+        <p class="mt-4 text-sm text-slate-600">
+            🎬 Prefere assistir? A <a href="/guia/videos" class="font-medium text-indigo-600 hover:text-indigo-700">trilha em vídeo</a>
+            reúne vídeos curtos e aulas recomendadas do YouTube, na mesma ordem destes passos.
+        </p>
     </div>
 
     {% set grupos = {} %}
@@ -48,7 +52,7 @@
                 <a href="/guia/{{ slug }}" class="card flex items-start gap-3 transition-shadow hover:shadow-md">
                     <span class="text-2xl">{{ topic.icon }}</span>
                     <div class="min-w-0">
-                        <h3 class="font-semibold text-slate-900"><span class="text-slate-400">{{ numero }}.</span> {{ topic.title }}</h3>
+                        <h3 class="font-semibold text-slate-900"><span class="text-slate-400">{{ numero }}.</span> {{ topic.title }}{% set qtd = videoCounts[slug]|default(0) %}{% if qtd > 0 %} <span class="whitespace-nowrap text-xs font-medium text-indigo-600">🎬 {{ qtd }} {{ qtd == 1 ? 'vídeo' : 'vídeos' }}</span>{% endif %}</h3>
                         <p class="mt-1 text-sm text-slate-500">{{ topic.summary }}</p>
                         <p class="mt-3 text-xs text-slate-400">🌱 Iniciante · 🚀 Intermediário · 🧠 Avançado</p>
                     </div>

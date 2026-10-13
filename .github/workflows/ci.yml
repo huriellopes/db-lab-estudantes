@@ -73,6 +73,9 @@ jobs:
       - name: Formatação (Prettier)
         run: npm run format:check
 
+      - name: Testes das animações do guia (node:test)
+        run: npm run test:js
+
       - name: Build do Vite
         run: npm run build
 
