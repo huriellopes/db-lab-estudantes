@@ -242,6 +242,8 @@ SELECT nome FROM aluno WHERE cidade IS NULL;
                         <code>IS NULL</code> ou <code>IS NOT NULL</code>.
                     </p>
                 {% endblock %}{% endembed %}
+
+                {% include 'partials/guide/anim-where.twig' %}
             </div>
 
             <div class="card guia">
@@ -526,6 +528,8 @@ ORDER BY a.nome, c.nome;
                         <tr><td><code>RIGHT JOIN</code></td><td>O contrário do LEFT (quase ninguém usa, é só inverter as tabelas)</td></tr>
                     </tbody>
                 </table>
+                {% include 'partials/guide/anim-join.twig' %}
+
                 <p>O Diego não tem matrícula. No INNER JOIN ele some; no LEFT JOIN ele aparece com o curso vazio:</p>
                 {% embed 'partials/guide/code.twig' with {engine: 'mysql', console: true} %}{% block code -%}
 SELECT a.nome, m.curso_id

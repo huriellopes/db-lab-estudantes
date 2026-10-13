@@ -1,0 +1,68 @@
+{# Animação: o JOIN montando o resultado (Alpine joinAnimation). Dados = alunos e matrículas do guia. #}
+<figure x-data="joinAnimation" class="my-4 space-y-4 rounded-xl border border-indigo-200 bg-white p-4">
+    <figcaption class="flex flex-wrap items-center justify-between gap-2">
+        <span class="text-sm font-semibold text-indigo-900">🎞️ Veja o JOIN juntando as tabelas, passo a passo</span>
+        <span class="flex gap-1" role="group" aria-label="Tipo de JOIN">
+            <button type="button" @click="setMode('inner')" :class="mode === 'inner' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="rounded-full px-3 py-1 font-mono text-xs">INNER JOIN</button>
+            <button type="button" @click="setMode('left')" :class="mode === 'left' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="rounded-full px-3 py-1 font-mono text-xs">LEFT JOIN</button>
+        </span>
+    </figcaption>
+
+    <pre class="rounded-lg bg-slate-900 px-4 py-2 text-xs text-slate-100"><code>SELECT a.nome, m.curso_id
+FROM aluno a
+<span class="text-amber-300" x-text="mode === 'left' ? 'LEFT JOIN' : 'INNER JOIN'"></span> matricula m ON m.aluno_id = a.id;</code></pre>
+
+    <div class="grid gap-4 lg:grid-cols-3">
+        <div>
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">aluno (a)</p>
+            <table>
+                <thead><tr><th>id</th><th>nome</th></tr></thead>
+                <tbody>
+                    <template x-for="(a, i) in alunos" :key="a.id">
+                        <tr class="motion-safe:transition-colors motion-safe:duration-300"
+                            :class="{
+                                'bg-indigo-50 ring-2 ring-inset ring-indigo-300': alunoState(i) === 'current',
+                                'text-slate-400': alunoState(i) === 'done',
+                            }">
+                            <td x-text="a.id"></td><td x-text="a.nome"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">matricula (m)</p>
+            <table>
+                <thead><tr><th>id</th><th>aluno_id</th><th>curso_id</th></tr></thead>
+                <tbody>
+                    <template x-for="m in matriculas" :key="m.id">
+                        <tr class="motion-safe:transition-colors motion-safe:duration-300"
+                            :class="matriculaState(m) === 'match' && 'bg-emerald-50 ring-2 ring-inset ring-emerald-300'">
+                            <td x-text="m.id"></td>
+                            <td><span x-text="m.aluno_id" :class="matriculaState(m) === 'match' && 'font-semibold text-emerald-700'"></span></td>
+                            <td x-text="m.curso_id"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Resultado</p>
+            <table>
+                <thead><tr><th>nome</th><th>curso_id</th></tr></thead>
+                <tbody>
+                    <template x-for="r in result" :key="r.key">
+                        <tr class="guide-pop" :class="isNewRow(r) && (r.curso_id === null ? 'bg-amber-50' : 'bg-emerald-50')">
+                            <td x-text="r.nome"></td>
+                            <td><span x-text="r.curso_id ?? 'NULL'" :class="r.curso_id === null && 'italic text-slate-400'"></span></td>
+                        </tr>
+                    </template>
+                    <tr x-show="result.length === 0"><td colspan="2" class="text-xs italic text-slate-400">nenhuma linha ainda</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="min-h-10 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700" aria-live="polite" x-text="narration"></p>
+    {% include 'partials/guide/anim-controls.twig' %}
+</figure>

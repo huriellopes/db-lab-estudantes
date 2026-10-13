@@ -7,6 +7,7 @@ namespace App\Actions\Guide;
 use App\Core\Action;
 use App\Core\Auth;
 use App\Support\GuideTopics;
+use App\Support\GuideVideos;
 
 /**
  * Página de um tópico do guia. GET /guia/{slug} — validado contra a lista fixa de
@@ -31,6 +32,8 @@ final class ShowGuideTopicAction extends Action
             'pageTitle' => GuideTopics::ALL[$slug]['title'] . ' · Guia',
             'topics' => GuideTopics::ALL,
             'currentSlug' => $slug,
+            'topicVideos' => GuideVideos::available($slug),
+            'topicYoutube' => GuideVideos::youtube($slug),
         ]);
     }
 }

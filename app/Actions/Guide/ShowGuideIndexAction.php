@@ -7,6 +7,7 @@ namespace App\Actions\Guide;
 use App\Core\Action;
 use App\Core\Auth;
 use App\Support\GuideTopics;
+use App\Support\GuideVideos;
 
 /** Índice do guia de referência (SQL/NoSQL) — lista de cards, um por tópico. GET /guia. */
 final class ShowGuideIndexAction extends Action
@@ -18,6 +19,7 @@ final class ShowGuideIndexAction extends Action
         $this->render('guide/index', [
             'pageTitle' => 'Guia de bancos de dados',
             'topics' => GuideTopics::ALL,
+            'videoCounts' => GuideVideos::countByTopic(),
         ]);
     }
 }

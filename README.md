@@ -423,6 +423,26 @@ nginx do container só confia no `X-Forwarded-For` vindo de rede privada — ver
   servidor no `.env.production.example`; as camadas do próprio MySQL estão no
   [SECURITY.md](SECURITY.md#mysql-por-túnel-ssh-decisão-de-projeto).
 
+### Vídeo-aulas do guia
+
+Os vídeos do `/guia` (lista em `App\Support\GuideVideos`) ficam **fora do git**, no volume
+`dblab-guide-videos` (`dblab_guide_videos` em dev), montado em `storage/guide-videos`. Cada
+vídeo declarado tem três arquivos com o mesmo nome-base: `.mp4`, `.webp` (pôster) e `.vtt`
+(legenda pt-BR). Um vídeo só aparece no guia quando o `.mp4` e o `.vtt` estão no volume, então
+basta subir os arquivos, sem novo deploy. Eles são servidos só para quem está logado
+(`GET /guia/video/{arquivo}` confere o login e o nginx entrega via `X-Accel-Redirect`).
+Roteiros, legendas e o passo a passo de gravação estão em [`docs/videos/`](docs/videos/README.md).
+Os vídeos recomendados do YouTube ficam em `GuideVideos::YOUTUBE`. Ao incluir um, confira antes se
+ele permite incorporação: `curl -s -o /dev/null -w '%{http_code}' "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=ID"`
+precisa responder `200` (`401` = o dono bloqueou a incorporação).
+
+```bash
+# Gravação (OBS) → MP4 720p leve, pôster e upload
+ffmpeg -i in.mkv -vf scale=-2:720 -c:v libx264 -crf 28 -preset slow -c:a aac -b:a 96k -movflags +faststart sql-ansi-join.mp4
+ffmpeg -ss 3 -i sql-ansi-join.mp4 -frames:v 1 sql-ansi-join.webp
+scp sql-ansi-join.{mp4,webp,vtt} servidor:/tmp/ && ssh servidor 'for f in /tmp/sql-ansi-join.*; do docker cp "$f" dblab-app:/var/www/html/storage/guide-videos/; done'
+```
+
 > [!TIP]
 > **Ao fazer o deploy de uma instalação existente**, confira o que a automação não faz sozinha:
 > o `MYSQL_ROOT_HOST=localhost` só vale em volume novo (em volume antigo, revise as contas

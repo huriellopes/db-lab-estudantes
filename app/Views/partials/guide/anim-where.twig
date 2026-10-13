@@ -1,0 +1,56 @@
+{# Animação: o WHERE testando linha por linha (Alpine whereAnimation). Dados = tabela aluno do guia. #}
+<figure x-data="whereAnimation" class="my-4 space-y-4 rounded-xl border border-indigo-200 bg-white p-4">
+    <figcaption class="flex flex-wrap items-center justify-between gap-2">
+        <span class="text-sm font-semibold text-indigo-900">🎞️ Veja o WHERE trabalhando, linha por linha</span>
+        <span class="flex flex-wrap gap-1" role="group" aria-label="Condição">
+            <template x-for="(cond, key) in conditions" :key="key">
+                <button type="button" @click="setCondition(key)"
+                    :class="condition === key ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                    class="rounded-full px-3 py-1 font-mono text-xs" x-text="cond.sql"></button>
+            </template>
+        </span>
+    </figcaption>
+
+    <pre class="rounded-lg bg-slate-900 px-4 py-2 text-xs text-slate-100"><code>SELECT nome, cidade FROM aluno WHERE <span class="text-amber-300" x-text="conditions[condition].sql"></span>;</code></pre>
+
+    <div class="grid gap-4 md:grid-cols-2">
+        <div>
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Tabela aluno</p>
+            <table>
+                <thead><tr><th>nome</th><th>cidade</th><th class="w-24">teste</th></tr></thead>
+                <tbody>
+                    <template x-for="(a, i) in rows" :key="a.id">
+                        <tr class="motion-safe:transition-colors motion-safe:duration-300"
+                            :class="{
+                                'bg-indigo-50 ring-2 ring-inset ring-indigo-300': i === step - 1,
+                                'text-slate-400': rowState(i) === 'fail',
+                            }">
+                            <td x-text="a.nome"></td>
+                            <td><span x-show="a.cidade !== null" x-text="a.cidade"></span><span x-show="a.cidade === null" class="italic text-slate-400">NULL</span></td>
+                            <td>
+                                <span x-show="rowState(i) === 'pass'" class="badge-indigo">✔ entra</span>
+                                <span x-show="rowState(i) === 'fail' && a.result === false" class="badge-rose">✘ fora</span>
+                                <span x-show="rowState(i) === 'fail' && a.result === null" class="badge-amber" title="Comparar com NULL dá desconhecido">? fora</span>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Resultado</p>
+            <table>
+                <thead><tr><th>nome</th><th>cidade</th></tr></thead>
+                <tbody>
+                    <template x-for="a in result" :key="a.id">
+                        <tr class="guide-pop"><td x-text="a.nome"></td><td><span x-text="a.cidade ?? 'NULL'" :class="a.cidade === null && 'italic text-slate-400'"></span></td></tr>
+                    </template>
+                    <tr x-show="result.length === 0"><td colspan="2" class="text-xs italic text-slate-400">nenhuma linha ainda</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="min-h-10 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700" aria-live="polite" x-text="narration"></p>
+    {% include 'partials/guide/anim-controls.twig' %}
+</figure>

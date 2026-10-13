@@ -1,5 +1,6 @@
 {# Cabeçalho comum das páginas do guia: navegação entre tópicos + título/resumo do tópico atual.
-   Espera 'topics' (App\Support\GuideTopics::ALL) e 'currentSlug' no contexto. #}
+   Espera 'topics' (App\Support\GuideTopics::ALL) e 'currentSlug' no contexto; 'topicVideos' e 'topicYoutube'
+   (opcionais, App\Support\GuideVideos) põem o quadro de vídeos logo abaixo do título. #}
 {% include 'partials/guide-topic-nav.twig' %}
 
 {% set topic = topics[currentSlug] %}
@@ -10,3 +11,28 @@
         <p class="mt-1 text-sm text-slate-500">{{ topic.summary }}</p>
     </div>
 </div>
+
+{% set aulas = topicVideos|default([]) %}
+{% set recomendados = topicYoutube|default([]) %}
+{% if aulas is not empty or recomendados is not empty %}
+    {% embed 'partials/guide/box.twig' with {tipo: 'video'} %}{% block body %}
+        {% if aulas is not empty %}
+            <p class="font-medium">▶ Ver em 2 minutos, aqui no laboratório</p>
+            <div class="grid gap-4 {{ aulas|length > 1 ? 'md:grid-cols-2' }}">
+                {% for video in aulas %}
+                    {% include 'partials/guide/video.twig' %}
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% if recomendados is not empty %}
+            <p class="{{ aulas is not empty ? 'pt-2' }} font-medium">Recomendados no YouTube</p>
+            <p class="text-xs">Explicações de professores e canais brasileiros, em linguagem simples. Clique pra assistir aqui mesmo; o vídeo só carrega quando você clica.</p>
+            <ul class="grid items-start gap-2 {{ recomendados|length > 1 ? 'md:grid-cols-2' }}">
+                {% for video in recomendados %}
+                    {% include 'partials/guide/youtube.twig' %}
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <p class="text-xs"><a href="/guia/videos" class="font-medium underline">Ver a trilha completa em vídeo →</a></p>
+    {% endblock %}{% endembed %}
+{% endif %}

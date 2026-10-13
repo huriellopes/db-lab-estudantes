@@ -1,6 +1,6 @@
 {#
     Quadro de destaque do guia, via embed com o conteúdo no block "body":
-      tipo: 'dica' (padrão), 'atencao', 'analogia' ou 'lab' (como fazer neste laboratório).
+      tipo: 'dica' (padrão), 'atencao', 'analogia', 'lab' (como fazer neste laboratório) ou 'video'.
       titulo: opcional, substitui o título padrão do tipo.
 #}
 {% set estilos = {
@@ -8,6 +8,7 @@
     atencao: {cor: 'border-amber-200 bg-amber-50/70 text-amber-950', icone: '⚠️', titulo: 'Atenção'},
     analogia: {cor: 'border-violet-200 bg-violet-50/70 text-violet-950', icone: '🧠', titulo: 'Pense assim'},
     lab: {cor: 'border-indigo-200 bg-indigo-50/70 text-indigo-950', icone: '🧪', titulo: 'No laboratório'},
+    video: {cor: 'border-rose-200 bg-rose-50/60 text-rose-950', icone: '🎬', titulo: 'Aprenda vendo'},
 } %}
 {% set estilo = estilos[tipo|default('dica')] %}
 <div class="my-4 rounded-xl border p-4 text-sm leading-relaxed {{ estilo.cor }}">

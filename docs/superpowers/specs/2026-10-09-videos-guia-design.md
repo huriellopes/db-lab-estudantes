@@ -1,6 +1,19 @@
 # Estudo: vídeo-aulas curtas no /guia
 
-Status: **estudo** — nada implementado ainda.
+Status: **Parte 1 (infraestrutura) implementada em 2026-10-13.** Decisões tomadas:
+vídeo próprio (opção A), **atrás do login** via `X-Accel-Redirect`
+(`App\Actions\Guide\ServeGuideVideoAction` → `location /_guide-videos/ { internal; }`),
+quadro "▶ Ver em 2 minutos" no topo do tópico e página `/guia/videos` ("Trilha em vídeo").
+O catálogo ficou em `App\Support\GuideVideos` (e não num campo de `GuideTopics`): cada vídeo
+declarado só aparece quando o `.mp4` e o `.vtt` estão no volume, então a leva abaixo já está
+declarada e entra no ar à medida que for gravada. Vídeos por nível (Iniciante/Intermediário/
+Avançado) e animações interativas (JOIN, Formas Normais) ficaram para uma segunda etapa.
+**Etapa 2 (2026-10-13):** animações interativas no próprio guia (WHERE e JOIN em
+`/guia/sql-ansi`, normalização em `/guia/formas-normais`, ver `resources/js/guide-animations.js`),
+roteiros e legendas da primeira leva em `docs/videos/`, e vídeos recomendados de canais
+brasileiros do YouTube (`GuideVideos::YOUTUBE`), tocados via `youtube-nocookie.com` só depois do
+clique. Isso abriu `frame-src https://www.youtube-nocookie.com` na CSP (opção B convivendo com a A).
+O texto abaixo é o estudo original.
 
 ## Ponto de partida
 
