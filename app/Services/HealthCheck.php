@@ -67,6 +67,24 @@ final class HealthCheck
         return $statuses;
     }
 
+    /**
+     * Resumo de uma palavra pro GET /health: "down" se algum serviço crítico caiu (a app não
+     * funciona), "degraded" se só um não crítico caiu (phpMyAdmin), "ok" caso contrário.
+     *
+     * @param list<HealthStatus> $statuses
+     * @return 'ok'|'degraded'|'down'
+     */
+    public static function overall(array $statuses): string
+    {
+        $failed = array_filter($statuses, static fn (HealthStatus $s): bool => !$s->ok);
+
+        return match (true) {
+            $failed === [] => 'ok',
+            array_filter($failed, static fn (HealthStatus $s): bool => $s->critical) !== [] => 'down',
+            default => 'degraded',
+        };
+    }
+
     private static function app(): HealthStatus
     {
         $storage = dirname(__DIR__, 2) . '/storage';
@@ -118,7 +136,7 @@ final class HealthCheck
         $start = hrtime(true);
 
         try {
-            $pdo = Database::connection();
+            $pdo = Database::connectOrFail();
             $pdo->query('SELECT 1')->fetchColumn();
             $latency = (int) ((hrtime(true) - $start) / 1_000_000);
 
@@ -173,6 +191,7 @@ final class HealthCheck
             $ok ? "HTTP {$code}" : ($code > 0 ? "HTTP {$code}" : 'Sem resposta'),
             $ok ? '' : 'No servidor: docker compose restart phpmyadmin (veja o motivo em docker compose logs --tail=100 phpmyadmin). '
                 . 'O lab continua funcionando sem ele — só o acesso pelo phpMyAdmin fica fora.',
+            critical: false,
         );
     }
 

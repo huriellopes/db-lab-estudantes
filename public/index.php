@@ -57,6 +57,8 @@ use App\Actions\Guide\ServeGuideVideoAction;
 use App\Actions\Guide\ShowGuideIndexAction;
 use App\Actions\Guide\ShowGuideTopicAction;
 use App\Actions\Guide\ShowGuideVideosAction;
+use App\Actions\Health\LiveHealthAction;
+use App\Actions\Health\ShowHealthAction;
 use App\Actions\Institution\AddInstitutionMemberAction;
 use App\Actions\Institution\DestroyInstitutionAction;
 use App\Actions\Institution\IndexInstitutionsAction;
@@ -138,6 +140,20 @@ set_error_handler(static function (int $errno, string $message, string $file, in
 // produção/dev com docker-compose as variáveis já chegam via `environment:`.
 if (file_exists(dirname(__DIR__) . '/.env')) {
     Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
+}
+
+// Health check (HEALTHCHECK do Docker a cada 15s, monitor externo): sem cookie de sessão, responde
+// aqui e sai — antes do session_start(), então o probe não cria um arquivo de sessão por
+// requisição, e antes do modo manutenção (o status tem que sair mesmo com ele ligado). Com
+// cookie, segue o caminho normal pelo roteador, que é como o admin logado recebe o detalhe.
+$healthPath = rtrim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $healthPath === '/health/live') {
+    (new LiveHealthAction())();
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $healthPath === '/health' && !isset($_COOKIE[session_name()])) {
+    (new ShowHealthAction())();
+    exit;
 }
 
 // Cookie de sessão travado: HttpOnly (JS não lê), SameSite=Lax (mitiga CSRF cross-site
@@ -234,6 +250,8 @@ $router->post('/consultas-salvas/excluir', DestroySavedQueryAction::class);
 // Sem login exigido de propósito: o form de login também depende de CSRF, e é
 // exatamente aí que uma aba ficar aberta tempo demais faria mais falta (ver Auth::requireLogin).
 $router->get('/csrf-token', CsrfTokenAction::class);
+$router->get('/health', ShowHealthAction::class);
+$router->get('/health/live', LiveHealthAction::class);
 
 $router->get('/profile', EditProfileAction::class);
 $router->post('/profile', UpdateProfileAction::class);
