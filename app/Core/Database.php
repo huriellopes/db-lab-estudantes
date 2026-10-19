@@ -16,6 +16,38 @@ final class Database
 
     public static function connection(): PDO
     {
+        try {
+            return self::connectOrFail();
+        } catch (PDOException $e) {
+            // die()/exit() com uma string sempre sai com status 0 em PHP — em CLI (ex.:
+            // bin/console.php migrate, chamado em loop por docker/app-entrypoint.sh) isso
+            // fazia o comando "ter sucesso" mesmo sem conectar, quebrando o retry: o
+            // entrypoint seguia pro supervisord com o banco fora do ar e nenhuma migration
+            // rodada. exit(1) explícito aqui faz o `until` do entrypoint tentar de novo.
+            if (PHP_SAPI === 'cli') {
+                fwrite(STDERR, 'Erro ao conectar no banco de dados: ' . $e->getMessage() . PHP_EOL);
+                exit(1);
+            }
+
+            // Na web, o detalhe vai só pro log: a mensagem do PDO entrega host, porta e
+            // usuário do banco (às vezes até o motivo exato da recusa) pra quem estiver
+            // olhando a página — mesma regra do set_exception_handler de public/index.php.
+            error_log('Erro ao conectar no banco de dados: ' . $e->getMessage());
+            \App\Support\ErrorLogger::message('critical', 'Erro ao conectar no banco de dados: ' . $e->getMessage());
+            http_response_code(500);
+            echo View::render('errors/500');
+            exit;
+        }
+    }
+
+    /**
+     * A mesma conexão de connection(), mas sem a página 500 + exit quando o banco não responde:
+     * a PDOException sobe pra quem chamou. É o que o HealthCheck usa — com connection(), o
+     * GET /health (e o card de status) virava um 500 justamente quando o MySQL caía, em vez
+     * de dizer "offline".
+     */
+    public static function connectOrFail(): PDO
+    {
         if (self::$connection === null) {
             $host = Config::get('DB_HOST', 'mysql');
             $port = Config::get('DB_PORT', '3306');
@@ -23,36 +55,15 @@ final class Database
             $user = Config::get('DB_USER', 'appuser');
             $pass = Config::get('DB_PASS', '');
 
-            try {
-                self::$connection = new PDO(
-                    "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4",
-                    $user,
-                    $pass,
-                    [
-                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    ],
-                );
-            } catch (PDOException $e) {
-                // die()/exit() com uma string sempre sai com status 0 em PHP — em CLI (ex.:
-                // bin/console.php migrate, chamado em loop por docker/app-entrypoint.sh) isso
-                // fazia o comando "ter sucesso" mesmo sem conectar, quebrando o retry: o
-                // entrypoint seguia pro supervisord com o banco fora do ar e nenhuma migration
-                // rodada. exit(1) explícito aqui faz o `until` do entrypoint tentar de novo.
-                if (PHP_SAPI === 'cli') {
-                    fwrite(STDERR, 'Erro ao conectar no banco de dados: ' . $e->getMessage() . PHP_EOL);
-                    exit(1);
-                }
-
-                // Na web, o detalhe vai só pro log: a mensagem do PDO entrega host, porta e
-                // usuário do banco (às vezes até o motivo exato da recusa) pra quem estiver
-                // olhando a página — mesma regra do set_exception_handler de public/index.php.
-                error_log('Erro ao conectar no banco de dados: ' . $e->getMessage());
-                \App\Support\ErrorLogger::message('critical', 'Erro ao conectar no banco de dados: ' . $e->getMessage());
-                http_response_code(500);
-                echo View::render('errors/500');
-                exit;
-            }
+            self::$connection = new PDO(
+                "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4",
+                $user,
+                $pass,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                ],
+            );
         }
 
         return self::$connection;
