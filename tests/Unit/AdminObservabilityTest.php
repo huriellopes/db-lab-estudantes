@@ -15,6 +15,25 @@ it('round-trips a HealthStatus through the cache array format', function () {
     expect(HealthStatus::fromArray($status->toArray()))->toEqual($status);
 });
 
+it('round-trips a non-critical HealthStatus and reads old cache rows as critical', function () {
+    $status = new HealthStatus('phpMyAdmin', false, critical: false);
+
+    expect(HealthStatus::fromArray($status->toArray()))->toEqual($status)
+        ->and(HealthStatus::fromArray(['name' => 'MySQL', 'ok' => true])->critical)->toBeTrue();
+});
+
+it('summarizes the health checks as ok, degraded or down', function () {
+    $app = new HealthStatus('Aplicação', true);
+    $mysql = new HealthStatus('Banco de dados (MySQL)', true);
+    $pma = new HealthStatus('phpMyAdmin', true, critical: false);
+    $pmaDown = new HealthStatus('phpMyAdmin', false, critical: false);
+
+    expect(HealthCheck::overall([$app, $mysql, $pma]))->toBe('ok')
+        ->and(HealthCheck::overall([$app, $mysql, $pmaDown]))->toBe('degraded')
+        ->and(HealthCheck::overall([$app, new HealthStatus('Banco de dados (MySQL)', false), $pma]))->toBe('down')
+        ->and(HealthCheck::overall([new HealthStatus('Aplicação', false), $mysql, $pmaDown]))->toBe('down');
+});
+
 it('formats durations for the health detail', function () {
     expect(HealthCheck::humanDuration(59))->toBe('0min')
         ->and(HealthCheck::humanDuration(3_660))->toBe('1h 1min')

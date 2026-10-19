@@ -61,6 +61,6 @@ RUN mkdir -p storage/twig-cache storage/cache storage/logs storage/backups stora
 EXPOSE 80
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-    CMD curl -fsS http://127.0.0.1/login -o /dev/null || exit 1
+    CMD curl -fsS http://127.0.0.1/health/live -o /dev/null || exit 1
 
 ENTRYPOINT ["app-entrypoint.sh"]

@@ -300,13 +300,14 @@ especial pra ver isso, só um bug comum de runtime bastava). Corrigido com
 
 ## Mapa de endpoints
 
-39 rotas (`public/index.php`), auditadas uma a uma: guarda de autorização, rate limiting,
+As rotas de `public/index.php`, auditadas uma a uma: guarda de autorização, rate limiting,
 validação de entrada e o que cada uma expõe.
 
 | Área | Rotas | Autorização | Rate limit | Validação de entrada | Exposição de dados |
 |---|---|---|---|---|---|
 | Público | `/`, `GET /login`, `GET /register`, `GET /esqueci-senha` | nenhuma (por design) | — | — | Nada sensível — formulários vazios |
-| Login | `POST /login` | nenhuma | ✅ por IP e por identificador (6/5min + 15/5min) | `password_verify` roda sempre (sem timing leak, ver seção acima) | Mensagem de erro genérica, não diferencia usuário inexistente de senha errada |
+| Saúde | `GET /health`, `GET /health/live` | nenhuma (por design; detalhe só pra admin) | — (resultado em cache de 30s: flood não vira checagem) | — | Anônimo: só `ok`/`degraded`/`down` + horário. Nome de serviço, versão, latência e dica de correção só com sessão de admin |
+| Login | `POST /login` | nenhuma | ✅ por identificador e por IP (6 e 60 falhas/5min, ver `RateLimits`) | `password_verify` roda sempre (sem timing leak, ver seção acima) | Mensagem de erro genérica, não diferencia usuário inexistente de senha errada |
 | Cadastro | `POST /register` | nenhuma | ✅ por IP (8/15min) | `RegistrationValidator` + `ProfileFields` (tamanho, formato, allow-list de username) | — |
 | Logout | `POST /logout` | nenhuma (idempotente) | — | — | — |
 | Esqueci senha | `POST /esqueci-senha` | nenhuma | ✅ por IP (5/15min) | `filter_var` e-mail | Resposta **idêntica** exista o e-mail ou não |
@@ -421,3 +422,10 @@ queda:
 - **`restart: unless-stopped`** em todos os serviços: volta sozinho depois de crash ou reboot.
 - **Migrations no boot com retry** (`docker/app-entrypoint.sh`): a app só sobe depois que o
   banco responde e as migrations rodam.
+- **Rotas de saúde**: `GET /health/live` só confirma nginx + PHP-FPM (é o `HEALTHCHECK` do
+  Docker — se checasse o banco, o autoheal reiniciaria a app em loop com o MySQL fora, sem
+  resolver nada). `GET /health` checa app/disco, MySQL e phpMyAdmin (`App\Services\HealthCheck`)
+  e responde `ok`/`degraded` com 200 ou `down` com 503 — phpMyAdmin fora é só `degraded`, o lab
+  funciona sem ele. Pra alerta externo, aponte um monitor HTTP (UptimeRobot, Better Stack…)
+  para `https://<domínio>/health` esperando 200. Sem cookie de sessão a resposta sai antes do
+  `session_start()` (probe não cria sessão) e vale também com o modo manutenção ligado.

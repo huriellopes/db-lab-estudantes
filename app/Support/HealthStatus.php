@@ -19,10 +19,13 @@ final readonly class HealthStatus
         // O que fazer quando ok=false (comando a rodar no servidor, ação do /admin/manutencao).
         // Também só pro admin, igual ao detail.
         public string $hint = '',
+        // false = o lab funciona sem esse serviço (phpMyAdmin): fora do ar, o GET /health diz
+        // "degraded" (200) em vez de "down" (503). Ver HealthCheck::overall().
+        public bool $critical = true,
     ) {
     }
 
-    /** @return array{name: string, ok: bool, latencyMs: ?int, detail: string, hint: string} */
+    /** @return array{name: string, ok: bool, latencyMs: ?int, detail: string, hint: string, critical: bool} */
     public function toArray(): array
     {
         return [
@@ -31,6 +34,7 @@ final readonly class HealthStatus
             'latencyMs' => $this->latencyMs,
             'detail' => $this->detail,
             'hint' => $this->hint,
+            'critical' => $this->critical,
         ];
     }
 
@@ -43,6 +47,7 @@ final readonly class HealthStatus
             isset($row['latencyMs']) ? (int) $row['latencyMs'] : null,
             (string) ($row['detail'] ?? ''),
             (string) ($row['hint'] ?? ''),
+            (bool) ($row['critical'] ?? true),
         );
     }
 }

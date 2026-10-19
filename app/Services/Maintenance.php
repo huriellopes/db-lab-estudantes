@@ -20,8 +20,8 @@ use RecursiveIteratorIterator;
  */
 final class Maintenance
 {
-    /** Caminhos que continuam respondendo com o modo manutenção ligado (o admin precisa conseguir entrar). */
-    private const ALLOWED_PATHS = ['/login', '/logout', '/csrf-token'];
+    /** Caminhos que continuam respondendo com o modo manutenção ligado (o admin precisa conseguir entrar; /health pros monitores). */
+    private const ALLOWED_PATHS = ['/login', '/logout', '/csrf-token', '/health', '/health/live'];
 
     /** Acima disso o memory.limit_in_bytes do cgroup v1 significa "sem limite". */
     private const CGROUP_V1_UNLIMITED = 1 << 60;
