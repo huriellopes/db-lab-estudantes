@@ -49,6 +49,8 @@ it('lets only admins through maintenance mode, except login/logout/csrf', functi
         ->and(Maintenance::allows('/login/', false))->toBeTrue()
         ->and(Maintenance::allows('/logout', false))->toBeTrue()
         ->and(Maintenance::allows('/csrf-token', false))->toBeTrue()
+        ->and(Maintenance::allows('/health', false))->toBeTrue()
+        ->and(Maintenance::allows('/health/live', false))->toBeTrue()
         ->and(Maintenance::allows('/loginx', false))->toBeFalse();
 });
 
