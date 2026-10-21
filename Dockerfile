@@ -25,7 +25,7 @@ RUN npm run build
 # php-fpm + nginx + supervisord — a MESMA imagem roda em dev (docker-compose.yml) e em
 # produção (docker-compose.prod.yml), só muda env vars/limites/rede. Isso é de propósito:
 # dev e prod usam exatamente o mesmo Dockerfile pra evitar "funciona na minha máquina".
-FROM php:8.5.11-fpm
+FROM php:8.6.0RC2-fpm
 RUN apt-get update \
     && apt-get install -y --no-install-recommends nginx supervisor curl \
     && docker-php-ext-install pdo pdo_mysql mysqli \
