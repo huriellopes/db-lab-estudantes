@@ -3,7 +3,7 @@
 # .github/dependabot.yml) em vez de entrar calado no próximo build.
 
 # ---- Stage 1: dependências PHP (composer, sem as de dev — Pest fica só local) ----
-FROM composer:2.10.3 AS vendor
+FROM composer:2.11.0 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader --no-scripts
