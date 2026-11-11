@@ -148,7 +148,7 @@ jobs:
           exit 1
 
       - name: Instala k6
-        uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1.2.2
+        uses: grafana/setup-k6-action@c47136d33d365efbeb9ae7266908b5dcf98cdece # v1.3.0
 
       - name: Roda o teste de carga
         run: k6 run k6/load-test.js
